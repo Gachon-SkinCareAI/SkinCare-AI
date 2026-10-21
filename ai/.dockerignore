@@ -1,0 +1,10 @@
+.venv
+runs
+var
+tmp
+models
+**/__pycache__
+.env
+*.pt
+*.onnx
+.git

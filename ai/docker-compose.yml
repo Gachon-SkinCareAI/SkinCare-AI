@@ -1,0 +1,11 @@
+services:
+  caremap-ai:
+    build: .
+    container_name: caremap-ai
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file: .env
+    volumes:
+      - ./models:/app/models:ro
+      - ./runs:/app/runs:ro
+    restart: unless-stopped
