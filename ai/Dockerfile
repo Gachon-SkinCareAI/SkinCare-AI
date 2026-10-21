@@ -11,6 +11,8 @@ COPY qa ./qa
 COPY guide ./guide
 COPY tracking ./tracking
 COPY jobs ./jobs
+COPY train_classify.py .
+COPY eval_classify.py .
 COPY config.yaml .
 ENV MODEL_DIR=/models
 EXPOSE 8000

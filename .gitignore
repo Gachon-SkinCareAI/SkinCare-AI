@@ -11,5 +11,7 @@ ai/tmp/
 datasets/
 node_modules/
 backend/target/
+data/photos/*
+!data/photos/.gitkeep
 .idea/
 .DS_Store
