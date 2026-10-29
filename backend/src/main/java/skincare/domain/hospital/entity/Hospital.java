@@ -16,8 +16,8 @@ public class Hospital extends BaseTimeEntity {
 
     // 기관 고유 ID
     @Id
-    @Column(name = "hospital_id", length = 50)
-    private String hospitalId; // ex. HIRA-110001
+    @Column(name = "hospital_id", length = 255)
+    private String hospitalId;
 
     // 병원/약국 명칭
     @Column(nullable = false, length = 100)
@@ -57,4 +57,13 @@ public class Hospital extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private String status = "ACTIVE";
+
+    // 동기화 시 데이터 갱신 메서드
+    public void updateHospitalInfo(String name, String address, String tel, boolean nightCare, boolean emergency) {
+        this.name = name;
+        this.address = address;
+        this.tel = tel;
+        this.nightCare = nightCare;
+        this.emergency = emergency;
+    }
 }
