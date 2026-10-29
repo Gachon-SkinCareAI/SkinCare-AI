@@ -1,6 +1,7 @@
 server:
   port: 9800
 
+
 spring:
   datasource:
     driver-class-name: ${DB_CLASS_NAME}
@@ -47,6 +48,11 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+
+emergency:
+  openapi:
+    url: ${EMERGENCY_API_URL}
+    service-key: ${API_SERVICE_KEY}
 
 springdoc:
   cache:

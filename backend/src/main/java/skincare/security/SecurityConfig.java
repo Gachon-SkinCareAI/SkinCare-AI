@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import skincare.security.oauth.CustomOAuth2UserService;
+import skincare.security.oauth.CustomOidcUserService;
 import skincare.security.oauth.OAuth2LoginSuccessHandler;
 
 // Spring Security 설정 클래스
@@ -23,6 +24,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter; // Spring Bean으로 주입
     private final CustomOAuth2UserService customOAuth2UserService; // OAuth2 사용자 서비스
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler; // OAuth2 로그인 성공 핸들러
+    private final CustomOidcUserService customOidcUserService;
 
     // 비밀번호 암호화에 사용할 PasswordEncoder 빈 등록
     @Bean
@@ -51,6 +53,7 @@ public class SecurityConfig {
                                 "/api/wc/auth/password/reset",
                                 "/api/wc/auth/password/confirm",
                                 "/api/wc/admin/auth/login",
+                                "/api/wc/admin/signup", // 관리자 회원가입 경로 추가
                                 "/oauth2/**",
                                 "/login/oauth2/**"
                         ).permitAll()
@@ -64,7 +67,10 @@ public class SecurityConfig {
                 )
                 // OAuth2 로그인 설정 추가
                 .oauth2Login(oauth2 -> oauth2
-                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)   // 카카오, 네이버 등
+                                .oidcUserService(customOidcUserService) // 구글 OIDC 설정 추가!
+                        )
                         .successHandler(oAuth2LoginSuccessHandler)
                 )
                 // JWT 필터를 UsernamePasswordAuthenticationFilter 이전에 실행되도록 등록
