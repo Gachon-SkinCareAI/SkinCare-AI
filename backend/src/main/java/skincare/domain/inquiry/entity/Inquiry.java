@@ -59,4 +59,24 @@ public class Inquiry extends BaseTimeEntity {
     public void completeAnswer() {
         this.status = InquiryStatus.COMPLETED;
     }
+
+    // 답변 등록/수정 완료 시 상태 변경 (COMPLETED)
+    public void completeAnswer(InquiryAnswer answer) {
+        this.answer = answer;
+        this.status = InquiryStatus.COMPLETED;
+    }
+
+    // 답변 삭제 시 상태 변경 (WAITING)
+    public void resetAnswerStatus() {
+        this.answer = null;
+        this.status = InquiryStatus.WAITING;
+    }
+
+    // 문의 내용과 참조 진단 정보 수정 메서드
+    public void updateInquiry(InquiryType inquiryType, String title, String content, Diagnosis diagnosis) {
+        this.inquiryType = inquiryType;
+        this.title = title;
+        this.content = content;
+        this.diagnosis = diagnosis;
+    }
 }

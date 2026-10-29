@@ -40,7 +40,8 @@ public enum ErrorCode {
 
     // Inquiry (1:1 문의)
     INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "I001", "존재하지 않는 문의 내역입니다."),
-    ALREADY_ANSWERED_INQUIRY(HttpStatus.BAD_REQUEST, "I002", "이미 답변이 완료된 문의입니다."),
+    INQUIRY_ALREADY_ANSWERED(HttpStatus.BAD_REQUEST, "I002", "이미 답변이 완료된 문의입니다."),
+    INQUIRY_ANSWER_NOT_FOUND(HttpStatus.NOT_FOUND, "I003", "존재하지 않거나 삭제된 답변 내역입니다."),
 
     // Hospital & OpenAPI (의료기관)
     OPENAPI_SYNC_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "H001", "공공데이터 OpenAPI 수집/동기화에 실패했습니다."),

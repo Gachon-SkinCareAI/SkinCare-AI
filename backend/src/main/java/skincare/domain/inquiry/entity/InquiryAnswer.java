@@ -26,4 +26,9 @@ public class InquiryAnswer extends BaseTimeEntity {
     // 관리자 답변 본문 내용
     @Column(nullable = false, columnDefinition = "TEXT")
     private String answerContent;
+
+    // 답변 내용 수정
+    public void updateAnswerContent(String answerContent) {
+        this.answerContent = answerContent;
+    }
 }
