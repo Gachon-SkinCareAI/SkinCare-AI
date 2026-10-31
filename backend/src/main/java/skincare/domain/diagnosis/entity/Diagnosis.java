@@ -88,4 +88,8 @@ public class Diagnosis extends BaseTimeEntity {
         this.status = status;
         if (adminNote != null) this.adminNote = adminNote;
     }
+
+    public void initMetrics(DiagnosisMetrics metrics) {
+        this.metrics = metrics;
+    }
 }

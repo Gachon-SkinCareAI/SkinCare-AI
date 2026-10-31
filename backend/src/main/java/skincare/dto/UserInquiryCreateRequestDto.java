@@ -22,5 +22,5 @@ public class UserInquiryCreateRequestDto {
     private String content;
 
     // AI 상처 진단 기록 연동 (선택 사항)
-    private Long diagnosisId;
+    private String diagnosisId;
 }

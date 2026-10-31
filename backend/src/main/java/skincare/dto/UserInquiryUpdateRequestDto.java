@@ -22,5 +22,5 @@ public class UserInquiryUpdateRequestDto {
     private String content;
 
     // 변경할 AI 진단 기록 ID (선택 사항)
-    private Long diagnosisId;
+    private String diagnosisId;
 }
