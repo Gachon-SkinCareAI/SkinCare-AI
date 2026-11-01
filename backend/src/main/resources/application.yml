@@ -3,6 +3,14 @@ server:
 
 
 spring:
+  # backend 폴더의 .env 파일을 설정값으로 자동 로드 (IDE/터미널 어디서 실행해도 동일하게 적용, 파일이 없으면 무시)
+  config:
+    import: optional:file:.env[.properties]
+
+  # 별도 프로필 지정이 없으면 로컬 개발 설정(application-local.yml) 사용
+  profiles:
+    default: local
+
   datasource:
     driver-class-name: ${DB_CLASS_NAME}
     url: ${DB_URL}
@@ -10,17 +18,29 @@ spring:
     password: ${DB_PASSWORD}
 
   jpa:
-    show-sql: true
+    open-in-view: false # 트랜잭션 밖(컨트롤러/뷰)에서 지연 로딩 금지 (DB 커넥션 장시간 점유 방지)
     hibernate:
 #      ddl-auto: create
       ddl-auto: update
     properties:
       hibernate:
-        format_sql: true
-        use_sql_comments: true
+        jdbc:
+          batch_size: 1000 # 병원 동기화 등 대량 저장 시 Batch Insert/Update
+        order_inserts: true
+        order_updates: true
 
     database-platform: org.hibernate.dialect.MySQLDialect
     defer-datasource-initialization: true
+
+  # JSON 필드명을 설계서 7.3 API 명세와 동일하게 snake_case로 변환 (요청/응답 공통, ex. riskLevel ↔ risk_level)
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+  # 상처 사진 업로드 용량 제한 (기본값 1MB는 스마트폰 사진 업로드 시 초과됨)
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 15MB
 
   security:
     oauth2:
@@ -49,10 +69,39 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
+# 공공데이터 응급의료기관 OpenAPI (환경변수 미설정 시 기본 URL 사용, 인증키가 없으면 API 호출 생략)
 emergency:
   openapi:
-    url: ${EMERGENCY_API_URL}
-    service-key: ${API_SERVICE_KEY}
+    url: ${EMERGENCY_API_URL:http://apis.data.go.kr/B552657/ErmctInfoInqireService/getEgytListInfoInqire}
+    service-key: ${API_SERVICE_KEY:}
+
+# AI 추론 서버 (FastAPI) 연동 설정 (설계서 7.4 / 10.3.11 환경변수 명칭)
+ai:
+  server:
+    url: ${AI_SERVICE_URL:http://127.0.0.1:8000} # AI 서버 기본 주소 (경로는 /api/v1/ai/* 고정)
+    token: ${AI_SERVICE_TOKEN:}                     # AI 서버 Bearer 인증 토큰
+    connect-timeout-ms: 3000
+    read-timeout-ms: 10000
+
+# 업로드 파일(상처 사진, 프로필 사진) 저장 경로 (설계서 7.1.5 파일 저장소)
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:./uploads}
+
+# JWT 서명 비밀키 (필수, 32자 이상 임의 문자열 / 미설정 시 서버 기동 중단)
+jwt:
+  secret: ${JWT_SECRET:}
+
+# 최초 관리자 계정 (관리자가 한 명도 없을 때만 서버 기동 시 1회 생성)
+admin:
+  init:
+    id: ${ADMIN_INIT_ID:}
+    email: ${ADMIN_INIT_EMAIL:}
+    password: ${ADMIN_INIT_PASSWORD:}
+    name: ${ADMIN_INIT_NAME:관리자}
+
+# CORS 허용 Origin (관리자 웹/개발 서버, 여러 개는 쉼표로 구분)
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 springdoc:
   cache:
@@ -63,6 +112,6 @@ springdoc:
       enabled: true
   swagger-ui:
     enabled: true # Swagger UI 접근 경로 => http://localhost:9800/swagger-ui/index.html
-    path: /swagger.html # Swagger UI 추가 접근 경로 => http://localhost:8080/swagger.html
+    path: /swagger.html # Swagger UI 추가 접근 경로 => http://localhost:9800/swagger.html
     tags-sorter: alpha # alpha: 알파벳 순 태그 정렬, method: HTTP Method 순 정렬
     operations-sorter: alpha # alpha: 알파벳 순 태그 정렬, method: HTTP Method 순 정렬

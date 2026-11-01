@@ -12,11 +12,13 @@ import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
 
+// 국립중앙의료원 응급의료기관 OpenAPI(E-Gen) 연동 외부 클라이언트
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class MedicalApiClient {
 
+    // 공공데이터포털 OpenAPI 서비스 인증키
     @Value("${emergency.openapi.service-key}")
     private String emergencyServiceKey;
 
@@ -24,14 +26,22 @@ public class MedicalApiClient {
     @Value("${emergency.openapi.url:http://apis.data.go.kr/B552657/ErmctInfoInqireService/getEgytListInfoInqire}")
     private String emergencyUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate restTemplate; // OpenAPI 호출용 RestTemplate (AppConfig의 타임아웃 설정 공유)
+    private final ObjectMapper objectMapper = new ObjectMapper(); // JSON 응답 파싱용 ObjectMapper
 
     /**
      * 국립중앙의료원 OpenAPI를 호출하여 전국의 응급실 보유 병원 명칭 목록(Set)을 수집
      */
     public Set<String> fetchEmergencyHospitalNames() {
         Set<String> emergencyHospitals = new HashSet<>();
+
+        // 서비스 인증키 미설정 시 API 호출 생략 (CSV 세부정보 기준 응급실 여부만 반영)
+        String serviceKey = sanitizeServiceKey(emergencyServiceKey);
+        if (serviceKey.isEmpty()) {
+            log.warn("[Emergency API] API_SERVICE_KEY가 설정되지 않아 응급의료기관 OpenAPI 호출을 생략합니다.");
+            return emergencyHospitals;
+        }
+
         int pageNo = 1;
         int numOfRows = 100;
         int totalCount = 0;
@@ -39,7 +49,7 @@ public class MedicalApiClient {
         try {
             do {
                 StringBuilder urlBuilder = new StringBuilder(emergencyUrl);
-                urlBuilder.append("?serviceKey=").append(emergencyServiceKey);
+                urlBuilder.append("?serviceKey=").append(serviceKey);
                 urlBuilder.append("&pageNo=").append(pageNo);
                 urlBuilder.append("&numOfRows=").append(numOfRows);
                 urlBuilder.append("&_type=json");
@@ -83,5 +93,20 @@ public class MedicalApiClient {
         }
 
         return emergencyHospitals;
+    }
+
+    // 인증키 값 정리 (.env에서 따옴표로 감싸거나 URL 파라미터 구분자 '&'가 함께 입력된 경우 제거)
+    private String sanitizeServiceKey(String rawKey) {
+        if (rawKey == null) {
+            return "";
+        }
+        String key = rawKey.trim();
+        if (key.length() >= 2 && key.startsWith("\"") && key.endsWith("\"")) {
+            key = key.substring(1, key.length() - 1).trim();
+        }
+        while (key.endsWith("&")) {
+            key = key.substring(0, key.length() - 1);
+        }
+        return key;
     }
 }

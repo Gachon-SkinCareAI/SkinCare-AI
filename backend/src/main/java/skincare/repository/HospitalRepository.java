@@ -1,35 +1,39 @@
 package skincare.repository;
 
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import skincare.domain.hospital.entity.Hospital;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+// 의료기관(Hospital) 엔티티에 대한 데이터베이스 접근 인터페이스
 @Repository
 public interface HospitalRepository extends JpaRepository<Hospital, String>, JpaSpecificationExecutor<Hospital> {
+    // 기관 고유 ID로 의료기관 단건 조회
     Optional<Hospital> findByHospitalId(String hospitalId);
 
-    // 전체 ID 목록만 빠르게 수집하는 쿼리 추가
-    @Query("SELECT h.hospitalId FROM Hospital h")
-    List<String> findAllIds();
+    // 운영 상태별 기관 수 (관리자 의료기관 통계)
+    long countByStatus(String status);
 
     // Dynamic Specification 검색을 처리하는 Query Specification Builder
+    // bounds가 있으면 위도/경도 사각 범위(반경 검색 1차 필터) 조건 추가 [최소위도, 최대위도, 최소경도, 최대경도]
     static Specification<Hospital> buildSearchSpecification(
             String keyword, String region, skincare.domain.hospital.entity.ENUM.HospitalType hospitalType,
-            Boolean isNightCare, Boolean isEmergency) {
+            Boolean isNightCare, Boolean isEmergency, double[] bounds) {
 
         return (root, query, cb) -> {
-            var predicates = cb.conjunction();
+            // 검색 조건 목록 (마지막에 AND로 결합)
+            List<Predicate> predicates = new ArrayList<>();
 
             // 1. 키워드 검색 (병원/약국 이름 또는 주소)
             if (keyword != null && !keyword.trim().isEmpty()) {
                 String likeKeyword = "%" + keyword.trim() + "%";
-                predicates.getExpressions().add(
+                predicates.add(
                         cb.or(
                                 cb.like(root.get("name"), likeKeyword),
                                 cb.like(root.get("address"), likeKeyword)
@@ -39,38 +43,44 @@ public interface HospitalRepository extends JpaRepository<Hospital, String>, Jpa
 
             // 2. 지역 검색 (ex. "강남구")
             if (region != null && !region.trim().isEmpty()) {
-                predicates.getExpressions().add(
+                predicates.add(
                         cb.like(root.get("region"), "%" + region.trim() + "%")
                 );
             }
 
             // 3. 병원/약국 카테고리 필터
             if (hospitalType != null) {
-                predicates.getExpressions().add(
+                predicates.add(
                         cb.equal(root.get("hospitalType"), hospitalType)
                 );
             }
 
             // 4. 야간진료 여부 필터
             if (Boolean.TRUE.equals(isNightCare)) {
-                predicates.getExpressions().add(
+                predicates.add(
                         cb.equal(root.get("nightCare"), true)
                 );
             }
 
             // 5. 응급실 여부 필터
             if (Boolean.TRUE.equals(isEmergency)) {
-                predicates.getExpressions().add(
+                predicates.add(
                         cb.equal(root.get("emergency"), true)
                 );
             }
 
-            // 6. 정상 영업(ACTIVE) 중인 곳만 조회
-            predicates.getExpressions().add(
+            // 6. 위치 범위 필터 (좌표가 있는 기관 중 사각 범위 내)
+            if (bounds != null) {
+                predicates.add(cb.between(root.get("latitude"), bounds[0], bounds[1]));
+                predicates.add(cb.between(root.get("longitude"), bounds[2], bounds[3]));
+            }
+
+            // 7. 정상 영업(ACTIVE) 중인 곳만 조회
+            predicates.add(
                     cb.equal(root.get("status"), "ACTIVE")
             );
 
-            return predicates;
+            return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 }

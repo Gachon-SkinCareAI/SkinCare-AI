@@ -1,0 +1,13 @@
+# 로컬 개발 환경 전용 설정 (설계서 10.2 소스디렉터리 구조)
+# application.yml의 spring.profiles.default: local 에 의해 기본 적용되며, 운영 환경에서는 사용하지 않음
+spring:
+  jpa:
+    show-sql: true # 실행 SQL 콘솔 출력 (개발 디버깅용)
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+
+logging:
+  level:
+    skincare: DEBUG

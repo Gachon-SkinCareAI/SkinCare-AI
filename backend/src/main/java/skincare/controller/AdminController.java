@@ -1,6 +1,7 @@
 package skincare.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -9,7 +10,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import skincare.dto.*;
 import skincare.service.AdminService;
-//import skincare.service.HospitalService;
 import skincare.service.HospitalSyncService;
 
 // 관리자(Admin) 관련 API 요청 처리 컨트롤러
@@ -17,56 +17,63 @@ import skincare.service.HospitalSyncService;
 @RestController
 @RequestMapping("/api/wc/admin")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173") // 프론트엔드(React/Vite) CORS 허용
 public class AdminController {
 
     private final AdminService adminService; // 관리자 비즈니스 로직 서비스
-    private final HospitalSyncService hospitalSyncService;
-//    private final HospitalService hospitalService;
+    private final HospitalSyncService hospitalSyncService; // 의료기관 공공데이터 동기화 서비스
 
-    // 관리자 회원가입 API
+    // 관리자 계정 생성 API (기존 관리자만 호출 가능, SecurityConfig에서 ADMIN 권한 검사)
     @PostMapping("/signup")
-    public ResponseEntity<AdminResponseDto> signUp(@RequestBody AdminSignUpRequestDto requestDto) {
-        return ResponseEntity.ok(adminService.signUp(requestDto));
+    public ResponseEntity<ApiResponseDto> signUp(@Valid @RequestBody AdminSignUpRequestDto requestDto) {
+        AdminResponseDto adminInfo = adminService.signUp(requestDto);
+        return ApiResponseDto.created("관리자 계정이 생성되었습니다.")
+                .with("admin_info", adminInfo)
+                .toResponseEntity();
     }
 
     // 관리자 로그인 API
     @PostMapping("/auth/login")
-    public ResponseEntity<AdminResponseDto> login(@RequestBody AdminLoginRequestDto requestDto) {
-        return ResponseEntity.ok(adminService.login(requestDto));
+    public ResponseEntity<ApiResponseDto> login(@Valid @RequestBody AdminLoginRequestDto requestDto) {
+        LoginResponseDto<AdminResponseDto> result = adminService.login(requestDto);
+        return ApiResponseDto.ok("관리자 로그인이 완료되었습니다.")
+                .with("auth_token", result.authToken())
+                .with("admin_info", result.profile())
+                .toResponseEntity();
     }
 
     // 관리자 로그아웃 API
     @PostMapping("/auth/logout")
-    public ResponseEntity<ApiResponseDto<Void>> logout(@AuthenticationPrincipal String adminId) {
+    public ResponseEntity<ApiResponseDto> logout(@AuthenticationPrincipal String adminId) {
         adminService.logout(adminId);
-        return ResponseEntity.ok(ApiResponseDto.success("관리자 로그아웃이 완료되었습니다."));
+        return ApiResponseDto.ok("관리자 로그아웃이 완료되었습니다.").toResponseEntity();
+    }
+
+    // 관리자 프로필 조회 API
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponseDto> getMyProfile(@AuthenticationPrincipal String adminId) {
+        return ApiResponseDto.ok("관리자 프로필 조회가 완료되었습니다.")
+                .with("admin_info", adminService.getMyProfile(adminId))
+                .toResponseEntity();
     }
 
     // 관리자 비밀번호 변경 API
     @PutMapping("/password")
-    public ResponseEntity<ApiResponseDto<Void>> changePassword(
+    public ResponseEntity<ApiResponseDto> changePassword(
             @AuthenticationPrincipal String adminId,
             @RequestBody AdminPasswordChangeRequestDto requestDto) {
         adminService.changePassword(adminId, requestDto);
-        return ResponseEntity.ok(ApiResponseDto.success("관리자 비밀번호가 성공적으로 변경되었습니다."));
+        return ApiResponseDto.ok("관리자 비밀번호가 성공적으로 변경되었습니다.").toResponseEntity();
     }
 
-    // 공공데이터 OpenAPI 의료기관 데이터 동기화 실행 API
-//    @PostMapping("/hospitals/sync")
-//    public ResponseEntity<ApiResponseDto<HospitalSyncResponseDto>> syncHospitals(
-//            @RequestBody HospitalSyncRequestDto requestDto) {
-//        HospitalSyncResponseDto response = hospitalService.syncHospitalsFromOpenApi(requestDto);
-//        return ResponseEntity.ok(ApiResponseDto.success("공공데이터 OpenAPI 의료기관 동기화가 완료되었습니다.", response));
-//    }
-
+    // 병원/약국 공공데이터 동기화 실행 API
     @Operation(
             summary = "전국 피부과 병원 및 약국 데이터 동기화",
-            description = "공공데이터 포털의 병의원/약국 데이터셋과 국립중앙의료원 응급실 정보 API를 연동하여 DB를 최신화합니다."
+            description = "공공데이터 포털의 병의원/약국 데이터셋과 국립중앙의료원 응급실 정보 API를 연동하여 DB를 최신화합니다. "
+                    + "target_scope: ALL(기본), HOSPITAL, PHARMACY"
     )
-    @PostMapping("/sync")
-    @PreAuthorize("hasRole('ADMIN')") // 관리자 권한 체크 (시큐리티 설정에 맞춰 조정)
-    public ResponseEntity<HospitalSyncResponseDto> syncHospitals(
+    @PostMapping("/hospitals/sync")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponseDto> syncHospitals(
             @RequestBody(required = false) HospitalSyncRequestDto requestDto
     ) {
         if (requestDto == null) {
@@ -77,6 +84,8 @@ public class AdminController {
 
         HospitalSyncResponseDto response = hospitalSyncService.syncHospitals(requestDto);
 
-        return ResponseEntity.ok(response);
+        return ApiResponseDto.ok("공공데이터 OpenAPI 의료기관 동기화가 성공적으로 완료되었습니다.")
+                .with("sync_summary", response)
+                .toResponseEntity();
     }
 }

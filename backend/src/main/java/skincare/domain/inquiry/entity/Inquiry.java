@@ -6,6 +6,8 @@ import skincare.domain.inquiry.entity.ENUM.InquiryStatus;
 import skincare.domain.inquiry.entity.ENUM.InquiryType;
 import skincare.domain.user.entity.User;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.*;
 
 // [1:1 문의] 사용자가 앱에서 작성한 고객 문의 엔티티
@@ -34,6 +36,7 @@ public class Inquiry extends BaseTimeEntity {
 
     // 문의 유형 (AI_RESULT: AI분석, ACCURACY: 정확도, SYSTEM_ERROR: 오류, OTHER: 기타)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(name = "inquiry_type", nullable = false, length = 30)
     private InquiryType inquiryType;
 
@@ -47,6 +50,7 @@ public class Inquiry extends BaseTimeEntity {
 
     // 답변 상태 (WAITING: 답변대기, COMPLETED: 답변완료)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private InquiryStatus status = InquiryStatus.WAITING;

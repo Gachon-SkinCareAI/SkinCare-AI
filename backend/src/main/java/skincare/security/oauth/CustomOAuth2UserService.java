@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,17 +12,21 @@ import skincare.domain.user.entity.ENUM.Provider;
 import skincare.domain.user.entity.User;
 import skincare.domain.user.entity.UserSettings;
 import skincare.repository.UserRepository;
+import skincare.exception.ErrorCode;
 import skincare.repository.UserSettingsRepository;
+import skincare.security.AccountStatusChecker;
 
 import java.util.Map;
 
+// OAuth2 소셜 로그인 사용자 정보 조회 및 회원 자동 등록 서비스
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private final UserRepository userRepository;
-    private final UserSettingsRepository userSettingsRepository;
+    private final UserRepository userRepository; // 사용자 데이터 베이스 접근용 Repository
+    private final UserSettingsRepository userSettingsRepository; // 사용자 환경설정 데이터 베이스 접근용 Repository
 
+    // 소셜 제공자로부터 사용자 정보를 조회하여 기존 회원 갱신 또는 신규 회원 등록
     @Override
     @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
@@ -42,9 +47,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 })
                 .orElseGet(() -> registerGoogleUser(email, name, picture, sub));
 
+        // 탈퇴/정지 계정은 소셜 로그인 차단 (예외 발생 시 프로필 갱신도 롤백)
+        ErrorCode blockedReason = AccountStatusChecker.resolveBlockedReason(user.getStatus());
+        if (blockedReason != null) {
+            throw new OAuth2AuthenticationException(new OAuth2Error(blockedReason.getCode()), blockedReason.getMessage());
+        }
+
         return new CustomOAuth2User(user, attributes);
     }
 
+    // 구글 소셜 로그인 신규 사용자 등록 및 기본 환경설정 생성
     private User registerGoogleUser(String email, String name, String picture, String sub) {
         // 소셜 로그인 사용자의 고유 userId 생성 (예: google_123456789)
         String userId = "google_" + sub;

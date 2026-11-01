@@ -1,14 +1,14 @@
 package skincare.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import skincare.domain.admin.entity.Admin;
-import skincare.dto.AdminLoginRequestDto;
-import skincare.dto.AdminPasswordChangeRequestDto;
-import skincare.dto.AdminResponseDto;
-import skincare.dto.AdminSignUpRequestDto;
+import skincare.domain.global.IdGenerator;
+import skincare.dto.*;
 import skincare.exception.CustomException;
 import skincare.exception.ErrorCode;
 import skincare.repository.AdminRepository;
@@ -16,6 +16,7 @@ import skincare.repository.RefreshTokenRepository;
 import skincare.security.JwtTokenProvider;
 
 // 관리자(Admin) 관련 비즈니스 로직 처리
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminService {
@@ -25,56 +26,76 @@ public class AdminService {
     private final PasswordEncoder passwordEncoder; // 비밀번호 암호화 및 검증용 객체
     private final JwtTokenProvider jwtTokenProvider; // JWT 토큰 생성 및 검증용 객체
 
-    // 관리자 회원가입 처리
+    // 관리자 계정 생성 처리 (기존 관리자만 호출 가능)
     @Transactional
     public AdminResponseDto signUp(AdminSignUpRequestDto dto) {
 
-        // 관리자 아이디 중복 확인
-        if (adminRepository.existsById(dto.getAdminId())) {
+        // 관리자 아이디 미입력 시 서버에서 생성
+        String adminId = StringUtils.hasText(dto.getAdminId()) ? dto.getAdminId().trim() : IdGenerator.generate("ADM");
+
+        // 관리자 아이디/이메일 중복 확인
+        if (adminRepository.existsById(adminId)) {
             throw new CustomException(ErrorCode.DUPLICATE_ADMIN_ID);
+        }
+        if (adminRepository.existsByEmail(dto.getEmail())) {
+            throw new CustomException(ErrorCode.DUPLICATE_ADMIN_EMAIL);
         }
 
         // 관리자 엔티티 생성
         // 비밀번호는 암호화
         Admin admin = Admin.builder()
-                .adminId(dto.getAdminId())
+                .adminId(adminId)
+                .email(dto.getEmail())
                 .name(dto.getName())
+                .department(dto.getDepartment())
                 .password(passwordEncoder.encode(dto.getPassword()))
                 .build();
 
         // DB에 관리자 정보 저장
         adminRepository.save(admin);
+        log.info("[Auth] 관리자 계정 생성 완료 (admin_id: {})", adminId);
 
         // 응답 DTO 변환 및 반환
-        return AdminResponseDto.builder()
-                .adminId(admin.getAdminId())
-                .name(admin.getName())
-                .build();
+        return AdminResponseDto.from(admin);
     }
 
     // 관리자 로그인 처리 및 토큰 발급
-    @Transactional(readOnly = true)
-    public AdminResponseDto login(AdminLoginRequestDto dto) {
+    @Transactional
+    public LoginResponseDto<AdminResponseDto> login(AdminLoginRequestDto dto) {
 
-        // 입력받은 아이디로 관리자 조회
-        // 존재하지 않으면 예외 발생
-        Admin admin = adminRepository.findById(dto.getAdminId())
-                .orElseThrow(() -> new CustomException(ErrorCode.ADMIN_NOT_FOUND));
+        // 이메일로 관리자 조회 (이메일 미등록 기존 관리자 계정은 관리자 아이디로 조회)
+        // 계정 존재 여부가 노출되지 않도록 미존재/비밀번호 불일치 모두 동일한 오류(AUTH-001) 반환
+        Admin admin = adminRepository.findByEmail(dto.getEmail())
+                .or(() -> adminRepository.findById(dto.getEmail()).filter(found -> found.getEmail() == null))
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
         // 비밀번호 일치 여부 검증
         if (!passwordEncoder.matches(dto.getPassword(), admin.getPassword())) {
-            throw new CustomException(ErrorCode.INVALID_PASSWORD);
+            log.warn("[Auth] 관리자 로그인 실패 - 이메일 또는 비밀번호 불일치 (email: {})", dto.getEmail());
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
 
+        // 최종 로그인 일시 갱신
+        admin.updateLastLogin();
+
         // 인증 성공 시 JWT 토큰 생성
-        String token = jwtTokenProvider.createToken(admin.getAdminId(), "ADMIN");
+        AuthTokenDto authToken = AuthTokenDto.builder()
+                .accessToken(jwtTokenProvider.createToken(admin.getAdminId(), "ADMIN"))
+                .expiresIn(jwtTokenProvider.getTokenValiditySeconds())
+                .build();
+
+        log.info("[Auth] 관리자 로그인 성공 (admin_id: {})", admin.getAdminId());
 
         // 토큰 및 관리자 정보를 포함한 응답 DTO 반환
-        return AdminResponseDto.builder()
-                .adminId(admin.getAdminId())
-                .name(admin.getName())
-                .token(token)
-                .build();
+        return new LoginResponseDto<>(authToken, AdminResponseDto.from(admin));
+    }
+
+    // 관리자 프로필 조회 (GET /api/wc/admin/me)
+    @Transactional(readOnly = true)
+    public AdminResponseDto getMyProfile(String adminId) {
+        Admin admin = adminRepository.findById(adminId)
+                .orElseThrow(() -> new CustomException(ErrorCode.ADMIN_NOT_FOUND));
+        return AdminResponseDto.from(admin);
     }
 
     // 관리자 로그아웃 (DB의 Refresh Token 삭제)
@@ -91,10 +112,11 @@ public class AdminService {
 
         // 1) 현재 비밀번호 일치 여부 확인
         if (!passwordEncoder.matches(dto.getCurrentPassword(), admin.getPassword())) {
-            throw new CustomException(ErrorCode.INVALID_PASSWORD, "현재 비밀번호가 일치하지 않습니다.");
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS, "현재 비밀번호가 일치하지 않습니다.");
         }
 
         // 2) 새 비밀번호로 암호화 후 수정
         admin.updatePassword(passwordEncoder.encode(dto.getNewPassword()));
+        log.info("[Auth] 관리자 비밀번호 변경 완료 (admin_id: {})", adminId);
     }
 }

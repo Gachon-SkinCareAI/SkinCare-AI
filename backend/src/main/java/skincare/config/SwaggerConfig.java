@@ -8,6 +8,7 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+// Swagger(OpenAPI) 문서 설정 클래스 (JWT Bearer 인증 스키마 등록)
 @Configuration
 @SecurityScheme(
         name = "bearerAuth",
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Configuration;
         bearerFormat = "JWT"
 )
 public class SwaggerConfig {
+    // API 문서 기본 정보 및 전역 보안 요구사항 설정
     @Bean
     public OpenAPI openAPI() {
         return new OpenAPI()
