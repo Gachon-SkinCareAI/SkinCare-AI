@@ -12,12 +12,14 @@ import skincare.security.JwtTokenProvider;
 
 import java.io.IOException;
 
+// OAuth2 소셜 로그인 성공 시 JWT 토큰을 발급하고 프론트엔드로 리다이렉트하는 핸들러
 @Component
 @RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private final JwtTokenProvider jwtTokenProvider;
+    private final JwtTokenProvider jwtTokenProvider; // JWT 토큰 생성 및 검증용 객체
 
+    // 소셜 로그인 인증 성공 후처리 (토큰 발급 및 리다이렉트)
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {

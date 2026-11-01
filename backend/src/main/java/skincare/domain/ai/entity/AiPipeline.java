@@ -13,6 +13,7 @@ import lombok.*;
 @Builder
 public class AiPipeline extends BaseTimeEntity {
 
+    // 파이프라인 고유 식별자 (자동 증가)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

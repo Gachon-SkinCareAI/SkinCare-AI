@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    SkinCare AI 로그 설정 (설계서 8.3 로그파일 설계)
+    - skincare_auth.log      : 인증 및 회원 관리 (로그인, 회원가입, 토큰 검증, 탈퇴)
+    - skincare_analysis.log  : AI 상처 분석 및 회복 경과 (AI 서버 통신, 분석 완료, 이미지 저장)
+    - skincare_operation.log : 고객 문의 및 공공데이터 동기화
+    - skincare_mlops.log     : MLOps 파이프라인 및 AI 모니터링
+    - skincare_app.log       : 전체 애플리케이션 통합 로그 (예외 처리 포함)
+    로그 포맷: 2026.10.09.14:22:10.105 [INFO] 메세지 / 날짜 기반 Log Rotation (30일 보관)
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <!-- 로그 저장 폴더 (application.yml의 logging.file.path, 미설정 시 ./logs) -->
+    <springProperty scope="context" name="LOG_DIR" source="logging.file.path" defaultValue="logs"/>
+
+    <!-- 설계서 8.3.1 로그 포맷 -->
+    <property name="FILE_PATTERN" value="%d{yyyy.MM.dd.HH:mm:ss.SSS} [%level] %msg%n%ex"/>
+
+    <!-- 도메인별 로그 파일 Appender 공통 정의 -->
+    <appender name="AUTH_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/skincare_auth.log</file>
+        <encoder><pattern>${FILE_PATTERN}</pattern><charset>UTF-8</charset></encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/archive/skincare_auth.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter"><level>INFO</level></filter>
+    </appender>
+
+    <appender name="ANALYSIS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/skincare_analysis.log</file>
+        <encoder><pattern>${FILE_PATTERN}</pattern><charset>UTF-8</charset></encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/archive/skincare_analysis.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter"><level>INFO</level></filter>
+    </appender>
+
+    <appender name="OPERATION_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/skincare_operation.log</file>
+        <encoder><pattern>${FILE_PATTERN}</pattern><charset>UTF-8</charset></encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/archive/skincare_operation.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter"><level>INFO</level></filter>
+    </appender>
+
+    <appender name="MLOPS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/skincare_mlops.log</file>
+        <encoder><pattern>${FILE_PATTERN}</pattern><charset>UTF-8</charset></encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/archive/skincare_mlops.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter"><level>INFO</level></filter>
+    </appender>
+
+    <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/skincare_app.log</file>
+        <encoder><pattern>${FILE_PATTERN}</pattern><charset>UTF-8</charset></encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/archive/skincare_app.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter"><level>INFO</level></filter>
+    </appender>
+
+    <!-- 8.3.2 인증 및 회원 관리 로그 -->
+    <logger name="skincare.security" additivity="true"><appender-ref ref="AUTH_FILE"/></logger>
+    <logger name="skincare.service.UserService" additivity="true"><appender-ref ref="AUTH_FILE"/></logger>
+    <logger name="skincare.service.AdminService" additivity="true"><appender-ref ref="AUTH_FILE"/></logger>
+    <logger name="skincare.config.AdminInitializer" additivity="true"><appender-ref ref="AUTH_FILE"/></logger>
+
+    <!-- 8.3.3 AI 상처 분석 및 회복 경과 로그 -->
+    <logger name="skincare.service.DiagnosisService" additivity="true"><appender-ref ref="ANALYSIS_FILE"/></logger>
+    <logger name="skincare.service.AdminDiagnosisService" additivity="true"><appender-ref ref="ANALYSIS_FILE"/></logger>
+    <logger name="skincare.service.FileStorageService" additivity="true"><appender-ref ref="ANALYSIS_FILE"/></logger>
+    <logger name="skincare.external.AiServiceClient" additivity="true"><appender-ref ref="ANALYSIS_FILE"/></logger>
+
+    <!-- 8.3.3 고객 문의 및 동기화 로그 -->
+    <logger name="skincare.service.UserInquiryService" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
+    <logger name="skincare.service.AdminInquiryService" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
+    <logger name="skincare.service.AdminInquiryAnswerService" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
+    <logger name="skincare.service.HospitalSyncService" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
+    <logger name="skincare.service.HospitalQueryService" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
+    <logger name="skincare.external.MedicalApiClient" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
+
+    <!-- 8.3.3 MLOps 파이프라인 및 시스템 로그 -->
+    <logger name="skincare.service.AdminAiMonitoringService" additivity="true"><appender-ref ref="MLOPS_FILE"/></logger>
+
+    <!-- 전체 로그: 콘솔 + 통합 로그 파일 -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="APP_FILE"/>
+    </root>
+</configuration>

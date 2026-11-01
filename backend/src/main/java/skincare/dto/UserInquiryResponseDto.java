@@ -1,71 +1,74 @@
 package skincare.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Getter;
 import skincare.domain.diagnosis.entity.Diagnosis;
+import skincare.domain.diagnosis.entity.ENUM.RiskLevel;
 import skincare.domain.inquiry.entity.ENUM.InquiryStatus;
 import skincare.domain.inquiry.entity.ENUM.InquiryType;
 import skincare.domain.inquiry.entity.Inquiry;
-import skincare.domain.inquiry.entity.InquiryAnswer;
 
 import java.time.format.DateTimeFormatter;
 
+// 사용자 1:1 문의 등록/목록/상세/수정 응답 DTO (/api/wc/inquiries)
 @Getter
 @Builder
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public class UserInquiryResponseDto {
 
-    private String inquiryId;
-    private InquiryType inquiryType;
-    private String title;
-    private String content;
-    private InquiryStatus status;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm");
 
-    // 참소된 AI 상처 진단 기록 정보 (존재할 경우)
-    private DiagnosisSummaryDto diagnosis;
+    private String inquiryId;           // 문의 고유 ID
+    private InquiryType inquiryType;    // 문의 유형 코드
+    private String inquiryTypeLabel;    // 문의 유형 표시명
+    private String title;               // 문의 제목
+    private String content;             // 문의 내용
+    private String createdAt;           // 문의 작성 일시
+    private InquiryStatus status;       // 답변 상태 코드 (WAITING, COMPLETED)
+    private String statusLabel;         // 답변 상태 표시명
+    private RelatedDiagnosis relatedDiagnosis; // 연관 AI 분석 기록 (없으면 null)
+    private InquiryAnswerDto answer;    // 관리자 답변 (답변 전이면 null)
 
-    // 관리자 답변 내용 (답변 작성 시에만 포함)
-    private String answerContent;
-    private String answeredAt;
-
-    private String createdAt;
-    private String updatedAt;
-
+    // 문의에 연동된 AI 분석 기록 요약 정보
     @Getter
     @Builder
-    public static class DiagnosisSummaryDto {
-        private String diagnosisId;
-        private String suspectedDisease;   // 진단된 질환/상처명
-        private String imageUrl;      // 진단에 사용된 이미지 URL
-        private String createdAt;     // 진단 일시
+    public static class RelatedDiagnosis {
+        private String diagnosisId;      // 분석 고유 ID
+        private String title;            // 분석 요약 (ex. 다리 · 화상 의심)
+        private String imageUrl;         // 분석 이미지 조회 API 경로
+        private String diagnosedAt;      // 분석 일시
+        private RiskLevel riskLevel;     // 위험도
     }
 
+    // Inquiry 엔티티(연관 분석, 답변 포함)를 사용자 응답 DTO로 변환
     public static UserInquiryResponseDto fromEntity(Inquiry inquiry) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-        InquiryAnswer answer = inquiry.getAnswer();
-        Diagnosis diagnosis = inquiry.getDiagnosis();
-
-        DiagnosisSummaryDto diagnosisDto = null;
-        if (diagnosis != null) {
-            diagnosisDto = DiagnosisSummaryDto.builder()
-                    .diagnosisId(diagnosis.getDiagnosisId())
-                    .suspectedDisease(diagnosis.getSuspectedDisease())
-                    .imageUrl(diagnosis.getImageUrl())
-                    .createdAt(diagnosis.getCreatedAt() != null ? diagnosis.getCreatedAt().format(formatter) : null)
-                    .build();
-        }
-
         return UserInquiryResponseDto.builder()
                 .inquiryId(inquiry.getInquiryId())
                 .inquiryType(inquiry.getInquiryType())
+                .inquiryTypeLabel(inquiry.getInquiryType().getLabel())
                 .title(inquiry.getTitle())
                 .content(inquiry.getContent())
+                .createdAt(inquiry.getCreatedAt() != null ? inquiry.getCreatedAt().format(FORMATTER) : null)
                 .status(inquiry.getStatus())
-                .diagnosis(diagnosisDto)
-                .answerContent(answer != null ? answer.getAnswerContent() : null)
-                .answeredAt(answer != null && answer.getCreatedAt() != null ? answer.getCreatedAt().format(formatter) : null)
-                .createdAt(inquiry.getCreatedAt() != null ? inquiry.getCreatedAt().format(formatter) : null)
-                .updatedAt(inquiry.getUpdatedAt() != null ? inquiry.getUpdatedAt().format(formatter) : null)
+                .statusLabel(inquiry.getStatus().getLabel())
+                .relatedDiagnosis(toRelatedDiagnosis(inquiry.getDiagnosis()))
+                .answer(InquiryAnswerDto.from(inquiry.getAnswer()))
+                .build();
+    }
+
+    // 연관 분석 기록 요약 변환
+    private static RelatedDiagnosis toRelatedDiagnosis(Diagnosis diagnosis) {
+        if (diagnosis == null) {
+            return null;
+        }
+        String bodyPart = diagnosis.getBodyPart() != null ? diagnosis.getBodyPart().getLabel() : "";
+        return RelatedDiagnosis.builder()
+                .diagnosisId(diagnosis.getDiagnosisId())
+                .title(bodyPart + " · " + diagnosis.getSuspectedDisease())
+                .imageUrl(DiagnosisResponseDto.imagePath(diagnosis.getDiagnosisId()))
+                .diagnosedAt(diagnosis.getCreatedAt() != null ? diagnosis.getCreatedAt().format(FORMATTER) : null)
+                .riskLevel(diagnosis.getRiskLevel())
                 .build();
     }
 }

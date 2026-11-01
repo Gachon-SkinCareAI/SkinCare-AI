@@ -13,6 +13,7 @@ import lombok.*;
 @Builder
 public class AiModelMetrics extends BaseTimeEntity {
 
+    // 지표 고유 식별자 (자동 증가)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -27,8 +27,13 @@ public class InquiryAnswer extends BaseTimeEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String answerContent;
 
-    // 답변 내용 수정
-    public void updateAnswerContent(String answerContent) {
+    // 답변을 작성(최종 수정)한 관리자 ID
+    @Column(name = "answered_by", length = 36)
+    private String answeredBy;
+
+    // 답변 내용 수정 (수정한 관리자로 작성자 갱신)
+    public void updateAnswerContent(String answerContent, String adminId) {
         this.answerContent = answerContent;
+        this.answeredBy = adminId;
     }
 }

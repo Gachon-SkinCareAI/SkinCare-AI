@@ -5,6 +5,8 @@ import skincare.domain.user.entity.ENUM.PlanType;
 import skincare.domain.user.entity.ENUM.Provider;
 import skincare.domain.user.entity.ENUM.UserStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -40,18 +42,21 @@ public class User extends BaseTimeEntity {
 
     // 가입경로(LOCAL: 일반, GOOGLE: 구글 소셜)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private Provider provider = Provider.LOCAL;
 
     // 이용 플랜 (FREE, PREMIUM 등)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private PlanType plan = PlanType.FREE;
 
     // 계정 상태 (ACTIVE: 활성, INACTIVE: 휴면, DELETED: 탈퇴)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
@@ -68,6 +73,7 @@ public class User extends BaseTimeEntity {
     @Column(name = "last_access_at")
     private LocalDateTime lastAccessAt;
 
+    // 사용자 환경설정 연관관계 초기화 메서드
     public void initSettings(UserSettings settings) {
         this.settings = settings;
     }
