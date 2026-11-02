@@ -9,7 +9,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import skincare.dto.*;
+import skincare.security.TokenService;
 import skincare.service.UserService;
+
+import java.util.Map;
 
 // 사용자(User) 관련 API 요청 처리 컨트롤러
 @RestController
@@ -18,6 +21,7 @@ import skincare.service.UserService;
 public class UserController {
 
     private final UserService userService; // 사용자 비즈니스 로직 서비스
+    private final TokenService tokenService; // 토큰 재발급 서비스
 
     // 이메일 인증 번호 발송 요청
     @PostMapping("/auth/email/send")
@@ -52,6 +56,24 @@ public class UserController {
                 .toResponseEntity();
     }
 
+    // Google 소셜 로그인/회원가입 API (모바일 앱이 Google SDK로 받은 id_token을 서버에서 검증)
+    @PostMapping("/auth/social/google")
+    public ResponseEntity<ApiResponseDto> googleLogin(@Valid @RequestBody GoogleLoginRequestDto requestDto) {
+        LoginResponseDto<UserResponseDto> result = userService.googleLogin(requestDto);
+        return ApiResponseDto.ok("Google 소셜 로그인이 완료되었습니다.")
+                .with("auth_token", result.authToken())
+                .with("user_info", result.profile())
+                .toResponseEntity();
+    }
+
+    // 액세스 토큰 재발급 API (리프레시 토큰 Rotation: 응답의 새 refresh_token으로 교체 저장 필요)
+    @PostMapping("/auth/token/refresh")
+    public ResponseEntity<ApiResponseDto> refreshToken(@Valid @RequestBody TokenRefreshRequestDto requestDto) {
+        return ApiResponseDto.ok("토큰이 재발급되었습니다.")
+                .with("auth_token", tokenService.reissue(requestDto.getRefreshToken(), "USER"))
+                .toResponseEntity();
+    }
+
     // 사용자 로그아웃
     @PostMapping("/auth/logout")
     public ResponseEntity<ApiResponseDto> logout(
@@ -73,6 +95,15 @@ public class UserController {
     public ResponseEntity<ApiResponseDto> confirmPasswordReset(@RequestBody PasswordResetConfirmRequestDto requestDto) {
         userService.confirmPasswordReset(requestDto);
         return ApiResponseDto.ok("비밀번호가 성공적으로 변경되었습니다.").toResponseEntity();
+    }
+
+    // 로그인한 사용자 프로필, 구독 정보, 활동 요약 조회
+    @GetMapping("/users/me")
+    public ResponseEntity<ApiResponseDto> getMyInfo(@AuthenticationPrincipal String userId) {
+        Map<String, Object> info = userService.getMyInfo(userId);
+        ApiResponseDto response = ApiResponseDto.ok("사용자 프로필 정보 조회가 완료되었습니다.");
+        info.forEach(response::with);
+        return response.toResponseEntity();
     }
 
     // 사용자 프로필 변경 (multipart/form-data: nickname, profile_image 모두 선택 항목)

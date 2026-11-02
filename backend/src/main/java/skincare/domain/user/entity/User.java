@@ -102,4 +102,14 @@ public class User extends BaseTimeEntity {
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
+
+    // 관리자 계정 상태 변경 메서드 (ACTIVE: 활성, INACTIVE: 비활성, SUSPENDED: 정지)
+    public void changeStatus(UserStatus status) {
+        this.status = status;
+    }
+
+    // 관리자 이용 플랜 변경 메서드 (FREE, PREMIUM)
+    public void changePlan(PlanType plan) {
+        this.plan = plan;
+    }
 }

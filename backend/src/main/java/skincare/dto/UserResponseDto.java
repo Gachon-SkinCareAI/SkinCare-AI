@@ -28,6 +28,7 @@ public class UserResponseDto {
     private PlanType plan;          // 이용 플랜 (FREE, PREMIUM)
     private UserStatus status;      // 계정 상태
     private String createdAt;       // 가입 일시
+    private String lastAccessAt;    // 최종 접속 일시
     private String updatedAt;       // 정보 수정 일시
     private String deletedAt;       // 탈퇴 처리 일시 (회원 탈퇴 응답에서만 포함)
 
@@ -45,6 +46,7 @@ public class UserResponseDto {
                 .plan(user.getPlan())
                 .status(user.getStatus())
                 .createdAt(user.getCreatedAt() != null ? user.getCreatedAt().format(formatter) : null)
+                .lastAccessAt(user.getLastAccessAt() != null ? user.getLastAccessAt().format(formatter) : null)
                 .updatedAt(user.getUpdatedAt() != null ? user.getUpdatedAt().format(formatter) : null)
                 .build();
     }

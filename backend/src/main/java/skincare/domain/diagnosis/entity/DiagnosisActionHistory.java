@@ -8,7 +8,7 @@ import skincare.domain.diagnosis.entity.ENUM.DiagnosisStatus;
 import skincare.domain.diagnosis.entity.ENUM.ReviewStatus;
 import skincare.domain.global.BaseTimeEntity;
 
-// [분석 처리 이력] 관리자의 분석건 처리 상태/검수 변경 감사 이력 엔티티 (설계서 6.3.3)
+// [분석 처리 이력] 관리자의 분석건 처리 상태/검수 변경 감사 이력 엔티티
 // 변경 관리자와 처리 시각(created_at)을 함께 저장하여 누가 언제 무엇을 변경했는지 추적
 @Entity
 @Table(name = "diagnosis_action_histories")

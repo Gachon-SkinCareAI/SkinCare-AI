@@ -12,8 +12,7 @@ import skincare.dto.*;
 import skincare.exception.CustomException;
 import skincare.exception.ErrorCode;
 import skincare.repository.AdminRepository;
-import skincare.repository.RefreshTokenRepository;
-import skincare.security.JwtTokenProvider;
+import skincare.security.TokenService;
 
 // 관리자(Admin) 관련 비즈니스 로직 처리
 @Slf4j
@@ -22,9 +21,8 @@ import skincare.security.JwtTokenProvider;
 public class AdminService {
 
     private final AdminRepository adminRepository; // 관리자 데이터 베이스 접근용 Repository
-    private final RefreshTokenRepository refreshTokenRepository; // DB 기반 토큰 삭제용 Repository
     private final PasswordEncoder passwordEncoder; // 비밀번호 암호화 및 검증용 객체
-    private final JwtTokenProvider jwtTokenProvider; // JWT 토큰 생성 및 검증용 객체
+    private final TokenService tokenService; // Access/Refresh Token 발급 및 폐기 서비스
 
     // 관리자 계정 생성 처리 (기존 관리자만 호출 가능)
     @Transactional
@@ -79,10 +77,7 @@ public class AdminService {
         admin.updateLastLogin();
 
         // 인증 성공 시 JWT 토큰 생성
-        AuthTokenDto authToken = AuthTokenDto.builder()
-                .accessToken(jwtTokenProvider.createToken(admin.getAdminId(), "ADMIN"))
-                .expiresIn(jwtTokenProvider.getTokenValiditySeconds())
-                .build();
+        AuthTokenDto authToken = tokenService.issue(admin.getAdminId(), "ADMIN");
 
         log.info("[Auth] 관리자 로그인 성공 (admin_id: {})", admin.getAdminId());
 
@@ -98,10 +93,10 @@ public class AdminService {
         return AdminResponseDto.from(admin);
     }
 
-    // 관리자 로그아웃 (DB의 Refresh Token 삭제)
+    // 관리자 로그아웃 (전달받은 Refresh Token 폐기, 미전달 시 모든 기기에서 로그아웃)
     @Transactional
-    public void logout(String adminId) {
-        refreshTokenRepository.deleteByUserId(adminId);
+    public void logout(String adminId, String refreshToken) {
+        tokenService.revoke(adminId, "ADMIN", refreshToken);
     }
 
     // 관리자 비밀번호 변경 (현재 비밀번호 검증 후 변경)

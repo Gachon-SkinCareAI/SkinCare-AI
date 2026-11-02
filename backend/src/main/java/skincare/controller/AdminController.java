@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import skincare.dto.*;
+import skincare.security.TokenService;
 import skincare.service.AdminService;
 import skincare.service.HospitalSyncService;
 
@@ -21,6 +22,7 @@ public class AdminController {
 
     private final AdminService adminService; // 관리자 비즈니스 로직 서비스
     private final HospitalSyncService hospitalSyncService; // 의료기관 공공데이터 동기화 서비스
+    private final TokenService tokenService; // 토큰 재발급 서비스
 
     // 관리자 계정 생성 API (기존 관리자만 호출 가능, SecurityConfig에서 ADMIN 권한 검사)
     @PostMapping("/signup")
@@ -41,10 +43,19 @@ public class AdminController {
                 .toResponseEntity();
     }
 
-    // 관리자 로그아웃 API
+    // 관리자 액세스 토큰 재발급 API (리프레시 토큰 Rotation)
+    @PostMapping("/auth/token/refresh")
+    public ResponseEntity<ApiResponseDto> refreshToken(@Valid @RequestBody TokenRefreshRequestDto requestDto) {
+        return ApiResponseDto.ok("토큰이 재발급되었습니다.")
+                .with("auth_token", tokenService.reissue(requestDto.getRefreshToken(), "ADMIN"))
+                .toResponseEntity();
+    }
+
+    // 관리자 로그아웃 API (refresh_token 전달 시 해당 토큰만, 미전달 시 모든 기기 로그아웃)
     @PostMapping("/auth/logout")
-    public ResponseEntity<ApiResponseDto> logout(@AuthenticationPrincipal String adminId) {
-        adminService.logout(adminId);
+    public ResponseEntity<ApiResponseDto> logout(@AuthenticationPrincipal String adminId,
+                                                 @RequestBody(required = false) LogoutRequestDto requestDto) {
+        adminService.logout(adminId, requestDto != null ? requestDto.getRefreshToken() : null);
         return ApiResponseDto.ok("관리자 로그아웃이 완료되었습니다.").toResponseEntity();
     }
 

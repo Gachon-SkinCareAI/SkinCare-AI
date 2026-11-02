@@ -22,7 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-// 관리자 AI 분석 로그 관리 관련 비즈니스 로직 처리 (설계서 6.3.3)
+// 관리자 AI 분석 로그 관리 관련 비즈니스 로직 처리
 @Slf4j
 @Service
 @RequiredArgsConstructor

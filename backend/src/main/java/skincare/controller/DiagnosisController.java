@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import skincare.domain.diagnosis.entity.ENUM.BodyPart;
 import skincare.domain.diagnosis.entity.ENUM.RiskLevel;
-import skincare.dto.ApiResponseDto;
-import skincare.dto.DiagnosisResponseDto;
-import skincare.dto.FilterParam;
+import jakarta.validation.Valid;
+import skincare.dto.*;
 import skincare.service.DiagnosisService;
+import skincare.service.QuestionnaireService;
+
+import java.util.Map;
 
 // 사용자 AI 피부·상처 분석(Diagnosis) 관련 API 요청 처리 컨트롤러
 @Tag(name = "User - AI Wound Analysis", description = "사용자 AI 피부·상처 분석 및 이력 관리 API")
@@ -24,6 +26,7 @@ import skincare.service.DiagnosisService;
 public class DiagnosisController {
 
     private final DiagnosisService diagnosisService; // AI 상처 분석 비즈니스 로직 서비스
+    private final QuestionnaireService questionnaireService; // 동적 문진 진행 서비스
 
     // 상처 이미지 업로드 및 AI 분석 요청 API
     @Operation(
@@ -76,6 +79,55 @@ public class DiagnosisController {
     ) {
         return ApiResponseDto.ok("분석 상세 정보 조회가 완료되었습니다.")
                 .with("diagnosis_detail", diagnosisService.getDiagnosisDetail(userId, diagnosisId))
+                .toResponseEntity();
+    }
+
+    // 동적 문진 진행 API
+    @Operation(
+            summary = "동적 문진 응답 제출 및 다음 질문 조회",
+            description = "첫 질문은 본문 없이 요청하고, 이후 next_question.question_id와 answer를 전송합니다. "
+                    + "문진이 끝나면(done=true) 위험도와 케어 가이드가 재평가된 diagnosis_result를 반환합니다. (최대 10턴)"
+    )
+    @PostMapping("/{diagnosisId}/questionnaire")
+    public ResponseEntity<ApiResponseDto> answerQuestionnaire(
+            @AuthenticationPrincipal String userId,
+            @PathVariable String diagnosisId,
+            @RequestBody(required = false) QuestionnaireAnswerRequestDto requestDto
+    ) {
+        Map<String, Object> result = questionnaireService.answer(userId, diagnosisId,
+                requestDto != null ? requestDto : new QuestionnaireAnswerRequestDto());
+        ApiResponseDto response = ApiResponseDto.ok(Boolean.TRUE.equals(result.get("done"))
+                ? "문진이 완료되어 위험도가 재평가되었습니다." : "다음 문진 질문 조회가 완료되었습니다.");
+        result.forEach(response::with);
+        return response.toResponseEntity();
+    }
+
+    // AI 분석 결과 피드백 전송 API
+    @Operation(
+            summary = "AI 분석 결과 피드백 전송",
+            description = "kind(AGREE, DISAGREE, OTHER)와 note(선택)를 전송합니다. 학습 활용에 동의한 분석만 재학습 후보로 사용됩니다."
+    )
+    @PostMapping("/{diagnosisId}/feedback")
+    public ResponseEntity<ApiResponseDto> sendFeedback(
+            @AuthenticationPrincipal String userId,
+            @PathVariable String diagnosisId,
+            @Valid @RequestBody DiagnosisFeedbackRequestDto requestDto
+    ) {
+        return ApiResponseDto.ok("분석 결과 피드백이 접수되었습니다.")
+                .with("feedback_info", diagnosisService.sendFeedback(userId, diagnosisId, requestDto.getKind(), requestDto.getNote()))
+                .toResponseEntity();
+    }
+
+    // 분석 사진 학습 활용 동의 변경 API
+    @Operation(summary = "학습 활용 동의 변경", description = "training_use(true: 동의, false: 철회)로 분석 사진의 재학습 후보 활용 여부를 변경합니다.")
+    @PatchMapping("/{diagnosisId}/training-use")
+    public ResponseEntity<ApiResponseDto> updateTrainingUse(
+            @AuthenticationPrincipal String userId,
+            @PathVariable String diagnosisId,
+            @Valid @RequestBody TrainingUseRequestDto requestDto
+    ) {
+        return ApiResponseDto.ok("학습 활용 동의 여부가 변경되었습니다.")
+                .with("training_use_info", diagnosisService.updateTrainingUse(userId, diagnosisId, requestDto.getTrainingUse()))
                 .toResponseEntity();
     }
 

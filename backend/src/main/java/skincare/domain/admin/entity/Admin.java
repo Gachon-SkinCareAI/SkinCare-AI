@@ -6,7 +6,7 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-// [관리자 계정] 웹 관리자 대시보드 접근을 위한 관리자 계정 엔티티 (설계서 8.2 ADMIN 테이블)
+// [관리자 계정] 웹 관리자 대시보드 접근을 위한 관리자 계정 엔티티
 @Entity
 @Table(name = "admins")
 @Getter

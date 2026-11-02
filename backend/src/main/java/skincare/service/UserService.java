@@ -20,11 +20,15 @@ import skincare.exception.CustomException;
 import skincare.exception.ErrorCode;
 import skincare.repository.*;
 import skincare.security.AccountStatusChecker;
-import skincare.security.JwtTokenProvider;
+import skincare.security.TokenService;
+import skincare.security.oauth.GoogleIdTokenVerifier;
+import skincare.security.oauth.GoogleUserRegistrar;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 // 사용자(User) 관련 비즈니스 로직 처리
@@ -36,14 +40,16 @@ public class UserService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom(); // 이메일 인증 코드 생성용 난수 생성기
 
     private final UserRepository userRepository; // 사용자 데이터 베이스 접근용 Repository
-    private final RefreshTokenRepository refreshTokenRepository; // Refresh Token 데이터 베이스 접근용 Repository
     private final PasswordResetTokenRepository passwordResetTokenRepository; // 비밀번호 재설정 토큰 데이터 베이스 접근용 Repository
     private final EmailVerificationTokenRepository emailVerificationTokenRepository; // 이메일 인증 토큰 데이터 베이스 접근용 Repository
     private final PasswordEncoder passwordEncoder; // 비밀번호 암호화 및 검증용 객체
     private final UserSettingsRepository userSettingsRepository; // 사용자 환경설정 데이터 베이스 접근용 Repository
-    private final JwtTokenProvider jwtTokenProvider; // JWT 토큰 생성 및 검증용 객체
+    private final TokenService tokenService; // Access/Refresh Token 발급 및 폐기 서비스
     private final JavaMailSender mailSender; // 인증/재설정 이메일 발송용 객체
     private final FileStorageService fileStorageService; // 프로필 사진 파일 저장소
+    private final UserActivityService userActivityService; // 사용자 활동 요약 집계 서비스
+    private final GoogleIdTokenVerifier googleIdTokenVerifier; // Google ID Token 검증
+    private final GoogleUserRegistrar googleUserRegistrar; // 구글 회원 조회/등록
 
     // 이메일 인증 코드 발송 (회원가입 전)
     @Transactional
@@ -166,15 +172,43 @@ public class UserService {
         user.updateLastAccess();
 
         // 인증 성공 시 JWT 토큰 생성
-        AuthTokenDto authToken = AuthTokenDto.builder()
-                .accessToken(jwtTokenProvider.createToken(user.getUserId(), "USER"))
-                .expiresIn(jwtTokenProvider.getTokenValiditySeconds())
-                .build();
+        AuthTokenDto authToken = tokenService.issue(user.getUserId(), "USER");
 
         log.info("[Auth] 일반 로그인 성공 (user_id: {})", user.getUserId());
 
         // 토큰 및 사용자 정보를 포함한 응답 DTO 반환
         return new LoginResponseDto<>(authToken, UserResponseDto.from(user));
+    }
+
+    // POST /api/wc/auth/social/google (모바일 Google ID Token 로그인/회원가입)
+    @Transactional
+    public LoginResponseDto<UserResponseDto> googleLogin(GoogleLoginRequestDto dto) {
+        GoogleIdTokenVerifier.GoogleUserInfo googleUser = googleIdTokenVerifier.verify(dto.getIdToken());
+        User user = googleUserRegistrar.findOrRegister(
+                googleUser.email(), googleUser.name(), googleUser.picture(), googleUser.sub());
+
+        AuthTokenDto authToken = tokenService.issue(user.getUserId(), "USER");
+        log.info("[Auth] 정상 처리, Google 소셜 로그인 완료 (user_id: {}, provider: GOOGLE)", user.getUserId());
+        return new LoginResponseDto<>(authToken, UserResponseDto.from(user));
+    }
+
+    // GET /api/wc/users/me (로그인한 사용자 프로필, 구독 정보, 활동 요약 조회)
+    @Transactional(readOnly = true)
+    public Map<String, Object> getMyInfo(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        // 별도 결제 시스템이 없으므로 구독 정보는 회원의 이용 플랜으로 구성 (결제 연동 시 next_billing_date 제공)
+        Map<String, Object> subscription = new LinkedHashMap<>();
+        subscription.put("plan_type", user.getPlan());
+        subscription.put("status", "ACTIVE");
+        subscription.put("next_billing_date", null);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("user_info", UserResponseDto.from(user));
+        result.put("subscription_info", subscription);
+        result.put("activity_summary", userActivityService.summarize(userId));
+        return result;
     }
 
     // PUT /api/wc/users/me (사용자 프로필 수정 - 닉네임, 프로필 사진)
@@ -241,7 +275,7 @@ public class UserService {
         }
 
         // 탈퇴 시 DB Refresh Token도 함께 삭제
-        refreshTokenRepository.deleteByUserId(userId);
+        tokenService.revokeAll(userId, "USER");
         user.withdraw();
 
         log.info("[Auth] 회원 탈퇴 완료 및 계정 비활성화 (user_id: {}, reason: {})", userId, dto.getReason());
@@ -254,7 +288,8 @@ public class UserService {
     // 파생 delete 쿼리(deleteByUserId)는 트랜잭션 내에서만 실행 가능
     @Transactional
     public void logout(String userId, LogoutRequestDto dto) {
-        refreshTokenRepository.deleteByUserId(userId);
+        // 전달받은 Refresh Token만 폐기 (토큰 미전달 시 모든 기기에서 로그아웃)
+        tokenService.revoke(userId, "USER", dto != null ? dto.getRefreshToken() : null);
     }
 
     // POST /api/wc/auth/password/reset (비밀번호 재설정 요청)

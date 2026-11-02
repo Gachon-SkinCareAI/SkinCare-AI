@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-// [분석 로그] 피부·상처 AI 분석 기록 엔티티 (설계서 6.2.7 결과 저장 / 6.3.3 분석 로그 관리)
-// 화면 표시 명칭은 '분석'을 사용하되 내부 Entity명은 Diagnosis 유지 (설계서 10.3.2)
+// [분석 로그] 피부·상처 AI 분석 기록 엔티티
+// 화면 표시 명칭은 '분석'을 사용하되 내부 Entity명은 Diagnosis 유지
 @Entity
 @Table(name = "diagnoses")
 @Getter
@@ -173,6 +173,31 @@ public class Diagnosis extends BaseTimeEntity {
                 .build();
         this.actionHistories.add(history);
         return history;
+    }
+
+    // 문진 진행 상태(질문/응답/슬롯) 갱신 메서드
+    public void updateQuestionnaire(String questionnaire) {
+        this.questionnaire = questionnaire;
+    }
+
+    // 문진 완료 후 위험도 및 케어 가이드 재평가 결과 반영 메서드
+    // 재평가 결과가 응급이면 관리자 확인이 필요하므로 처리 상태를 대기(PENDING)로 변경
+    public void applyReassessment(RiskLevel riskLevel, String ruleIds, String appliedCardIds, String careCards,
+                                  String firstAidGuide, String precautionsGuide) {
+        this.riskLevel = riskLevel;
+        this.ruleIds = ruleIds;
+        this.appliedCardIds = appliedCardIds;
+        this.careCards = careCards;
+        this.firstAidGuide = firstAidGuide;
+        this.precautionsGuide = precautionsGuide;
+        if (riskLevel == RiskLevel.EMERGENCY && this.status == DiagnosisStatus.COMPLETED) {
+            this.status = DiagnosisStatus.PENDING;
+        }
+    }
+
+    // 학습 활용 동의 여부 변경 메서드 (사용자가 언제든 동의/철회 가능)
+    public void updateTrainingUse(boolean trainingUse) {
+        this.trainingUse = trainingUse;
     }
 
     // AI 비전 분석 메트릭 연관관계 초기화 메서드
