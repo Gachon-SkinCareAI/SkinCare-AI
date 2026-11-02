@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-labelledby="logo-title logo-description">
+<title id="logo-title">SkinCare AI</title>
+<desc id="logo-description">SkinCare AI — skin contour S monogram with a mint analysis sparkle. Fully outlined vector artwork on a transparent background.</desc>
+<g>
+  <rect width="96" height="96" rx="25" fill="#102D6B"/>
+  <path d="M58 18C39 11 19 20 19 35C19 46 31 49 46 51C61 53 70 58 68 68C66 77 58 83 48 85C70 86 82 72 80 57C78 44 65 40 50 38C39 36 33 33 34 28C36 22 44 19 58 18Z" fill="#FFFFFF"/>
+  <path d="M20 45C15 59 18 70 31 74C38 76 46 75 51 78C55 80 55 83 51 85C63 82 64 72 55 66C48 62 39 64 31 60C24 57 21 52 20 45Z" fill="#35D5BF"/>
+  <path d="M75 10C77 18 78 20 86 22C78 24 77 26 75 34C73 26 71 24 63 22C71 20 73 18 75 10Z" fill="#35D5BF"/>
+</g>
+</svg>
