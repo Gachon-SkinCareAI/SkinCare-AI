@@ -1,0 +1,246 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
+import type { Risk } from './data'
+
+export function Metric({
+  icon,
+  value,
+  label,
+  hint,
+  change,
+  color = 'navy',
+}: {
+  icon: string
+  value: string
+  label: string
+  hint: string
+  change?: string
+  color?: string
+}) {
+  return (
+    <article className="metric-card">
+      <div className="metric-top">
+        <span className={`metric-icon ${color}`}>{icon}</span>
+        {change && (
+          <span
+            className={`metric-change ${change.startsWith('-') ? 'negative' : ''}`}
+          >
+            {change}
+          </span>
+        )}
+      </div>
+      <strong className={`metric-value text-${color}`}>{value}</strong>
+      <div className="metric-label">{label}</div>
+      <div className="metric-hint">{hint}</div>
+    </article>
+  )
+}
+export function Badge({
+  children,
+  tone = 'green',
+}: {
+  children: ReactNode
+  tone?: string
+}) {
+  return <span className={`badge badge-${tone}`}>{children}</span>
+}
+export function RiskBadge({ risk }: { risk: Risk }) {
+  return (
+    <Badge
+      tone={risk === '응급' ? 'red' : risk === '경고' ? 'orange' : 'green'}
+    >
+      {risk}
+    </Badge>
+  )
+}
+export function SearchInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (s: string) => void
+  placeholder?: string
+}) {
+  return (
+    <label className="search-field">
+      <Search size={15} />
+      <input
+        aria-label={label}
+        placeholder={placeholder || label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {value && (
+        <button
+          type="button"
+          aria-label={`${label} 지우기`}
+          onClick={() => onChange('')}
+        >
+          <X size={13} />
+        </button>
+      )}
+    </label>
+  )
+}
+export function Tabs({
+  items,
+  value,
+  onChange,
+  label,
+}: {
+  items: readonly string[]
+  value: string
+  onChange: (s: string) => void
+  label: string
+}) {
+  return (
+    <div className="tabs" role="group" aria-label={label}>
+      {items.map((item) => (
+        <button
+          key={item}
+          className={value === item ? 'selected' : ''}
+          aria-pressed={value === item}
+          onClick={() => onChange(item)}
+        >
+          {item}
+        </button>
+      ))}
+    </div>
+  )
+}
+export function usePagination<T>(rows: T[], pageSize = 5) {
+  const [requested, setPage] = useState(1)
+  const total = Math.max(1, Math.ceil(rows.length / pageSize))
+  const page = Math.min(requested, total)
+  return {
+    page,
+    total,
+    setPage,
+    visible: rows.slice((page - 1) * pageSize, page * pageSize),
+  }
+}
+export function Pagination({
+  count,
+  page,
+  total,
+  onChange,
+  unit = '건',
+}: {
+  count: number
+  page: number
+  total: number
+  onChange: (n: number) => void
+  unit?: string
+}) {
+  const start = Math.max(1, Math.min(page - 2, total - 4))
+  const numbers = Array.from(
+    { length: Math.min(5, total) },
+    (_, i) => start + i,
+  )
+  return (
+    <div className="pagination">
+      <span>
+        샘플 {count}
+        {unit} · {page} / {total} 페이지
+      </span>
+      <nav aria-label="표 페이지 이동">
+        <button
+          aria-label="이전 페이지"
+          disabled={page === 1}
+          onClick={() => onChange(page - 1)}
+        >
+          <ChevronLeft size={13} />
+          <span>이전</span>
+        </button>
+        {numbers.map((n) => (
+          <button
+            key={n}
+            aria-label={`${n}페이지`}
+            aria-current={n === page ? 'page' : undefined}
+            className={page === n ? 'current' : ''}
+            onClick={() => onChange(n)}
+          >
+            {n}
+          </button>
+        ))}
+        <button
+          aria-label="다음 페이지"
+          disabled={page === total}
+          onClick={() => onChange(page + 1)}
+        >
+          <span>다음</span>
+          <ChevronRight size={13} />
+        </button>
+      </nav>
+    </div>
+  )
+}
+export function Empty({
+  text = '검색어나 필터를 바꿔 다시 확인해 주세요.',
+}: {
+  text?: string
+}) {
+  return (
+    <div className="empty">
+      <Search size={28} />
+      <strong>검색 결과가 없습니다</strong>
+      <p>{text}</p>
+    </div>
+  )
+}
+export function Modal({
+  title,
+  close,
+  children,
+  wide = false,
+}: {
+  title: string
+  close: () => void
+  children: ReactNode
+  wide?: boolean
+}) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const dialog = ref.current!
+    dialog.showModal()
+    return () => dialog.close()
+  }, [])
+  return (
+    <dialog
+      ref={ref}
+      className={`modal ${wide ? 'wide' : ''}`}
+      aria-label={title}
+      onCancel={(e) => {
+        e.preventDefault()
+        close()
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) close()
+      }}
+    >
+      <div className="modal-heading">
+        <h2>{title}</h2>
+        <button className="icon-button" aria-label="닫기" onClick={close}>
+          <X size={20} />
+        </button>
+      </div>
+      {children}
+    </dialog>
+  )
+}
+export function Progress({
+  value,
+  tone = 'navy',
+}: {
+  value: number
+  tone?: string
+}) {
+  return (
+    <span className={`progress progress-${tone}`}>
+      <span style={{ width: `${value}%` }} />
+    </span>
+  )
+}
