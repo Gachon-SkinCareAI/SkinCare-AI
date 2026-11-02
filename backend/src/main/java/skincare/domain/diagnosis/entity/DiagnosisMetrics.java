@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 // AI 모델이 추출한 환부 탐지/분류 원본 지표 엔티티 (관리자 분석 상세 화면의 ai_raw_metrics)
-// MVP는 Segmentation을 범위에서 제외하므로(설계서 1.5) 면적/IoU 대신 탐지 Confidence와 OOD Energy를 기록
+// MVP는 Segmentation을 범위에서 제외하므로 면적/IoU 대신 탐지 Confidence와 OOD Energy를 기록
 @Entity
 @Table(name = "diagnosis_metrics")
 @Getter

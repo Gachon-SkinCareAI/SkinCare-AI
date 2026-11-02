@@ -1,5 +1,5 @@
 server:
-  port: 9800
+  port: 9600
 
 
 spring:
@@ -75,7 +75,7 @@ emergency:
     url: ${EMERGENCY_API_URL:http://apis.data.go.kr/B552657/ErmctInfoInqireService/getEgytListInfoInqire}
     service-key: ${API_SERVICE_KEY:}
 
-# AI 추론 서버 (FastAPI) 연동 설정 (설계서 7.4 / 10.3.11 환경변수 명칭)
+# AI 추론 서버 (FastAPI) 연동 설정
 ai:
   server:
     url: ${AI_SERVICE_URL:http://127.0.0.1:8000} # AI 서버 기본 주소 (경로는 /api/v1/ai/* 고정)
@@ -83,13 +83,19 @@ ai:
     connect-timeout-ms: 3000
     read-timeout-ms: 10000
 
-# 업로드 파일(상처 사진, 프로필 사진) 저장 경로 (설계서 7.1.5 파일 저장소)
+# 업로드 파일(상처 사진, 프로필 사진) 저장 경로
 file:
   upload-dir: ${FILE_UPLOAD_DIR:./uploads}
 
-# JWT 서명 비밀키 (필수, 32자 이상 임의 문자열 / 미설정 시 서버 기동 중단)
+# JWT 서명 비밀키 (필수, 32자 이상 임의 문자열 / 미설정 시 서버 기동 중단) 및 토큰 유효기간
 jwt:
   secret: ${JWT_SECRET:}
+  access-token-validity-seconds: 3600 # Access Token 1시간 (설계서 expires_in)
+  refresh-token-validity-days: 14     # Refresh Token 14일
+
+# 모바일 Google 로그인 허용 Client ID (Android/iOS 앱용 Client ID, 여러 개는 쉼표 구분 / 웹 Client ID는 자동 포함)
+google:
+  allowed-client-ids: ${GOOGLE_ALLOWED_CLIENT_IDS:}
 
 # 최초 관리자 계정 (관리자가 한 명도 없을 때만 서버 기동 시 1회 생성)
 admin:

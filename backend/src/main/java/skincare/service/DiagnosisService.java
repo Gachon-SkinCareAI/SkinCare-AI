@@ -32,7 +32,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 // 사용자 AI 피부·상처 분석(Diagnosis) 관련 비즈니스 로직 처리
-// 분석 흐름: 이미지 저장 → predict(이미지 분석) → analyze(위험도 평가) → guide(공인 케어 카드) → 결과 저장 (설계서 6.2)
+// 분석 흐름: 이미지 저장 → predict(이미지 분석) → analyze(위험도 평가) → guide(공인 케어 카드) → 결과 저장
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -82,7 +82,7 @@ public class DiagnosisService {
             log.info("[Analysis] AI 상처 분석 완료 (diagnosis_id: {}, label: {}, risk_level: {})",
                     saved.getDiagnosisId(), woundType.getCode(), saved.getRiskLevel());
 
-            return DiagnosisResponseDto.detail(saved, toCareGuide(guide));
+            return DiagnosisResponseDto.detail(saved, CareGuideDto.from(guide));
 
         } catch (RuntimeException e) {
             // 분석/저장 실패 시 저장해 둔 이미지 파일 정리
@@ -114,6 +114,41 @@ public class DiagnosisService {
                 fileStorageService.getMediaType(diagnosis.getImageUrl()));
     }
 
+    // 분석 사진 학습 활용 동의/철회 (동의한 분석만 재학습 후보로 사용, 설계서 6.3.8)
+    @Transactional
+    public Map<String, Object> updateTrainingUse(String userId, String diagnosisId, boolean trainingUse) {
+        Diagnosis diagnosis = findMyDiagnosis(userId, diagnosisId);
+        diagnosis.updateTrainingUse(trainingUse);
+        log.info("[Analysis] 정상 처리, 학습 활용 동의 변경 (diagnosis_id: {}, training_use: {})", diagnosisId, trainingUse);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("diagnosis_id", diagnosisId);
+        result.put("training_use", trainingUse);
+        return result;
+    }
+
+    // AI 분석 결과 피드백 전송 (AI 서버 피드백 큐 적재, 추론/모델 교체는 하지 않음)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public Map<String, Object> sendFeedback(String userId, String diagnosisId, String kind, String note) {
+        Diagnosis diagnosis = findMyDiagnosis(userId, diagnosisId);
+        if (!StringUtils.hasText(diagnosis.getAiRequestId())) {
+            throw new CustomException(ErrorCode.INVALID_AI_REQUEST, "AI 분석 요청 정보가 없어 피드백을 전송할 수 없습니다.");
+        }
+
+        // 사진 파일 본문은 전송하지 않고 앱 서버 사진 ID(분석 ID)만 전달
+        AiFeedbackResponseDto response = aiServiceClient.feedback(
+                new AiFeedbackRequestDto(diagnosis.getAiRequestId(), kind, note, diagnosisId));
+        log.info("[Analysis] 정상 처리, 분석 결과 피드백 전송 (diagnosis_id: {}, kind: {}, queued: {})",
+                diagnosisId, kind, response.queued());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("diagnosis_id", diagnosisId);
+        result.put("queued", response.queued());
+        result.put("queue_id", response.queueId());
+        result.put("training_use", diagnosis.isTrainingUse());
+        return result;
+    }
+
     // 저장된 케어 카드 JSON을 케어 가이드 응답으로 변환 (관리자 상세 조회에서도 사용)
     public CareGuideDto readCareGuide(Diagnosis diagnosis) {
         AiGuideResponseDto guide = jsonConverter.fromJson(diagnosis.getCareCards(), AiGuideResponseDto.class);
@@ -124,7 +159,7 @@ public class DiagnosisService {
                     .precautions(diagnosis.getPrecautionsGuide())
                     .build();
         }
-        return toCareGuide(guide);
+        return CareGuideDto.from(guide);
     }
 
     // 본인 분석 기록 조회 (타인 기록은 존재 여부를 노출하지 않고 동일하게 404 처리)
@@ -133,8 +168,8 @@ public class DiagnosisService {
                 .orElseThrow(() -> new CustomException(ErrorCode.DIAGNOSIS_NOT_FOUND));
     }
 
-    // 공인 케어 카드 조회 (실패 시 카드 없이 사유만 기록)
-    private AiGuideResponseDto fetchGuide(AiAnalyzeResponseDto analyze, Map<String, Object> slots) {
+    // 공인 케어 카드 조회 (실패 시 카드 없이 사유만 기록, 문진 완료 후 재평가에서도 사용)
+    AiGuideResponseDto fetchGuide(AiAnalyzeResponseDto analyze, Map<String, Object> slots) {
         try {
             return aiServiceClient.guide(new AiGuideRequestDto(analyze.level(), analyze.ruleIds(), slots, null));
         } catch (CustomException e) {
@@ -173,10 +208,8 @@ public class DiagnosisService {
                 // 응급 위험도는 관리자 확인이 필요하므로 대기(PENDING) 상태로 등록
                 .status(analyze.level() == RiskLevel.EMERGENCY ? DiagnosisStatus.PENDING : DiagnosisStatus.COMPLETED)
                 .symptoms(symptoms)
-                .firstAidGuide(cards.stream().map(AiGuideResponseDto.CareCard::body)
-                        .filter(Objects::nonNull).collect(Collectors.joining("\n\n")))
-                .precautionsGuide(avoid.stream().map(AiGuideResponseDto.AvoidItem::label)
-                        .filter(Objects::nonNull).collect(Collectors.joining("\n")))
+                .firstAidGuide(CareGuideDto.joinFirstAid(cards))
+                .precautionsGuide(CareGuideDto.joinPrecautions(avoid))
                 .build();
 
         // DiagnosisMetrics (@MapsId 공유 PK 구조 매핑)
@@ -196,21 +229,6 @@ public class DiagnosisService {
             log.error("[Analysis] 분석 결과 저장 실패 (diagnosis_id: {}): {}", diagnosisId, e.getMessage(), e);
             throw new CustomException(ErrorCode.DIAGNOSIS_SAVE_FAILED);
         }
-    }
-
-    // AI 케어 카드 응답을 케어 가이드 응답 DTO로 변환
-    private CareGuideDto toCareGuide(AiGuideResponseDto guide) {
-        List<AiGuideResponseDto.CareCard> cards = guide.cards() != null ? guide.cards() : List.of();
-        List<AiGuideResponseDto.AvoidItem> avoid = guide.avoid() != null ? guide.avoid() : List.of();
-        return CareGuideDto.builder()
-                .firstAid(cards.stream().map(AiGuideResponseDto.CareCard::body)
-                        .filter(Objects::nonNull).collect(Collectors.joining("\n\n")))
-                .precautions(avoid.stream().map(AiGuideResponseDto.AvoidItem::label)
-                        .filter(Objects::nonNull).collect(Collectors.joining("\n")))
-                .cards(cards)
-                .avoid(avoid)
-                .reason(guide.reason())
-                .build();
     }
 
     // AI Confidence(0~1)를 백분율(0~100, 소수점 첫째 자리)로 변환 (이미 백분율이면 그대로 사용)
@@ -233,7 +251,7 @@ public class DiagnosisService {
     }
 
     // 문자열 목록을 쉼표로 연결 (비어 있으면 null)
-    private String joinOrNull(List<String> values) {
+    static String joinOrNull(List<String> values) {
         if (values == null || values.isEmpty()) {
             return null;
         }

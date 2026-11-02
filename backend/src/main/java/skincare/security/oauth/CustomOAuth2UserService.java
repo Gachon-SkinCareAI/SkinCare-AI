@@ -8,77 +8,35 @@ import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import skincare.domain.user.entity.ENUM.Provider;
 import skincare.domain.user.entity.User;
-import skincare.domain.user.entity.UserSettings;
-import skincare.repository.UserRepository;
-import skincare.exception.ErrorCode;
-import skincare.repository.UserSettingsRepository;
-import skincare.security.AccountStatusChecker;
+import skincare.exception.CustomException;
 
 import java.util.Map;
 
-// OAuth2 소셜 로그인 사용자 정보 조회 및 회원 자동 등록 서비스
+// OAuth2 소셜 로그인 사용자 정보 조회 및 회원 자동 등록 서비스 (openid scope 없이 로그인하는 경우)
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private final UserRepository userRepository; // 사용자 데이터 베이스 접근용 Repository
-    private final UserSettingsRepository userSettingsRepository; // 사용자 환경설정 데이터 베이스 접근용 Repository
+    private final GoogleUserRegistrar googleUserRegistrar; // 구글 회원 조회/등록 공통 컴포넌트
 
-    // 소셜 제공자로부터 사용자 정보를 조회하여 기존 회원 갱신 또는 신규 회원 등록
+    // 소셜 제공자로부터 사용자 정보를 조회하여 기존 회원 조회 또는 신규 회원 등록
     @Override
     @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = super.loadUser(userRequest);
         Map<String, Object> attributes = oAuth2User.getAttributes();
 
-        String email = (String) attributes.get("email");
-        String name = (String) attributes.get("name");
-        String picture = (String) attributes.get("picture");
-        String sub = (String) attributes.get("sub"); // 구글 유저 고유 ID
-
-        // 이메일 기반으로 기존 유저 확인
-        User user = userRepository.findByEmail(email)
-                .map(existingUser -> {
-                    // 이미 존재하는 경우 프로필 업데이트
-                    existingUser.updateProfile(name, picture);
-                    return existingUser;
-                })
-                .orElseGet(() -> registerGoogleUser(email, name, picture, sub));
-
-        // 탈퇴/정지 계정은 소셜 로그인 차단 (예외 발생 시 프로필 갱신도 롤백)
-        ErrorCode blockedReason = AccountStatusChecker.resolveBlockedReason(user.getStatus());
-        if (blockedReason != null) {
-            throw new OAuth2AuthenticationException(new OAuth2Error(blockedReason.getCode()), blockedReason.getMessage());
+        try {
+            User user = googleUserRegistrar.findOrRegister(
+                    (String) attributes.get("email"),
+                    (String) attributes.get("name"),
+                    (String) attributes.get("picture"),
+                    (String) attributes.get("sub")); // sub: 구글 유저 고유 ID
+            return new CustomOAuth2User(user, attributes);
+        } catch (CustomException e) {
+            // 탈퇴/정지 계정 등은 OAuth2 인증 실패로 변환
+            throw new OAuth2AuthenticationException(new OAuth2Error(e.getErrorCode().getCode()), e.getMessage());
         }
-
-        return new CustomOAuth2User(user, attributes);
-    }
-
-    // 구글 소셜 로그인 신규 사용자 등록 및 기본 환경설정 생성
-    private User registerGoogleUser(String email, String name, String picture, String sub) {
-        // 소셜 로그인 사용자의 고유 userId 생성 (예: google_123456789)
-        String userId = "google_" + sub;
-
-        User user = User.builder()
-                .userId(userId)
-                .email(email)
-                .nickname(name != null ? name : "GoogleUser")
-                .profileImageUrl(picture)
-                .provider(Provider.GOOGLE)
-                .agreedTerms(true)
-                .agreedPrivacy(true)
-                .build();
-
-        userRepository.saveAndFlush(user);
-
-        // 기본 환경설정 자동 생성
-        UserSettings settings = UserSettings.builder()
-                .user(user)
-                .build();
-        userSettingsRepository.save(settings);
-
-        return user;
     }
 }

@@ -5,7 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 // 목록 조회 API의 page/size 파라미터를 Spring Data Pageable로 변환하는 유틸리티
-// 설계서 기준 page는 1부터 시작하며, 과도한 조회를 막기 위해 size는 최대 100으로 제한
+// page는 1부터 시작하며, 과도한 조회를 막기 위해 size는 최대 100으로 제한
 public final class Paging {
 
     private static final int MAX_SIZE = 100;

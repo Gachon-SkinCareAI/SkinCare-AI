@@ -5,8 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 // 애플리케이션 내 에러 코드 및 메세지 정의 Enum
-// 코드 체계는 설계서 8.4 오류코드 설계(AUTH/USER/DIAGNOSIS/RECOVERY/INQUIRY/HOSPITAL/AI/MLOPS)를 따르며,
-// 설계서에 없는 항목은 같은 분류 안에서 이어지는 번호로 추가
 @Getter
 @RequiredArgsConstructor
 public enum ErrorCode {

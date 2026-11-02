@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-// 공통 API 응답 래퍼 DTO (설계서 7.3 서비스 REST API 응답 형식)
+// 공통 API 응답 래퍼 DTO
 // {
 //   "content_type": "json", "result_code": 200, "result_msg": "...",
 //   "<API별 응답 키>": ...   ← with()로 추가 (ex. user_info, diagnoses_list, total_count)
