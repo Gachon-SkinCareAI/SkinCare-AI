@@ -20,7 +20,7 @@ import skincare.repository.HospitalRepository;
 import java.util.Comparator;
 import java.util.List;
 
-// 사용자용 의료기관(병원/약국) 검색 및 조회 관련 비즈니스 로직 처리 (설계서 6.2.8)
+// 사용자용 의료기관(병원/약국) 검색 및 조회 관련 비즈니스 로직 처리
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -34,7 +34,7 @@ public class HospitalQueryService {
     private final HospitalRepository hospitalRepository; // 의료기관 데이터 베이스 접근용 Repository
 
     /**
-     * 1. 위치 및 조건별 피부과/약국 목록 검색
+     * 위치 및 조건별 피부과/약국 목록 검색
      * - 위도/경도가 있으면: 반경 내 기관을 거리순으로 정렬하여 페이지 처리
      * - 위도/경도가 없으면: 조건 검색 후 기관명순 페이지 처리
      */
@@ -69,11 +69,11 @@ public class HospitalQueryService {
         return new PageImpl<>(nearby.subList(fromIndex, toIndex), pageable, nearby.size());
     }
 
-    /**
-     * 2. 의료기관 상세 정보 조회 (진료시간, 출처, 갱신일 포함)
-     */
+    // 의료기관 상세 정보 조회 (진료시간, 출처, 갱신일 포함)
     public HospitalResponseDto getHospitalDetail(String hospitalId) {
+        // 관리자가 숨김 처리한 기관은 사용자에게 노출하지 않음
         Hospital hospital = hospitalRepository.findByHospitalId(hospitalId)
+                .filter(found -> !Hospital.STATUS_HIDDEN.equals(found.getStatus()))
                 .orElseThrow(() -> new CustomException(ErrorCode.HOSPITAL_NOT_FOUND));
 
         return HospitalResponseDto.detail(hospital);

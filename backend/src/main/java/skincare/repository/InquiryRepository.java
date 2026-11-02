@@ -43,6 +43,12 @@ public interface InquiryRepository extends JpaRepository<Inquiry, String>, JpaSp
     // 답변 상태별 문의 건수 (관리자 문의 통계)
     long countByStatus(InquiryStatus status);
 
+    // 사용자의 전체 문의 건수
+    long countByUserUserId(String userId);
+
+    // 사용자의 최근 문의 (최근 활동 표시용)
+    List<Inquiry> findTop5ByUserUserIdOrderByCreatedAtDesc(String userId);
+
     // 관리자용 문의 검색 조건 (답변 상태, 문의 유형)
     static Specification<Inquiry> adminSearch(InquiryStatus status, InquiryType inquiryType) {
         return (root, query, cb) -> {

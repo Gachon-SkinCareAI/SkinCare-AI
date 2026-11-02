@@ -24,6 +24,10 @@ import java.util.Objects;
 @Builder
 public class Hospital extends BaseTimeEntity implements Persistable<String> {
 
+    public static final String STATUS_ACTIVE = "ACTIVE";     // 운영중 (사용자 검색 노출)
+    public static final String STATUS_INACTIVE = "INACTIVE"; // 공공데이터에서 제외됨 (폐업/휴업)
+    public static final String STATUS_HIDDEN = "HIDDEN";     // 관리자 숨김 처리
+
     // 기관 고유 ID
     @Id
     @Column(name = "hospital_id", length = 255)
@@ -84,7 +88,7 @@ public class Hospital extends BaseTimeEntity implements Persistable<String> {
     @Builder.Default
     private String dataSource = "공공데이터 OpenAPI";
 
-    // 영업/운영 상태 (ACTIVE: 운영중, INACTIVE: 폐업/휴업 또는 공공데이터에서 제외됨)
+    // 영업/운영 상태 (ACTIVE: 운영중, INACTIVE: 폐업/휴업 또는 공공데이터에서 제외됨, HIDDEN: 관리자 숨김 처리)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private String status = "ACTIVE";
@@ -94,8 +98,10 @@ public class Hospital extends BaseTimeEntity implements Persistable<String> {
     @Builder.Default
     private boolean newEntity = true;
 
-    // 동기화 데이터로 기관 정보 갱신 (변경된 항목이 있으면 true 반환, 폐업 처리된 기관은 다시 운영 상태로 복구)
+    // 동기화 데이터로 기관 정보 갱신 (변경된 항목이 있으면 true 반환)
+    // 공공데이터에서 제외되었던 기관(INACTIVE)은 다시 운영 상태로 복구하되, 관리자가 숨김 처리한 기관(HIDDEN)은 상태를 유지
     public boolean updateFrom(Hospital source) {
+        boolean hidden = STATUS_HIDDEN.equals(status);
         boolean changed = !Objects.equals(name, source.name)
                 || hospitalType != source.hospitalType
                 || !Objects.equals(region, source.region)
@@ -108,7 +114,7 @@ public class Hospital extends BaseTimeEntity implements Persistable<String> {
                 || !Objects.equals(sundayHolidayHours, source.sundayHolidayHours)
                 || nightCare != source.nightCare
                 || emergency != source.emergency
-                || !"ACTIVE".equals(status);
+                || (!hidden && !STATUS_ACTIVE.equals(status));
 
         if (changed) {
             this.name = source.name;
@@ -124,14 +130,21 @@ public class Hospital extends BaseTimeEntity implements Persistable<String> {
             this.nightCare = source.nightCare;
             this.emergency = source.emergency;
             this.dataSource = source.dataSource;
-            this.status = "ACTIVE";
+            if (!hidden) {
+                this.status = STATUS_ACTIVE;
+            }
         }
         return changed;
     }
 
     // 공공데이터에서 제외된 기관 운영 중지 처리
     public void deactivate() {
-        this.status = "INACTIVE";
+        this.status = STATUS_INACTIVE;
+    }
+
+    // 관리자 운영 상태 변경 (ACTIVE: 노출, HIDDEN: 숨김 - 다음 동기화에서도 숨김 유지)
+    public void changeStatusByAdmin(String status) {
+        this.status = status;
     }
 
     // Persistable: 엔티티 식별자

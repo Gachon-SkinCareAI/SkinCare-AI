@@ -23,7 +23,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-// 공공데이터(CSV 및 응급의료기관 OpenAPI) 기반 의료기관/약국 DB 동기화 비즈니스 로직 처리 (설계서 6.3.4)
+// 공공데이터(CSV 및 응급의료기관 OpenAPI) 기반 의료기관/약국 DB 동기화 비즈니스 로직 처리
 // 처리 흐름: 공공데이터 수집 → 기존 DB 정보와 비교 → 신규 기관 추가 / 변경 기관 수정 / 제외된 기관 운영 중지
 @Slf4j
 @Service
@@ -97,7 +97,7 @@ public class HospitalSyncService {
             if (!StringUtils.hasText(dto.getRegionCode())) {
                 for (Hospital existing : existingMap.values()) {
                     boolean inScope = existing.getHospitalType() == HospitalType.PHARMACY ? syncPharmacyFile : syncHospitalFile;
-                    if (inScope && "ACTIVE".equals(existing.getStatus()) && !fetchedIds.contains(existing.getHospitalId())) {
+                    if (inScope && Hospital.STATUS_ACTIVE.equals(existing.getStatus()) && !fetchedIds.contains(existing.getHospitalId())) {
                         existing.deactivate();
                         deactivatedCount++;
                     }

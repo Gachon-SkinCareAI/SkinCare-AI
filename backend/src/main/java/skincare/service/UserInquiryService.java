@@ -110,9 +110,7 @@ public class UserInquiryService {
         return UserInquiryResponseDto.fromEntity(inquiry);
     }
 
-    /**
-     * 5. 문의 삭제 (관리자 답변 작성 시 삭제 불가)
-     */
+    // 문의 삭제 (관리자 답변 작성 시 삭제 불가)
     @Transactional
     public void deleteInquiry(String userId, String inquiryId) {
         Inquiry inquiry = inquiryRepository.findByInquiryIdAndUserId(inquiryId, userId)

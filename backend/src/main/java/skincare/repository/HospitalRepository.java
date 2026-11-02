@@ -5,6 +5,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
+import skincare.domain.hospital.entity.ENUM.HospitalType;
 import skincare.domain.hospital.entity.Hospital;
 
 import java.util.ArrayList;
@@ -20,10 +21,41 @@ public interface HospitalRepository extends JpaRepository<Hospital, String>, Jpa
     // 운영 상태별 기관 수 (관리자 의료기관 통계)
     long countByStatus(String status);
 
+    // 운영 중인 야간진료 병원 수 (약국 제외)
+    long countByStatusAndNightCareTrueAndHospitalTypeNot(String status, HospitalType hospitalType);
+
+    // 운영 중인 야간 운영 약국 수
+    long countByStatusAndNightCareTrueAndHospitalType(String status, HospitalType hospitalType);
+
+    // 운영 중인 응급실 운영 기관 수
+    long countByStatusAndEmergencyTrue(String status);
+
+    // 관리자용 의료기관 검색 조건 (검색어: 기관명/주소/기관 ID, 기관 유형, 운영 상태 - 운영 중지/숨김 기관 포함)
+    static Specification<Hospital> adminSearch(String keyword, HospitalType hospitalType, String status) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (keyword != null && !keyword.isBlank()) {
+                String like = "%" + keyword.trim() + "%";
+                predicates.add(cb.or(
+                        cb.like(root.get("name"), like),
+                        cb.like(root.get("address"), like),
+                        cb.like(root.get("hospitalId"), like)
+                ));
+            }
+            if (hospitalType != null) {
+                predicates.add(cb.equal(root.get("hospitalType"), hospitalType));
+            }
+            if (status != null && !status.isBlank() && !status.equalsIgnoreCase("ALL")) {
+                predicates.add(cb.equal(root.get("status"), status.trim().toUpperCase()));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
     // Dynamic Specification 검색을 처리하는 Query Specification Builder
     // bounds가 있으면 위도/경도 사각 범위(반경 검색 1차 필터) 조건 추가 [최소위도, 최대위도, 최소경도, 최대경도]
     static Specification<Hospital> buildSearchSpecification(
-            String keyword, String region, skincare.domain.hospital.entity.ENUM.HospitalType hospitalType,
+            String keyword, String region, HospitalType hospitalType,
             Boolean isNightCare, Boolean isEmergency, double[] bounds) {
 
         return (root, query, cb) -> {
