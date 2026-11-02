@@ -26,7 +26,9 @@ public class JwtTokenProvider {
     @Value("${jwt.secret:}")
     private String secretKey;
 
-    private final long tokenValidityInMilliseconds = 1000L * 60 * 60 * 24; // 토큰 유효시간 (24시간)
+    // Access Token 유효시간 (초, 기본 1시간 / 만료 후에는 Refresh Token으로 재발급)
+    @Value("${jwt.access-token-validity-seconds:3600}")
+    private long tokenValiditySeconds;
 
     private Key key; // JWT 서명용 HMAC 키
 
@@ -46,7 +48,7 @@ public class JwtTokenProvider {
         claims.put("role", role);
 
         Date now = new Date();
-        Date validity = new Date(now.getTime() + tokenValidityInMilliseconds);
+        Date validity = new Date(now.getTime() + tokenValiditySeconds * 1000);
 
         return Jwts.builder()
                 .setClaims(claims)
@@ -58,7 +60,7 @@ public class JwtTokenProvider {
 
     // 토큰 유효시간 (초 단위, 로그인 응답의 expires_in)
     public long getTokenValiditySeconds() {
-        return tokenValidityInMilliseconds / 1000;
+        return tokenValiditySeconds;
     }
 
     // 토큰 서명 검증 후 Claims(Subject, Role 등) 추출

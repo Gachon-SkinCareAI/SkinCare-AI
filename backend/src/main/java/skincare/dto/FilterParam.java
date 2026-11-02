@@ -6,7 +6,7 @@ import skincare.exception.ErrorCode;
 import java.util.Locale;
 
 // 목록 조회 API의 Enum 필터 파라미터 변환 유틸리티
-// 설계서 기준 필터 값 "ALL"(또는 미입력)은 전체 조회(null)로 처리
+// 필터 값 "ALL"(또는 미입력)은 전체 조회(null)로 처리
 public final class FilterParam {
 
     private FilterParam() {

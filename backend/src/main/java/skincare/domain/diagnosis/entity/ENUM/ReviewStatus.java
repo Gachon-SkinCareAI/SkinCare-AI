@@ -3,7 +3,7 @@ package skincare.domain.diagnosis.entity.ENUM;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-// 관리자 분석 결과 검수 상태 (설계서 6.3.3 분석 로그 관리 - 상태 변경)
+// 관리자 분석 결과 검수 상태
 @Getter
 @RequiredArgsConstructor
 public enum ReviewStatus {

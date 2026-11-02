@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import skincare.dto.AiRetrainRequestDto;
 import skincare.dto.ApiResponseDto;
 import skincare.service.AdminAiMonitoringService;
 
@@ -55,6 +58,57 @@ public class AdminAiMonitoringController {
     ) {
         return ApiResponseDto.ok("MLOps 모델 재학습 이력 조회가 완료되었습니다.")
                 .withPage("retrain_history", adminAiMonitoringService.getAiRetrainHistory(page, limit))
+                .toResponseEntity();
+    }
+
+    // AI 서버 상태 조회 API
+    @Operation(summary = "AI 서버 상태 조회", description = "AI 서버의 모델 적재 상태(ok/degraded/starting/unreachable), 모델·문항 뱅크·케어 카드 버전, 진행 중 추론 수를 조회합니다.")
+    @GetMapping("/health")
+    public ResponseEntity<ApiResponseDto> getAiHealth() {
+        return ApiResponseDto.ok("AI 서버 상태 조회가 완료되었습니다.")
+                .with("ai_health", adminAiMonitoringService.getAiHealth())
+                .toResponseEntity();
+    }
+
+    // 재학습 후보 현황 조회 API
+    @Operation(summary = "재학습 후보 현황 조회", description = "학습 활용에 동의(training_use=true)한 분석 건수와 의심 유형별 분포를 조회합니다.")
+    @GetMapping("/retrain-candidates")
+    public ResponseEntity<ApiResponseDto> getRetrainCandidates() {
+        return ApiResponseDto.ok("재학습 후보 현황 조회가 완료되었습니다.")
+                .with("retrain_candidates", adminAiMonitoringService.getRetrainCandidates())
+                .toResponseEntity();
+    }
+
+    // 재학습 요청 API
+    @Operation(summary = "MLOps 재학습 요청", description = "reason(manual, recall_drop, feedback_threshold)으로 AI 서버에 재학습 잡을 등록합니다. 등록 직후 상태는 queued입니다.")
+    @PostMapping("/retrain")
+    public ResponseEntity<ApiResponseDto> requestRetrain(
+            @AuthenticationPrincipal String adminId,
+            @Valid @RequestBody AiRetrainRequestDto requestDto
+    ) {
+        return ApiResponseDto.created("재학습 잡이 등록되었습니다.")
+                .with("retrain_job", adminAiMonitoringService.requestRetrain(adminId, requestDto.getReason()))
+                .toResponseEntity();
+    }
+
+    // 재학습 잡 상태 조회 API
+    @Operation(summary = "재학습 잡 상태 조회", description = "AI 서버의 잡 상태(queued → running → validating → awaiting_deploy → deployed / failed)를 조회하여 이력에 반영합니다.")
+    @GetMapping("/jobs/{jobId}")
+    public ResponseEntity<ApiResponseDto> getJob(@PathVariable String jobId) {
+        return ApiResponseDto.ok("재학습 잡 상태 조회가 완료되었습니다.")
+                .with("retrain_job", adminAiMonitoringService.getJob(jobId))
+                .toResponseEntity();
+    }
+
+    // 신규 모델 배포 승인 API
+    @Operation(summary = "신규 모델 배포 승인", description = "검증을 통과하여 awaiting_deploy 상태인 재학습 모델의 배포를 승인합니다. (관리자 승인 없이 운영 모델은 변경되지 않음)")
+    @PostMapping("/jobs/{jobId}/approve")
+    public ResponseEntity<ApiResponseDto> approveDeploy(
+            @AuthenticationPrincipal String adminId,
+            @PathVariable String jobId
+    ) {
+        return ApiResponseDto.ok("신규 모델 배포가 승인되었습니다.")
+                .with("retrain_job", adminAiMonitoringService.approveDeploy(adminId, jobId))
                 .toResponseEntity();
     }
 }

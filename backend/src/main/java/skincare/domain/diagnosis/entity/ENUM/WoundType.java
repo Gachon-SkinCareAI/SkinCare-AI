@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Arrays;
 
-// AI 분석 의심 유형 (설계서 6.2.3 / 10.3.6 AI 클래스 명칭표준)
+// AI 분석 의심 유형
 // code: AI 서버 클래스명(snake_case), label: 서비스 화면 표시 문구
 // UNKNOWN은 학습 클래스가 아닌 Confidence/OOD Gate 미통과 결과
 @Getter

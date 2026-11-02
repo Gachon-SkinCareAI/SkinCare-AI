@@ -80,7 +80,9 @@ public class SecurityConfig {
                                 "/api/wc/auth/social/**",
                                 "/api/wc/auth/password/reset",
                                 "/api/wc/auth/password/confirm",
+                                "/api/wc/auth/token/refresh",
                                 "/api/wc/admin/auth/login",
+                                "/api/wc/admin/auth/token/refresh",
                                 "/oauth2/**",
                                 "/login/oauth2/**"
                         ).permitAll()
@@ -105,7 +107,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)   // 카카오, 네이버 등
-                                .oidcUserService(customOidcUserService) // 구글 OIDC 설정 추가!
+                                .oidcUserService(customOidcUserService) // 구글 OIDC 설정 추가
                         )
                         .successHandler(oAuth2LoginSuccessHandler)
                 )

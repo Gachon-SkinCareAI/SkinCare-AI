@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -86,9 +87,19 @@ public class AiServiceClient {
 
     // 이전/이후 두 사진의 환부 면적 변화 참고값 요청
     public AiTrackingResponseDto tracking(MultipartFile before, MultipartFile after) {
+        return tracking(toResource(before, "before.jpg"), toResource(after, "after.jpg"));
+    }
+
+    // 이전/이후 두 사진의 환부 면적 변화 참고값 요청 (서버에 저장된 이전 사진 사용)
+    public AiTrackingResponseDto tracking(Resource before, MultipartFile after) {
+        return tracking(before, toResource(after, "after.jpg"));
+    }
+
+    // tracking 요청 공통 처리
+    private AiTrackingResponseDto tracking(Resource before, Resource after) {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("before", toResource(before, "before.jpg"));
-        body.add("after", toResource(after, "after.jpg"));
+        body.add("before", before);
+        body.add("after", after);
         return post("/tracking", multipartEntity(body), AiTrackingResponseDto.class, ErrorCode.MODEL_INFERENCE_FAILED);
     }
 
