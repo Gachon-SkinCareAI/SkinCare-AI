@@ -1,0 +1,27 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+<mask id="path-1-inside-1_1_436" fill="white">
+<path d="M0 16C0 7.16345 7.16344 0 16 0H80C88.8366 0 96 7.16344 96 16V80C96 88.8366 88.8366 96 80 96H16C7.16345 96 0 88.8366 0 80V16Z"/>
+</mask>
+<path d="M16 0V1H80V0V-1H16V0ZM96 16H95V80H96H97V16H96ZM80 96V95H16V96V97H80V96ZM0 80H1V16H0H-1V80H0ZM16 96V95C7.71573 95 1 88.2843 1 80H0H-1C-1 89.3888 6.61116 97 16 97V96ZM96 80H95C95 88.2843 88.2843 95 80 95V96V97C89.3888 97 97 89.3888 97 80H96ZM80 0V1C88.2843 1 95 7.71573 95 16H96H97C97 6.61116 89.3888 -1 80 -1V0ZM16 0V-1C6.61116 -1 -1 6.61116 -1 16H0H1C1 7.71573 7.71573 1 16 1V0Z" fill="white" fill-opacity="0.15" mask="url(#path-1-inside-1_1_436)"/>
+<mask id="path-3-inside-2_1_436" fill="white">
+<path d="M9 9H21V21H9V9Z"/>
+</mask>
+<path d="M9 9V8H8V9H9ZM9 9V10H21V9V8H9V9ZM9 21H10V9H9H8V21H9Z" fill="white" fill-opacity="0.7" mask="url(#path-3-inside-2_1_436)"/>
+<mask id="path-5-inside-3_1_436" fill="white">
+<path d="M75 9H87V21H75V9Z"/>
+</mask>
+<path d="M87 9H88V8H87V9ZM75 9V10H87V9V8H75V9ZM87 9H86V21H87H88V9H87Z" fill="white" fill-opacity="0.7" mask="url(#path-5-inside-3_1_436)"/>
+<mask id="path-7-inside-4_1_436" fill="white">
+<path d="M9 75H21V87H9V75Z"/>
+</mask>
+<path d="M9 87H8V88H9V87ZM21 87V86H9V87V88H21V87ZM9 87H10V75H9H8V87H9Z" fill="white" fill-opacity="0.7" mask="url(#path-7-inside-4_1_436)"/>
+<mask id="path-9-inside-5_1_436" fill="white">
+<path d="M75 75H87V87H75V75Z"/>
+</mask>
+<path d="M87 87V88H88V87H87ZM87 75H86V87H87H88V75H87ZM87 87V86H75V87V88H87V87Z" fill="white" fill-opacity="0.7" mask="url(#path-9-inside-5_1_436)"/>
+<mask id="path-11-inside-6_1_436" fill="white">
+<path d="M30 30H66V66H30V30Z"/>
+</mask>
+<path d="M30 66M66 66M66 30M30 30M30 30V31H66V30V29H30V30ZM66 30H65V66H66H67V30H66ZM66 66V65H30V66V67H66V66ZM30 66H31V30H30H29V66H30ZM30 66M66 66M66 30M30 30" fill="white" fill-opacity="0.35" mask="url(#path-11-inside-6_1_436)"/>
+<path d="M45 45H51V51H45V45Z" fill="white" fill-opacity="0.8"/>
+</svg>
