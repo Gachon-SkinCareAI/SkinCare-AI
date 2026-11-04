@@ -21,6 +21,8 @@ FOLDER_TO_CLASS = {
     "burn": "burn",
     "laceration": "open_wound",
     "normal skin": "normal_skin",
+    "normal_skin": "normal_skin",
+    "open_wound": "open_wound",
 }
 
 
@@ -32,8 +34,9 @@ def list_samples(root: Path, split: str) -> list[tuple[Path, int]]:
         folder_path = split_dir / folder
         if not folder_path.is_dir():
             continue
-        for path in folder_path.glob("*.jpg"):
-            rows.append((path, label))
+        for path in sorted(folder_path.iterdir()):
+            if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
+                rows.append((path, label))
     if not rows:
         raise SystemExit(f"이미지가 없습니다: {split_dir}")
     return rows
@@ -117,29 +120,55 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--patience", type=int, default=3)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--resume", type=Path, help="Fine-tune a trusted local ViT checkpoint")
+    parser.add_argument("--balance", choices=["sampler", "loss", "none"], default="sampler")
+    parser.add_argument("--label-smoothing", type=float, default=0.05)
+    parser.add_argument("--backbone-lr", type=float, default=1e-5)
+    parser.add_argument("--head-lr", type=float, default=1e-4)
     args = parser.parse_args()
+    if args.epochs < 1 or args.batch < 1 or not 0 <= args.label_smoothing < 1:
+        parser.error("epochs/batch must be positive and label smoothing must be in [0, 1)")
+    if args.out.exists() and any(args.out.iterdir()):
+        parser.error("Output directory is not empty; use a new run directory")
 
     random.seed(args.seed)
     torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device={device}", flush=True)
 
+    from audit_dataset import audit
+    audit_result = audit(args.data)
+    if audit_result["pixel_duplicate_cross_split_groups"] or audit_result["conflicting_pixel_label_groups"]:
+        raise ValueError("Dataset leakage or conflicting labels: inspect audit_dataset.py report")
     train_rows = list_samples(args.data, "train")
     valid_rows = list_samples(args.data, "valid")
     print(f"train={len(train_rows)} valid={len(valid_rows)}", flush=True)
 
     train_set = WoundDataset(train_rows, build_transforms(True))
     valid_set = WoundDataset(valid_rows, build_transforms(False))
-    sample_weights = [class_weights(train_rows, len(CLASSES))[label].item() for _, label in train_rows]
-    sampler = WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
-    train_loader = DataLoader(train_set, batch_size=args.batch, sampler=sampler, num_workers=0)
+    weights = class_weights(train_rows, len(CLASSES))
+    sample_weights = [weights[label].item() for _, label in train_rows]
+    sampler = (WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
+               if args.balance == "sampler" else None)
+    train_loader = DataLoader(train_set, batch_size=args.batch, sampler=sampler,
+                              shuffle=sampler is None, num_workers=0)
     valid_loader = DataLoader(valid_set, batch_size=args.batch, shuffle=False, num_workers=0)
 
-    model = vit_b_16(weights=ViT_B_16_Weights.IMAGENET1K_V1)
+    model = vit_b_16(weights=None if args.resume else ViT_B_16_Weights.IMAGENET1K_V1)
     model.heads.head = nn.Linear(model.heads.head.in_features, len(CLASSES))
+    if args.resume:
+        payload = torch.load(args.resume, map_location="cpu", weights_only=True)
+        if payload.get("classes") != CLASSES:
+            raise ValueError("Checkpoint class order does not match")
+        model.load_state_dict(payload["model"])
     model = model.to(device)
 
-    loss_fn = nn.CrossEntropyLoss(weight=class_weights(train_rows, len(CLASSES)).to(device))
+    loss_fn = nn.CrossEntropyLoss(weight=weights.to(device) if args.balance == "loss" else None,
+                                  label_smoothing=args.label_smoothing)
     use_amp = device.type == "cuda"
     scaler = torch.amp.GradScaler(device.type, enabled=use_amp)
     head_params = list(model.heads.parameters())
@@ -147,14 +176,18 @@ def main() -> None:
     backbone_params = [p for p in model.parameters() if id(p) not in head_ids]
     optimizer = torch.optim.AdamW(
         [
-            {"params": backbone_params, "lr": 1e-5},
-            {"params": head_params, "lr": 1e-4},
+            {"params": backbone_params, "lr": args.backbone_lr},
+            {"params": head_params, "lr": args.head_lr},
         ],
         weight_decay=0.05,
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     args.out.mkdir(parents=True, exist_ok=True)
+    (args.out / "dataset_audit.json").write_text(json.dumps(audit_result, indent=2), encoding="utf-8")
+    config = {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()}
+    config.update({"torch": str(torch.__version__), "device": str(device), "classes": CLASSES})
+    (args.out / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
     best_f1 = -1.0
     stale = 0
     history = []
@@ -178,12 +211,13 @@ def main() -> None:
         val_f1 = evaluate(model, valid_loader, device)
         row = {"epoch": epoch, "train_loss": running / seen, "valid_macro_f1": val_f1}
         history.append(row)
+        (args.out / "history.json").write_text(json.dumps(history, indent=2), encoding="utf-8")
         print(f"epoch {epoch} loss {row['train_loss']:.4f} valid_macro_f1 {val_f1:.4f}", flush=True)
         if val_f1 > best_f1:
             best_f1 = val_f1
             stale = 0
             torch.save(
-                {"model": model.state_dict(), "classes": CLASSES, "valid_macro_f1": best_f1},
+                {"model": model.state_dict(), "classes": CLASSES, "valid_macro_f1": best_f1, "config": config},
                 args.out / "best.pt",
             )
         else:

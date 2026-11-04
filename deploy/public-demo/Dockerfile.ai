@@ -1,0 +1,12 @@
+FROM python:3.10-slim-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY requirements-serving.txt /opt/demo/requirements-serving.txt
+RUN pip install --no-cache-dir torch==2.11.0+cpu torchvision==0.26.0+cpu --index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cpu && pip install --no-cache-dir -r /opt/demo/requirements-serving.txt && pip check
+COPY ai/ /app/
+COPY serve_ai.py probe.py /opt/demo/
+RUN groupadd --gid 10001 skincare && useradd --uid 10001 --gid skincare --no-create-home --home-dir /tmp --shell /usr/sbin/nologin skincare
+ENV HOME=/tmp TORCH_HOME=/tmp/torch TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor XDG_CACHE_HOME=/tmp/cache
+USER skincare:skincare
+RUN python -c "import getpass; import app.main; print('AI runtime imports OK for ' + getpass.getuser())"
+ENTRYPOINT ["python", "/opt/demo/serve_ai.py"]

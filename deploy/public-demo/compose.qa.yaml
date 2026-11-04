@@ -1,0 +1,10 @@
+# Local validation only; never publish the QA port on all interfaces.
+services:
+  backend:
+    environment:
+      SOCIAL_PUBLIC_BASE_URL: http://127.0.0.1:19880
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: "false"
+      SKINCARE_WEB_ALLOWED_ORIGINS: http://127.0.0.1:19880
+  edge:
+    ports: !override ["127.0.0.1:19880:80"]
+    volumes: !override ["./Caddyfile.qa:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]

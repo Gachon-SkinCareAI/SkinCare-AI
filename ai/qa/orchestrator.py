@@ -51,7 +51,7 @@ def candidates(slots: dict, bank: dict, vision: dict | None = None, rules: dict 
     add("late.spread", slots.get("elapsed") == "gt_72h" and empty(slots.get("red_spread")))
     add("late.pus", slots.get("elapsed") == "gt_72h" and empty(slots.get("pus")))
     add("late.pain", slots.get("elapsed") == "gt_72h" and empty(slots.get("pain_trend")))
-    ready_to_close = not missing_slots(slots) and not emergency
+    ready_to_close = not missing_slots(slots) and not emergency and not found
     add("common.finish_confirm", ready_to_close)
     return sorted(set(found), key=lambda item: (_RANK.get(item, 4), item))
 
@@ -98,7 +98,7 @@ def _fill_unknown(slots: dict) -> dict:
     filled = dict(slots)
     for key in SLOT_VALUES:
         if empty(filled.get(key)):
-            filled[key] = ["unknown"] if key == "systemic" else "unknown"
+            filled[key] = ["unknown"] if key == "systemic" else ("unsure" if key == "scenario" else "unknown")
     return filled
 
 
@@ -106,23 +106,40 @@ def handle_turn(body: dict, bank: dict, rules: dict, llm=None) -> dict:
     slots = dict(body.get("slots") or {})
     vision = dict(body.get("vision") or {})
     text = body.get("user_text") or ""
-    heard, delta = merge(slots, read_user_text(text))
+    selected = body.get("answer")
+    delta = {}
+    if selected is not None:
+        question = _question(bank, body.get("last_question_id"))
+        choices = {choice.get("value") for choice in question.get("choices", [])}
+        if not question or selected not in choices or not question.get("asks_slot"):
+            raise ValueError("invalid_answer")
+        slots, delta = merge(slots, {question["asks_slot"]: selected}, from_user=True)
+    heard, text_delta = merge(slots, read_user_text(text), from_user=True)
+    delta.update(text_delta)
     decision = evaluate(heard, rules, vision)
     if decision["level"] == "EMERGENCY":
         return _finish(heard, delta, decision, called=False)
 
     if int(body.get("turn") or 0) >= 10:
         closed = _fill_unknown(heard)
-        return _finish(closed, delta, evaluate(closed, rules, vision), called=False)
+        final = evaluate(closed, rules, vision)
+        if final["level"] is None:
+            final = {**final, "level": "UNKNOWN", "rule_ids": ["answers.incomplete"]}
+        return _finish(closed, delta, final, called=False)
 
     options = candidates(heard, bank, vision, rules)
-    if body.get("last_question_id") == "common.finish_confirm" and not missing_slots(heard):
+    if (body.get("last_question_id") == "common.finish_confirm" and not missing_slots(heard)
+            and not any(qid != "common.finish_confirm" for qid in options)):
         return _finish(heard, delta, evaluate(heard, rules, vision), called=False)
     if not options:
         return _finish(heard, delta, decision, called=False)
 
-    if not text.strip():
+    if llm is None:
         return _ask(_question(bank, options[0]), heard, delta, overrode=False, called=False)
+
+    # Mandatory risk questions precede ordinary questions, even with an LLM.
+    rank = _RANK.get(options[0], 4)
+    options = [qid for qid in options if _RANK.get(qid, 4) == rank]
 
     called = llm is not None
     output = {}
@@ -137,28 +154,21 @@ def handle_turn(body: dict, bank: dict, rules: dict, llm=None) -> dict:
                     "vision_display": vision.get("display"),
                 }
             ) or {}
-        except RuntimeError:
+            if not isinstance(output, dict):
+                output = {}
+        except (RuntimeError, ValueError, TypeError):
             output = {}
     chosen = output.get("question_id")
     utterance = output.get("utterance") or ""
     invalid = (
         not called
-        or output.get("action") not in {"ask", "finish"}
-        or (output.get("action") == "ask" and chosen not in options)
-        or bool(reject_utterance(utterance))
+        or output.get("action") != "ask"
+        or not isinstance(chosen, str) or chosen not in options
+        or not isinstance(utterance, str) or bool(reject_utterance(utterance))
     )
     if invalid:
         return _ask(_question(bank, options[0]), heard, delta, overrode=True, called=called)
 
-    extra, applied = merge(heard, output.get("slots_delta") or {})
-    if output.get("action") == "ask":
-        allowed = _question(bank, chosen).get("asks_slot")
-        applied = {key: value for key, value in applied.items() if key == allowed}
-        extra, _ = merge(heard, applied)
-    delta.update(applied)
-    again = evaluate(extra, rules, vision)
-    if again["level"] == "EMERGENCY":
-        return _finish(extra, delta, again, called=True)
-    if output.get("action") == "finish":
-        return _finish(extra, delta, again, called=True)
-    return _ask(_question(bank, chosen), extra, delta, overrode=False, called=True)
+    # Generated slots/wording cannot become clinical facts or advice. Explicit
+    # choices and the existing deterministic text parser remain authoritative.
+    return _ask(_question(bank, chosen), heard, delta, overrode=False, called=True)

@@ -28,6 +28,9 @@ def question(body: QuestionRequest, request: Request):
     if not rules["rules"]:
         raise HTTPException(status_code=503, detail={"error": "rules_empty", "message": "응급 규칙이 아직 없습니다."})
     caller = _llm if configured() else None
-    result = handle_turn(body.model_dump(), bank, rules, caller)
+    try:
+        result = handle_turn(body.model_dump(), bank, rules, caller)
+    except ValueError:
+        raise HTTPException(status_code=422, detail={"error": "invalid_answer", "message": "현재 질문의 선택지에서 답변해 주세요."})
     result["request_id"] = getattr(request.state, "request_id", None)
     return result

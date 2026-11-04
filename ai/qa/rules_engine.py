@@ -32,7 +32,9 @@ def missing_slots(slots: dict) -> list[str]:
         return []
     if scenario == "open_wound" and slots.get("bleeding") == "ongoing":
         return []
-    needed = list(_REQUIRED.get(scenario, []))
+    if scenario not in _REQUIRED:
+        return ["scenario"]
+    needed = list(_REQUIRED[scenario])
     if scenario == "abrasion" and slots.get("elapsed") == "gt_72h":
         needed.extend(["red_spread", "pus", "pain_trend"])
     return [key for key in needed if slots.get(key) in (None, "", [])]
@@ -95,6 +97,25 @@ def evaluate(slots: dict, rules: dict, vision: dict | None = None) -> dict:
         return {"level": "WARNING", "rule_ids": hits, "missing_slots": absent}
     if absent:
         return {"level": None, "rule_ids": [], "missing_slots": absent}
+    unresolved = [key for key, value in slots.items()
+                  if value == "unknown" or value == ["unknown"]]
+    if unresolved or slots.get("scenario") == "unsure":
+        return {"level": "UNKNOWN", "rule_ids": ["answers.unknown"], "missing_slots": unresolved}
+    # A default observation must not bypass the inputs used by warning rules.
+    safety_keys = ["systemic"]
+    if slots.get("scenario") == "burn":
+        safety_keys.append("blister")
+        if slots.get("elapsed") == "lt_1h":
+            safety_keys.append("stuck_clothes")
+    elif slots.get("scenario") == "open_wound":
+        safety_keys.extend(["wound_open", "foreign_body", "dirty"])
+    elif slots.get("scenario") == "abrasion":
+        safety_keys.append("dirty")
+    if slots.get("elapsed") == "gt_72h":
+        safety_keys.extend(["red_spread", "pus", "pain_trend"])
+    unchecked = [key for key in safety_keys if slots.get(key) in (None, "", [])]
+    if unchecked and vision.get("gate_passed") is not False:
+        return {"level": None, "rule_ids": [], "missing_slots": unchecked}
     if vision.get("gate_passed") is False:
         return {"level": "UNKNOWN", "rule_ids": ["vision.unknown"], "missing_slots": []}
     return {"level": "OBSERVATION", "rule_ids": ["default.observe"], "missing_slots": []}

@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
 from app.deps import acquire_inflight, release_inflight, verify_token
-from vision.preprocess import read_rgb
+from vision.preprocess import read_bytes
 
 router = APIRouter(prefix="/ai", tags=["vision"], dependencies=[Depends(verify_token)])
 MAX_BYTES = 8 * 1024 * 1024
@@ -15,15 +15,12 @@ MAX_BYTES = 8 * 1024 * 1024
 async def predict(request: Request, file: UploadFile = File(...)):
     acquire_inflight(request)
     try:
-        raw = await file.read()
+        raw = await file.read(MAX_BYTES + 1)
         if len(raw) > MAX_BYTES:
             raise HTTPException(status_code=413, detail={"error": "image_too_large", "message": "이미지는 8MB 이하만 받는다."})
-        path = request.app.state.tmp / f"{request.state.request_id}.img"
-        path.write_bytes(raw)
-        try:
-            image = read_rgb(path)
-        finally:
-            path.unlink(missing_ok=True)
+        if not request.app.state.pipeline.ready:
+            raise HTTPException(status_code=503, detail={"error": "model_unavailable", "message": "모델을 불러오지 못했습니다."})
+        image = read_bytes(raw)
         if image is None:
             raise HTTPException(status_code=415, detail={"error": "unsupported_media", "message": "이미지를 열 수 없습니다."})
         result = request.app.state.pipeline.predict_array(image)

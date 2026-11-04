@@ -6,13 +6,11 @@ import skincare.domain.inquiry.entity.ENUM.InquiryStatus;
 import skincare.domain.inquiry.entity.ENUM.InquiryType;
 import skincare.domain.user.entity.User;
 import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import lombok.*;
 
 // [1:1 문의] 사용자가 앱에서 작성한 고객 문의 엔티티
 @Entity
-@Table(name = "inquiries")
+@Table(name = "inquiries",uniqueConstraints=@UniqueConstraint(name="uk_inquiry_user_request",columnNames={"user_id","client_request_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -23,6 +21,15 @@ public class Inquiry extends BaseTimeEntity {
     @Id
     @Column(name = "inquiry_id", length = 36)
     private String inquiryId;
+
+    @Column(name="client_request_id",length=36)
+    private String clientRequestId;
+    // Optional reference snapshot; deleting a photo must not be blocked by a support request.
+    @Column(name="analysis_id",length=36)
+    private String analysisId;
+    @Version
+    @Column(nullable=false)
+    private long version;
 
     // 문의를 작성한 사용자
     @ManyToOne(fetch = FetchType.LAZY)
@@ -36,7 +43,6 @@ public class Inquiry extends BaseTimeEntity {
 
     // 문의 유형 (AI_RESULT: AI분석, ACCURACY: 정확도, SYSTEM_ERROR: 오류, OTHER: 기타)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(name = "inquiry_type", nullable = false, length = 30)
     private InquiryType inquiryType;
 
@@ -50,7 +56,6 @@ public class Inquiry extends BaseTimeEntity {
 
     // 답변 상태 (WAITING: 답변대기, COMPLETED: 답변완료)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private InquiryStatus status = InquiryStatus.WAITING;
@@ -62,25 +67,5 @@ public class Inquiry extends BaseTimeEntity {
     // 답변 완료 상태 변경 메서드
     public void completeAnswer() {
         this.status = InquiryStatus.COMPLETED;
-    }
-
-    // 답변 등록/수정 완료 시 상태 변경 (COMPLETED)
-    public void completeAnswer(InquiryAnswer answer) {
-        this.answer = answer;
-        this.status = InquiryStatus.COMPLETED;
-    }
-
-    // 답변 삭제 시 상태 변경 (WAITING)
-    public void resetAnswerStatus() {
-        this.answer = null;
-        this.status = InquiryStatus.WAITING;
-    }
-
-    // 문의 내용과 참조 진단 정보 수정 메서드
-    public void updateInquiry(InquiryType inquiryType, String title, String content, Diagnosis diagnosis) {
-        this.inquiryType = inquiryType;
-        this.title = title;
-        this.content = content;
-        this.diagnosis = diagnosis;
     }
 }

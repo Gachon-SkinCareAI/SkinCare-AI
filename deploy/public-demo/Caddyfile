@@ -1,0 +1,35 @@
+{
+    email {$TLS_EMAIL}
+    admin off
+}
+{$PUBLIC_HOST} {
+    request_body {
+        max_size 9MB
+    }
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+    }
+    # No access logs: OAuth callback queries contain authorization codes.
+    route {
+        forward_auth maintenance:9100 {
+            # Clear the cloned query; keep the original OAuth/API query intact.
+            uri /ready?
+            header_up -Authorization
+            header_up -Cookie
+        }
+        @private path /api/v1/* /swagger* /v3/api-docs* /actuator* /api/wc/policy-previews/*
+        respond @private 404
+        redir / /admin/ 302
+        reverse_proxy backend:9800 {
+            header_up -Forwarded
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Host {$PUBLIC_HOST}
+            header_up X-Forwarded-Port 443
+            transport http {
+                response_header_timeout 90s
+            }
+        }
+    }
+}

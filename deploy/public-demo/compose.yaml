@@ -1,0 +1,138 @@
+name: skincare-public-demo
+x-logs: &logs
+  driver: local
+  options: {max-size: "10m", max-file: "3"}
+services:
+  db:
+    image: mysql:8.4.13
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root
+      MYSQL_ROOT_HOST: "%"
+      TZ: Asia/Seoul
+    command: ["--default-time-zone=+09:00", "--mysqlx=0", "--skip-log-bin", "--max-allowed-packet=64M", "--innodb-buffer-pool-size=256M", "--require-secure-transport=ON"]
+    secrets: [db_root]
+    volumes: ["database:/var/lib/mysql"]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$(cat /run/secrets/db_root)\" mysql --protocol=TCP --host=127.0.0.1 --user=root --ssl-mode=REQUIRED --batch --skip-column-names --execute='SELECT 1' >/dev/null"]
+      start_period: 30s
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 1g
+    logging: *logs
+  maintenance:
+    build: {context: ., dockerfile: Dockerfile.maintenance}
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    secrets: [db_root, db_app]
+    volumes: ["maintenance:/state"]
+    networks: [data, service]
+    healthcheck:
+      test: ["CMD", "python3", "/opt/demo/probe.py", "maintenance"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: 384m
+    logging: *logs
+  ai:
+    build: {context: ., dockerfile: Dockerfile.ai}
+    restart: unless-stopped
+    secrets: [ai_token]
+    volumes: ["./models:/models:ro"]
+    environment:
+      AI_DETECT_PATH: /models/detector.pt
+      AI_CLASSIFY_PATH: /models/classifier.pt
+      AI_ENERGY_PATH: /models/energy.json
+      MAX_INFLIGHT: "1"
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      YOLO_CONFIG_DIR: /tmp/yolo
+      MPLCONFIGDIR: /tmp/mpl
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    networks: [service]
+    read_only: true
+    tmpfs: ["/tmp:size=268435456,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 3g
+    healthcheck:
+      test: ["CMD", "python", "/opt/demo/probe.py", "ai"]
+      start_period: 120s
+      interval: 15s
+      timeout: 5s
+      retries: 12
+    logging: *logs
+  backend:
+    build: {context: ., dockerfile: Dockerfile.backend}
+    restart: unless-stopped
+    depends_on:
+      maintenance: {condition: service_healthy}
+      ai: {condition: service_healthy}
+    secrets:
+      - source: backend_config
+        target: application-secrets.properties
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      SPRING_CONFIG_IMPORT: file:/run/secrets/application-secrets.properties
+      SERVER_PORT: "9800"
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: "true"
+      SERVER_SERVLET_SESSION_COOKIE_HTTP_ONLY: "true"
+      SERVER_SERVLET_SESSION_COOKIE_SAME_SITE: lax
+      SPRINGDOC_API_DOCS_ENABLED: "false"
+      SPRINGDOC_SWAGGER_UI_ENABLED: "false"
+      SPRING_JPA_SHOW_SQL: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      DB_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      DB_URL: jdbc:mysql://db:3306/skincare_dev?sslMode=REQUIRED&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      DB_USERNAME: skincare_app
+      AI_BASE_URL: http://ai:8000
+      SKINCARE_AI_READ_TIMEOUT_SECONDS: "60"
+      SOCIAL_PUBLIC_BASE_URL: https://${PUBLIC_HOST:?Set PUBLIC_HOST}
+      SOCIAL_REDIRECT_URIS: skincareai://oauth/callback
+      SKINCARE_WEB_ALLOWED_ORIGINS: https://${PUBLIC_HOST:?Set PUBLIC_HOST}
+      SKINCARE_BUILTIN_POLICIES: "true"
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx768m -Duser.timezone=Asia/Seoul
+    networks: [data, service, outbound]
+    read_only: true
+    tmpfs: ["/tmp:size=268435456,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1200m
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "3", "http://127.0.0.1:9800/api/wc/auth/social/providers"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+    logging: *logs
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      backend: {condition: service_healthy}
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set PUBLIC_HOST}
+      TLS_EMAIL: ${TLS_EMAIL:?Set TLS_EMAIL}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]
+    networks: [service, outbound]
+    mem_limit: 256m
+    logging: *logs
+secrets:
+  db_root: {file: ./private/db-root.txt}
+  db_app: {file: ./private/db-app.txt}
+  ai_token: {file: ./private/ai-token.txt}
+  backend_config: {file: ./private/application-secrets.properties}
+volumes:
+  database:
+  maintenance:
+  caddy_data:
+  caddy_config:
+networks:
+  data: {internal: true}
+  service: {internal: true}
+  outbound:

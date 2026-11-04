@@ -1,18 +1,11 @@
 package skincare.controller;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import skincare.dto.*;
-import skincare.security.TokenService;
 import skincare.service.UserService;
-
-import java.util.Map;
 
 // 사용자(User) 관련 API 요청 처리 컨트롤러
 @RestController
@@ -20,130 +13,112 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserController {
 
+    private final skincare.service.AccountConsentService consents;
     private final UserService userService; // 사용자 비즈니스 로직 서비스
-    private final TokenService tokenService; // 토큰 재발급 서비스
 
     // 이메일 인증 번호 발송 요청
     @PostMapping("/auth/email/send")
-    public ResponseEntity<ApiResponseDto> sendEmailVerificationCode(@RequestBody EmailVerificationRequestDto requestDto) {
+    public ResponseEntity<ApiResponseDto<Void>> sendEmailVerificationCode(@RequestBody EmailVerificationRequestDto requestDto) {
         userService.sendEmailVerificationCode(requestDto);
-        return ApiResponseDto.ok("인증 번호가 이메일로 발송되었습니다.").toResponseEntity();
+        return ResponseEntity.ok(ApiResponseDto.success("인증 번호가 이메일로 발송되었습니다."));
     }
 
     // 이메일 인증 번호 검증 요청
     @PostMapping("/auth/email/verify")
-    public ResponseEntity<ApiResponseDto> confirmEmailVerification(@RequestBody EmailVerificationConfirmRequestDto requestDto) {
+    public ResponseEntity<ApiResponseDto<Void>> confirmEmailVerification(@RequestBody EmailVerificationConfirmRequestDto requestDto) {
         userService.confirmEmailVerification(requestDto);
-        return ApiResponseDto.ok("이메일 인증이 성공적으로 완료되었습니다.").toResponseEntity();
+        return ResponseEntity.ok(ApiResponseDto.success("이메일 인증이 성공적으로 완료되었습니다."));
     }
 
     // 사용자 회원가입 API
     @PostMapping("/auth/signup")
-    public ResponseEntity<ApiResponseDto> signUp(@Valid @RequestBody UserSignUpRequestDto requestDto) {
-        UserResponseDto userInfo = userService.signUp(requestDto);
-        return ApiResponseDto.created("회원가입이 성공적으로 완료되었습니다.")
-                .with("user_info", userInfo)
-                .toResponseEntity();
+    public ResponseEntity<UserResponseDto> signUp(@RequestBody UserSignUpRequestDto requestDto) {
+        return ResponseEntity.ok(userService.signUp(requestDto));
     }
 
     // 사용자 로그인 API
     @PostMapping("/auth/login")
-    public ResponseEntity<ApiResponseDto> login(@Valid @RequestBody UserLoginRequestDto requestDto) {
-        LoginResponseDto<UserResponseDto> result = userService.login(requestDto);
-        return ApiResponseDto.ok("로그인이 완료되었습니다.")
-                .with("auth_token", result.authToken())
-                .with("user_info", result.profile())
-                .toResponseEntity();
-    }
-
-    // Google 소셜 로그인/회원가입 API (모바일 앱이 Google SDK로 받은 id_token을 서버에서 검증)
-    @PostMapping("/auth/social/google")
-    public ResponseEntity<ApiResponseDto> googleLogin(@Valid @RequestBody GoogleLoginRequestDto requestDto) {
-        LoginResponseDto<UserResponseDto> result = userService.googleLogin(requestDto);
-        return ApiResponseDto.ok("Google 소셜 로그인이 완료되었습니다.")
-                .with("auth_token", result.authToken())
-                .with("user_info", result.profile())
-                .toResponseEntity();
-    }
-
-    // 액세스 토큰 재발급 API (리프레시 토큰 Rotation: 응답의 새 refresh_token으로 교체 저장 필요)
-    @PostMapping("/auth/token/refresh")
-    public ResponseEntity<ApiResponseDto> refreshToken(@Valid @RequestBody TokenRefreshRequestDto requestDto) {
-        return ApiResponseDto.ok("토큰이 재발급되었습니다.")
-                .with("auth_token", tokenService.reissue(requestDto.getRefreshToken(), "USER"))
-                .toResponseEntity();
+    public ResponseEntity<UserResponseDto> login(@RequestBody UserLoginRequestDto requestDto) {
+        return ResponseEntity.ok(userService.login(requestDto));
     }
 
     // 사용자 로그아웃
     @PostMapping("/auth/logout")
-    public ResponseEntity<ApiResponseDto> logout(
+    public ResponseEntity<ApiResponseDto<Void>> logout(
             @AuthenticationPrincipal String userId,
-            @RequestBody(required = false) LogoutRequestDto requestDto) {
+            @RequestBody LogoutRequestDto requestDto) {
         userService.logout(userId, requestDto);
-        return ApiResponseDto.ok("성공적으로 로그아웃되었습니다.").toResponseEntity();
+        return ResponseEntity.ok(ApiResponseDto.success("성공적으로 로그아웃되었습니다."));
     }
 
     // 사용자 비밀번호 재설정
     @PostMapping("/auth/password/reset")
-    public ResponseEntity<ApiResponseDto> resetPasswordRequest(@RequestBody PasswordResetRequestDto requestDto) {
+    public ResponseEntity<ApiResponseDto<Void>> resetPasswordRequest(@RequestBody PasswordResetRequestDto requestDto) {
         userService.resetPasswordRequest(requestDto);
-        return ApiResponseDto.ok("입력하신 이메일로 비밀번호 재설정 링크가 발송되었습니다.").toResponseEntity();
+        return ResponseEntity.ok(ApiResponseDto.success("비밀번호 재설정 이메일이 발송되었습니다."));
     }
 
     // 비밀번호 변경
     @PostMapping("/auth/password/confirm")
-    public ResponseEntity<ApiResponseDto> confirmPasswordReset(@RequestBody PasswordResetConfirmRequestDto requestDto) {
+    public ResponseEntity<ApiResponseDto<Void>> confirmPasswordReset(@RequestBody PasswordResetConfirmRequestDto requestDto) {
         userService.confirmPasswordReset(requestDto);
-        return ApiResponseDto.ok("비밀번호가 성공적으로 변경되었습니다.").toResponseEntity();
+        return ResponseEntity.ok(ApiResponseDto.success("비밀번호가 성공적으로 변경되었습니다."));
     }
 
-    // 로그인한 사용자 프로필, 구독 정보, 활동 요약 조회
     @GetMapping("/users/me")
-    public ResponseEntity<ApiResponseDto> getMyInfo(@AuthenticationPrincipal String userId) {
-        Map<String, Object> info = userService.getMyInfo(userId);
-        ApiResponseDto response = ApiResponseDto.ok("사용자 프로필 정보 조회가 완료되었습니다.");
-        info.forEach(response::with);
-        return response.toResponseEntity();
+    public ResponseEntity<AccountProfile> profile(@AuthenticationPrincipal String id) {
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(userService.profile(id));
+    }
+    @GetMapping("/users/me/settings")
+    public ResponseEntity<UserSettingsResponseDto> settings(@AuthenticationPrincipal String id) {
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(userService.settings(id));
+    }
+    @PutMapping("/users/me/password")
+    public ResponseEntity<Void> password(@AuthenticationPrincipal String id,@RequestBody ChangePasswordRequest body) {
+        userService.changePassword(id,body);return ResponseEntity.noContent().build();
     }
 
-    // 사용자 프로필 변경 (multipart/form-data: nickname, profile_image 모두 선택 항목)
-    @PutMapping(value = "/users/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponseDto> updateProfile(
+    // 사용자 프로필 변경
+    @PutMapping("/users/me")
+    public ResponseEntity<ApiResponseDto<UserResponseDto>> updateProfile(
             @AuthenticationPrincipal String userId,
-            @RequestParam(value = "nickname", required = false) String nickname,
-            @RequestPart(value = "profile_image", required = false) MultipartFile profileImage) {
-        UserResponseDto response = userService.updateProfile(userId, nickname, profileImage);
-        return ApiResponseDto.ok("사용자 프로필 정보가 성공적으로 수정되었습니다.")
-                .with("updated_user_info", response)
-                .toResponseEntity();
+            @RequestBody UserProfileUpdateRequestDto requestDto) {
+        UserResponseDto response = userService.updateProfile(userId, requestDto);
+        return ResponseEntity.ok(ApiResponseDto.success("프로필 정보가 성공적으로 수정되었습니다.", response));
     }
 
-    // 서버에 저장된 본인 프로필 사진 조회 (이미지 바이너리 응답)
-    @GetMapping("/users/me/profile-image")
-    public ResponseEntity<Resource> getProfileImage(@AuthenticationPrincipal String userId) {
-        return userService.getProfileImage(userId).toResponseEntity();
+    @PutMapping("/users/me/consents")
+    public ResponseEntity<ApiResponseDto<Void>> acceptConsents(
+            @AuthenticationPrincipal String userId, @RequestBody ConsentRequestDto dto) {
+        userService.acceptConsents(userId, dto);
+        return ResponseEntity.ok(ApiResponseDto.success("필수 동의가 저장되었습니다."));
+    }
+
+    @GetMapping("/users/me/consents")
+    public ResponseEntity<java.util.Map<String,Object>> consentState(@AuthenticationPrincipal String id,
+        @RequestParam(defaultValue="0")int page,@RequestParam(defaultValue="20")int size) {
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(consents.state(id,page,size));
+    }
+    @PutMapping("/users/me/consents/training")
+    public ResponseEntity<Void> training(@AuthenticationPrincipal String id,@RequestBody skincare.service.AccountConsentService.TrainingRequest body) {
+        consents.training(id,body);return ResponseEntity.noContent().build();
     }
 
     // 사용자 환경설정 변경
     @PutMapping("/users/me/settings")
-    public ResponseEntity<ApiResponseDto> updateSettings(
+    public ResponseEntity<ApiResponseDto<UserSettingsResponseDto>> updateSettings(
             @AuthenticationPrincipal String userId,
             @RequestBody UserSettingsUpdateRequestDto requestDto) {
         UserSettingsResponseDto response = userService.updateSettings(userId, requestDto);
-        return ApiResponseDto.ok("서비스 환경설정이 성공적으로 변경되었습니다.")
-                .with("updated_settings", response)
-                .toResponseEntity();
+        return ResponseEntity.ok(ApiResponseDto.success("서비스 환경설정이 변경되었습니다.", response));
     }
 
-    // 사용자 회원탈퇴 (소셜 가입 회원은 비밀번호 없이 요청 가능)
+    // 사용자 회원탈퇴
     @DeleteMapping("/users/me")
-    public ResponseEntity<ApiResponseDto> withdraw(
+    public ResponseEntity<ApiResponseDto<Void>> withdraw(
             @AuthenticationPrincipal String userId,
-            @RequestBody(required = false) UserWithdrawRequestDto requestDto) {
-        UserResponseDto withdrawalInfo = userService.withdraw(userId,
-                requestDto != null ? requestDto : new UserWithdrawRequestDto());
-        return ApiResponseDto.ok("회원 탈퇴 처리가 정상적으로 완료되었습니다. 그동안 서비스를 이용해 주셔서 감사합니다.")
-                .with("withdrawal_info", withdrawalInfo)
-                .toResponseEntity();
+            @RequestBody UserWithdrawRequestDto requestDto) {
+        userService.withdraw(userId, requestDto);
+        return ResponseEntity.ok(ApiResponseDto.success("회원 탈퇴 처리가 완료되었습니다."));
     }
 }

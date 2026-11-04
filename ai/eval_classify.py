@@ -80,10 +80,18 @@ def predict(model, rows, device, batch: int) -> tuple[torch.Tensor, torch.Tensor
 
 
 def load_model(checkpoint: Path, device: torch.device) -> nn.Module:
-    payload = torch.load(checkpoint, map_location=device, weights_only=False)
-    model = vit_b_16(weights=None)
-    model.heads.head = nn.Linear(model.heads.head.in_features, len(CLASSES))
-    model.load_state_dict(payload["model"])
+    payload = torch.load(checkpoint, map_location=device, weights_only=True)
+    if payload.get("classes") != CLASSES:
+        raise ValueError("Checkpoint class order does not match expected classes")
+    # Every parameter is replaced by the checkpoint. Avoid allocating and randomly
+    # initializing a second full ViT before copying the trained weights over it.
+    with torch.device("meta"):
+        model = vit_b_16(weights=None)
+        model.heads.head = nn.Linear(model.heads.head.in_features, len(CLASSES))
+    # The previous loader copied floating checkpoint tensors into a float32 model.
+    state = {key: value.float() if value.is_floating_point() else value
+             for key, value in payload["model"].items()}
+    model.load_state_dict(state, strict=True, assign=True)
     model.to(device)
     model.eval()
     return model

@@ -1,3 +1,4 @@
+HELP.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -37,7 +38,3 @@ out/
 
 ### 환경변수 ###
 .env
-
-### 실행 중 생성되는 파일 (로그, 업로드 사진) ###
-logs/
-uploads/

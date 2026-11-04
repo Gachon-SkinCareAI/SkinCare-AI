@@ -26,7 +26,8 @@ def access_record(request_id: str, method: str, path: str, status: int, latency_
 
 class RequestIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+        # Internal identifiers must not be controlled by headers or used as paths.
+        request_id = str(uuid.uuid4())
         request.state.request_id = request_id
         started = time.perf_counter()
         text_chars = None

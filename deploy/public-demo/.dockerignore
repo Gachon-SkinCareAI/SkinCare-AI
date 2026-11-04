@@ -1,0 +1,10 @@
+private
+models
+.env
+*.log
+verification.json
+__pycache__
+host-tmp
+qa-status.json
+bundle-manifest.json
+connection-diagnostics.json

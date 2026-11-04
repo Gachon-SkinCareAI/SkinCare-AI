@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Request
 from app.deps import verify_token
 from guide.retrieve import load_cards
 from qa.bank_loader import load_bank
-from qa.llm_client import configured, model_name
+from qa.llm_client import configured, model_name, provider
 
 VERSION = Path(__file__).resolve().parents[2] / "models" / "serving" / "version.json"
 
@@ -32,6 +32,7 @@ def health(request: Request):
         "card_version": load_cards()["version"],
         "llm_model": model_name() if configured() else "unconfigured",
         "llm_configured": configured(),
+        "llm_provider": provider() if configured() else "unconfigured",
         "inflight": request.app.state.inflight,
         "max_inflight": request.app.state.settings["max_inflight"],
     }

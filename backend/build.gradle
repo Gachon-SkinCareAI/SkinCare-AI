@@ -18,9 +18,15 @@ repositories {
     mavenCentral()
 }
 
+configurations {
+    mockitoAgent
+}
+
 dependencies {
+    mockitoAgent('org.mockito:mockito-core') { transitive = false }
     // 1. 보안 관련 설정
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
     testImplementation 'org.springframework.security:spring-security-test'
 
     // Spring Security OAuth2 Client
@@ -34,15 +40,23 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 
-    // 3. 요청 값 검증 (@Valid, @NotBlank 등 / Hibernate Validator)
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // 3. Spring Integration 모듈들
+    implementation 'org.springframework.boot:spring-boot-starter-integration'
+    testImplementation 'org.springframework.integration:spring-integration-test'
+    implementation 'org.springframework.integration:spring-integration-http'
+    implementation 'org.springframework.integration:spring-integration-jpa'
 
     // 4. Web & Swagger
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
     runtimeOnly 'com.mysql:mysql-connector-j'
 
+    // 5. Thymeleaf
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    testImplementation 'org.springframework.boot:spring-boot-starter-thymeleaf-test'
+
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'com.h2database:h2'
 
     // 6. Lombok
     compileOnly 'org.projectlombok:lombok'
@@ -55,14 +69,22 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
-    // 8. 공공데이터 OpenAPI XML/JSON 데이터 파싱용 Jackson 모듈
-//    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
-
     // Source: https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+}
+
+tasks.named('processResources') {
+    from('../ai/guide') { include 'cards.yaml'; into 'review-catalog' }
+    from('../ai/qa') { include 'bank.yaml','rules.yaml'; into 'review-catalog' }
+    from('../admin-web') {
+        include 'index.html', 'app.js', 'style.css', 'src/**/*.js', 'src/**/*.css'
+        into 'static/admin'
+    }
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+    jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
 }

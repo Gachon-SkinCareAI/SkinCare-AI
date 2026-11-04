@@ -1,0 +1,5 @@
+# Public HTTPS terminates at the temporary tunnel. Origin stays on host loopback.
+services:
+  edge:
+    ports: !override ["127.0.0.1:20880:80"]
+    volumes: !override ["./Caddyfile.tunnel:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]

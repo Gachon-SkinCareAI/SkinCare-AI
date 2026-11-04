@@ -1,0 +1,19 @@
+{
+    admin off
+}
+:80 {
+    request_body {
+        max_size 9MB
+    }
+    route {
+        forward_auth maintenance:9100 {
+            uri /ready
+            header_up -Authorization
+            header_up -Cookie
+        }
+        @private path /api/v1/* /swagger* /v3/api-docs* /actuator* /api/wc/policy-previews/*
+        respond @private 404
+        redir / /admin/ 302
+        reverse_proxy backend:9800
+    }
+}

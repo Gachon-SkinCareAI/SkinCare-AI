@@ -103,13 +103,23 @@ def read_user_text(text: str) -> dict:
     return found
 
 
-def merge(slots: dict, delta: dict) -> tuple[dict, dict]:
+def merge(slots: dict, delta: dict, *, from_user: bool = False) -> tuple[dict, dict]:
     merged = dict(slots or {})
     applied = {}
     for key, value in (delta or {}).items():
         cleaned = accept(key, value)
-        if cleaned is None or not empty(merged.get(key)):
+        if cleaned is None:
             continue
+        previous = merged.get(key)
+        if not empty(previous):
+            if not from_user:
+                continue
+            # Never clear already reported emergency symptoms via later text.
+            if key == "systemic":
+                previous = normalize_systemic(previous) or []
+                cleaned = normalize_systemic(list(previous) + list(cleaned))
+            elif previous in {"ongoing", "chemical", "electric"} and cleaned != previous:
+                continue
         merged[key] = cleaned
         applied[key] = cleaned
     return merged, applied

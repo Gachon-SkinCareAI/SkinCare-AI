@@ -5,15 +5,13 @@ import skincare.domain.user.entity.ENUM.PlanType;
 import skincare.domain.user.entity.ENUM.Provider;
 import skincare.domain.user.entity.ENUM.UserStatus;
 import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 // 사용자 엔티티
 @Entity
-@Table(name = "users")
+@Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "uk_users_social_identity", columnNames = {"provider", "social_subject_hash"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -25,8 +23,26 @@ public class User extends BaseTimeEntity {
     private String userId;
 
     // 로그인 이메일
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(length = 254)
     private String email;
+
+    // Rotated on logout/password reset; old access tokens stop working immediately.
+    @Column(name = "token_version", length = 36)
+    private String tokenVersion;
+
+    public String currentTokenVersion() {
+        return tokenVersion == null ? "0" : tokenVersion;
+    }
+
+    public void revokeTokens() {
+        tokenVersion = java.util.UUID.randomUUID().toString();
+    }
+
+    // Hash preserves case-sensitive provider subjects even under MySQL's default collation.
+    @Column(name = "social_subject_hash", length = 64)
+    private String socialSubjectHash;
+
+    public void attachSocialSubject(String hash) { this.socialSubjectHash = hash; }
 
     // 비밀번호
     @Column(length = 255)
@@ -42,21 +58,18 @@ public class User extends BaseTimeEntity {
 
     // 가입경로(LOCAL: 일반, GOOGLE: 구글 소셜)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private Provider provider = Provider.LOCAL;
 
     // 이용 플랜 (FREE, PREMIUM 등)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private PlanType plan = PlanType.FREE;
 
     // 계정 상태 (ACTIVE: 활성, INACTIVE: 휴면, DELETED: 탈퇴)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.VARCHAR) // MySQL ENUM 타입 대신 VARCHAR로 매핑 (Enum 값 추가 시 DDL 변경 불필요)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
@@ -69,11 +82,42 @@ public class User extends BaseTimeEntity {
     @Column(name = "agreed_privacy", nullable = false)
     private boolean agreedPrivacy;
 
+    @Column(name = "terms_version", length = 40)
+    private String termsVersion;
+
+    @Column(name = "privacy_version", length = 40)
+    private String privacyVersion;
+
+    @Column(name = "consented_at")
+    private LocalDateTime consentedAt;
+
+    public void acceptConsents(String terms, String privacy) {
+        agreedTerms = true;
+        agreedPrivacy = true;
+        termsVersion = terms;
+        privacyVersion = privacy;
+        consentedAt = LocalDateTime.now();
+    }
+
+    public boolean hasRequiredConsents() {
+        return agreedTerms && agreedPrivacy && consentedAt != null
+            && healthConsentedAt != null && skincare.service.ConsentPolicy.HEALTH_VERSION.equals(healthConsentVersion)
+            && skincare.service.ConsentPolicy.VERSION.equals(termsVersion)
+            && skincare.service.ConsentPolicy.VERSION.equals(privacyVersion);
+    }
+
+    @Column(name="health_consent_version",length=40) private String healthConsentVersion;
+    @Column(name="health_consented_at") private LocalDateTime healthConsentedAt;
+    @Column(name="training_consent_version",length=40) private String trainingConsentVersion;
+    @Column(name="training_consented_at") private LocalDateTime trainingConsentedAt;
+    @Column(name="training_granted",nullable=false) private boolean trainingGranted;
+    public void acceptHealthConsent(String version) {healthConsentVersion=version;healthConsentedAt=LocalDateTime.now();}
+    public void trainingConsent(boolean granted,String version) {trainingGranted=granted;trainingConsentVersion=version;trainingConsentedAt=LocalDateTime.now();}
+
     // 최종 서비스 접속 일시
     @Column(name = "last_access_at")
     private LocalDateTime lastAccessAt;
 
-    // 사용자 환경설정 연관관계 초기화 메서드
     public void initSettings(UserSettings settings) {
         this.settings = settings;
     }
@@ -101,15 +145,5 @@ public class User extends BaseTimeEntity {
     // 비밀번호 업데이트 메서드
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
-    }
-
-    // 관리자 계정 상태 변경 메서드 (ACTIVE: 활성, INACTIVE: 비활성, SUSPENDED: 정지)
-    public void changeStatus(UserStatus status) {
-        this.status = status;
-    }
-
-    // 관리자 이용 플랜 변경 메서드 (FREE, PREMIUM)
-    public void changePlan(PlanType plan) {
-        this.plan = plan;
     }
 }

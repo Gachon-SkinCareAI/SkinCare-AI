@@ -1,0 +1,6 @@
+# Opt-in immutable copy of the same baseline files on Docker's Linux filesystem.
+services:
+  ai:
+    volumes: ["vision_models_baseline_v1:/models:ro"]
+volumes:
+  vision_models_baseline_v1:

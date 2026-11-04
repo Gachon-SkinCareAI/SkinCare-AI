@@ -1,0 +1,12 @@
+# Versions from the validated local runtime; Linux CPU torch is installed separately.
+fastapi==0.143.3
+uvicorn==0.54.0
+python-multipart==0.0.32
+PyYAML==6.0.3
+pillow==12.3.0
+numpy==2.2.6
+opencv-python==5.0.0.93
+ultralytics==8.4.171
+pydantic==2.14.1
+starlette==1.7.0
+requests==2.34.2

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import time
 import uuid
 from pathlib import Path
 
@@ -23,6 +25,7 @@ DEFAULT_CONFIG = ROOT / "config.yaml"
 DEFAULT_CLASSIFY = ROOT / "runs" / "classify_locked" / "best.pt"
 DEFAULT_DETECT = ROOT / "runs" / "det_v8s_wound" / "weights" / "best.pt"
 DEFAULT_ENERGY = ROOT / "models" / "ood-energy.json"
+PERFORMANCE = logging.getLogger("skincare.performance")
 
 
 def load_config(path: Path = DEFAULT_CONFIG) -> dict:
@@ -54,6 +57,25 @@ class VisionPipeline:
     def ready(self) -> bool:
         return self.detector is not None and self.classifier is not None
 
+    def warmup(self) -> dict:
+        """Prepare both models without creating a patient analysis or bypassing a gate."""
+        if not self.ready:
+            raise RuntimeError("Models must be loaded before warmup")
+        started = time.perf_counter()
+        # Typical camera orientations plus square. Discard all synthetic outputs.
+        for height, width in ((640, 640), (480, 640), (640, 480)):
+            self.detector.predict(np.full((height, width, 3), 127, dtype=np.uint8))
+        detection_end = time.perf_counter()
+        probabilities, energy = self.classifier.probabilities(np.full((640, 640, 3), 127, dtype=np.uint8))
+        if len(probabilities) != 5 or not np.isfinite(probabilities).all() or not np.isfinite(energy):
+            raise RuntimeError("Invalid classifier warmup output")
+        result = {"event": "vision_warmup", "device": self.device.type,
+                  "detector_ms": round((detection_end - started) * 1000, 2),
+                  "classifier_ms": round((time.perf_counter() - detection_end) * 1000, 2),
+                  "synthetic_input_only": True}
+        PERFORMANCE.info(json.dumps(result))
+        return result
+
     def predict_path(self, path: Path) -> dict:
         image = read_rgb(path)
         if image is None:
@@ -61,7 +83,18 @@ class VisionPipeline:
         return self.predict_array(image)
 
     def predict_array(self, image: np.ndarray) -> dict:
+        started = time.perf_counter()
+        timings = {}
+        try:
+            return self._predict_array(image, timings)
+        finally:
+            PERFORMANCE.info(json.dumps({"event": "vision_timing", "device": self.device.type,
+                "total_ms": round((time.perf_counter() - started) * 1000, 2), **timings}))
+
+    def _predict_array(self, image: np.ndarray, timings: dict) -> dict:
+        started = time.perf_counter()
         quality = check_image(image, self.quality_cfg)
+        timings["quality_ms"] = round((time.perf_counter() - started) * 1000, 2)
         result = {
             "request_id": str(uuid.uuid4()),
             "quality": quality,
@@ -77,7 +110,9 @@ class VisionPipeline:
         if not self.ready:
             raise RuntimeError("모델이 로드되지 않았습니다.")
 
+        started = time.perf_counter()
         boxes = self.detector.predict(image)
+        timings["detector_ms"] = round((time.perf_counter() - started) * 1000, 2)
         if not boxes:
             result["classification"] = apply_gate(None, None, None, None, self.energy_max, self.gate_cfg)
             return result
@@ -93,7 +128,9 @@ class VisionPipeline:
             result["classification"] = apply_gate(None, score, area, None, self.energy_max, self.gate_cfg)
             return result
 
+        started = time.perf_counter()
         probs, energy = self.classifier.probabilities(image)
+        timings["classifier_ms"] = round((time.perf_counter() - started) * 1000, 2)
         result["classification"] = apply_gate(probs, score, area, energy, self.energy_max, self.gate_cfg)
         result["classification"]["energy"] = round(energy, 4)
         return result

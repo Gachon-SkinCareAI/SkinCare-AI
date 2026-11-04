@@ -6,7 +6,6 @@ import skincare.domain.global.BaseTimeEntity;
 
 import java.time.LocalDateTime;
 
-// [이메일 인증] 회원가입 전 이메일 인증 번호 발급 및 검증 상태 관리 엔티티
 @Entity
 @Table(name = "email_verification_tokens")
 @Getter
@@ -15,20 +14,16 @@ import java.time.LocalDateTime;
 @Builder
 public class EmailVerificationToken extends BaseTimeEntity {
 
-    // 인증 대상 이메일 (PK)
     @Id
     @Column(name = "email", length = 100)
     private String email;
 
-    // 6자리 인증 번호
     @Column(name = "auth_code", nullable = false, length = 6)
     private String authCode;
 
-    // 인증 번호 만료 일시
     @Column(name = "expiration_time", nullable = false)
     private LocalDateTime expirationTime;
 
-    // 인증 완료 여부
     @Column(name = "is_verified", nullable = false)
     @Builder.Default
     private boolean verified = false;

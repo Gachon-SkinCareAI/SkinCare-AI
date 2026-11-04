@@ -1,0 +1,10 @@
+FROM mysql:8.4.13
+USER root
+RUN microdnf install -y python3 && microdnf clean all
+WORKDIR /opt/demo
+COPY mysql/ /opt/mysql-tools/
+COPY migrations/ /opt/migrations/
+COPY db_runtime.py maintenance.py probe.py db_selftest.py /opt/demo/
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+RUN python3 -c "import db_runtime, maintenance; print('Maintenance runtime imports OK')"
+ENTRYPOINT ["python3", "/opt/demo/maintenance.py"]

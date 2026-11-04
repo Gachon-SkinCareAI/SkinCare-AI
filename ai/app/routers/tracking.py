@@ -17,7 +17,7 @@ async def tracking(request: Request, before: UploadFile = File(...), after: Uplo
             raise HTTPException(status_code=503, detail={"error": "model_unavailable", "message": "탐지 모델을 불러오지 못했습니다."})
         images = []
         for upload in (before, after):
-            raw = await upload.read()
+            raw = await upload.read(MAX_BYTES + 1)
             if len(raw) > MAX_BYTES:
                 raise HTTPException(status_code=413, detail={"error": "image_too_large", "message": "이미지는 8MB 이하만 받는다."})
             image = read_bytes(raw)

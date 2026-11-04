@@ -15,3 +15,21 @@ data/photos/*
 !data/photos/.gitkeep
 .idea/
 .DS_Store
+
+# Local secrets and runtime artifacts (keep shareable templates)
+.env.*
+!.env.example
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.key
+*.pem
+*.gguf
+*.safetensors
+*.ckpt
+ai/Ultralytics/
