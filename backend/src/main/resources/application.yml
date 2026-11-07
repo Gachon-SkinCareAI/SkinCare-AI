@@ -37,7 +37,7 @@ spring:
     show-sql: true
     hibernate:
 #      ddl-auto: create
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     properties:
       hibernate:
         format_sql: true

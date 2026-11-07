@@ -1,0 +1,59 @@
+{
+    admin off
+    auto_https off
+}
+:80 {
+    request_body {
+        max_size 9MB
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+    }
+    route {
+        forward_auth maintenance:9100 {
+            # Clear the cloned query; keep the original OAuth/API query intact.
+            uri /ready?
+            header_up -Authorization
+            header_up -Cookie
+            # Retry only the cloned readiness GET on connection/DNS failures.
+            lb_try_duration 5s
+            lb_try_interval 250ms
+            transport http {
+                dial_timeout 1s
+                response_header_timeout 12s
+            }
+        }
+        @private path /api/v1/* /swagger* /v3/api-docs* /actuator* /api/wc/policy-previews/*
+        respond @private 404
+        # The current develop frontend uses the same HTTPS origin as its API.
+        # Only exported assets are mounted. There is no source/config directory browsing.
+        @web {
+            method GET HEAD
+            path / /index.html /favicon.ico /phone-qr.png /assets/* /_expo/*
+        }
+        handle @web {
+            root * /srv/public-web
+            header Cache-Control "no-store"
+            file_server
+        }
+        # The previous APK embeds an expired origin. Do not distribute it at the new address.
+        redir /download / 302
+        redir /download/ / 302
+        @downloadOther path /download/*
+        respond @downloadOther "QR로 새 웹 앱에 접속해 주세요." 404
+        @backend path /api/wc/* /admin /admin/* /oauth2/* /login/oauth2/*
+        handle @backend {
+          reverse_proxy backend:9800 {
+            header_up -Forwarded
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Host {$PUBLIC_HOST}
+            header_up X-Forwarded-Port 443
+            transport http {
+                response_header_timeout 90s
+            }
+          }
+        }
+        respond 404
+    }
+}

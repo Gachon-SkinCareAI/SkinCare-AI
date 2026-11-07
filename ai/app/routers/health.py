@@ -20,7 +20,8 @@ router = APIRouter(prefix="/ai", tags=["vision"], dependencies=[Depends(verify_t
 @router.get("/health")
 def health(request: Request):
     pipeline = request.app.state.pipeline
-    ready = pipeline.ready and pipeline.energy_max is not None
+    recovering = getattr(request.app.state, 'vision_failed', False)
+    ready = pipeline.ready and pipeline.energy_max is not None and not recovering
     models = {"detect": "yolov8s-wound", "classify": "vit-b16-locked"}
     if VERSION.exists():
         saved = json.loads(VERSION.read_text(encoding="utf-8"))
@@ -35,4 +36,5 @@ def health(request: Request):
         "llm_provider": provider() if configured() else "unconfigured",
         "inflight": request.app.state.inflight,
         "max_inflight": request.app.state.settings["max_inflight"],
+        "vision_recovering": recovering,
     }

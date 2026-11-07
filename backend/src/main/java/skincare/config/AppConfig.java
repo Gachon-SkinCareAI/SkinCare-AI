@@ -26,7 +26,7 @@ public class AppConfig {
     private int connectTimeoutMs;
 
     // 외부 서버 응답 대기 제한 시간 (ms)
-    @Value("${ai.server.read-timeout-ms:10000}")
+    @Value("${ai.server.read-timeout-ms:30000}")
     private int readTimeoutMs;
 
     // 외부 서버(공공데이터 OpenAPI 등) HTTP 통신용 RestTemplate 빈 등록

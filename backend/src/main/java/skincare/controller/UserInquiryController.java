@@ -17,6 +17,7 @@ import skincare.service.UserInquiryService;
 // 사용자 1:1 문의(Inquiry) 관련 API 요청 처리 컨트롤러
 @Tag(name = "User - Inquiry", description = "사용자 전용 1:1 문의 관리 API")
 @RestController
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="skincare.legacy.controllers-enabled",havingValue="true")
 @RequestMapping("/api/wc/inquiries")
 @RequiredArgsConstructor
 public class UserInquiryController {

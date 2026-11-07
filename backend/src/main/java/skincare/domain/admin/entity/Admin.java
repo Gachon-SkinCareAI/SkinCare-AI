@@ -42,4 +42,6 @@ public class Admin extends BaseTimeEntity {
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
+    @Column(length=254) private String email;
+    @Builder.Default @Column(length=30) private String role="ROLE_ADMIN";
 }

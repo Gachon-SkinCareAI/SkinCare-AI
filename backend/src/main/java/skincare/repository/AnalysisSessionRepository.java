@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface AnalysisSessionRepository extends JpaRepository<AnalysisSession, String> {
     Optional<AnalysisSession> findByIdAndUserId(String id, String userId);
     Optional<AnalysisSession> findFirstByUserIdAndCaseIdOrderByCreatedAtAscIdAsc(String userId, String caseId);
+    long countByUserIdAndCreatedAtAfter(String userId, java.time.LocalDateTime since);
     long countByUserIdAndCaseId(String userId, String caseId);
 
     interface StateCount { String getStatus(); long getTotal(); }
@@ -28,7 +29,7 @@ public interface AnalysisSessionRepository extends JpaRepository<AnalysisSession
     @Query("select s from AnalysisSession s where s.id = :id and s.userId = :owner")
     Optional<AnalysisSession> lockOwned(@Param("id") String id, @Param("owner") String userId);
     @Query("select s.id as id, s.caseId as caseId, s.status as status, s.version as version, s.turn as turn, " +
-           "s.createdAt as createdAt, s.updatedAt as updatedAt, s.errorCode as errorCode, s.resultJson as resultJson " +
+           "s.createdAt as createdAt, s.capturedOn as capturedOn, s.updatedAt as updatedAt, s.errorCode as errorCode, s.resultJson as resultJson " +
            "from AnalysisSession s where s.userId = :owner and (:caseId is null or s.caseId = :caseId) " +
            "order by s.createdAt desc, s.id desc")
     List<AnalysisSummary> listOwned(@Param("owner") String userId, @Param("caseId") String caseId, Pageable page);

@@ -19,6 +19,7 @@ import java.util.List;
 
 // 사용자 상처 회복 경과(Recovery) 기록 관련 API 요청 처리 컨트롤러
 @Tag(name = "User - Recovery", description = "사용자 상처 회복 경과 기록 및 비교 조회 API")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="skincare.legacy.controllers-enabled",havingValue="true")
 @RestController
 @RequestMapping("/api/wc/recoveries")
 @RequiredArgsConstructor

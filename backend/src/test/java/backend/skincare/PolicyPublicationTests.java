@@ -50,10 +50,10 @@ class PolicyPublicationTests extends BackendApplicationTests {
         assertEquals(3,jdbc.queryForObject("SELECT COUNT(*) FROM consent_events WHERE user_id=?",Long.class,id));
         mvc.perform(get("/api/wc/analyses").header("Authorization",token)).andExpect(status().isOk());
     }
-    @Test void builtinModeRestrictsInsecureOriginsAndDoesNotEnableTraining(){
+    @Test void builtinModeRestrictsInsecureOriginsAndPublishesOptionalConsentWithoutExport(){
         for(String base:List.of("http://external.test","http://user:password@localhost","https://api.test/path","https://api.test?key=secret","https://api.test:99999"))assertNull(PublishedPolicies.policyOrigin(base));
         assertEquals("https://api.test",PublishedPolicies.policyOrigin("https://api.test/"));
-        var policy=new PublishedPolicies("","","",true,"http://127.0.0.1:9800");assertTrue(policy.requiredAvailable());assertNull(policy.trainingUrl());
+        var policy=new PublishedPolicies("","","",true,"http://127.0.0.1:9800");assertTrue(policy.requiredAvailable());assertEquals("http://127.0.0.1:9800/api/wc/policies/2026-11-04/training",policy.trainingUrl());assertFalse(policy.manifest().trainingExportEnabled());
         assertFalse(new PublishedPolicies("","","",false,"http://127.0.0.1:9800").requiredAvailable());
     }
 }

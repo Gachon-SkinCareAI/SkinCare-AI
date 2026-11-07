@@ -8,3 +8,4 @@ host-tmp
 qa-status.json
 bundle-manifest.json
 connection-diagnostics.json
+distribution

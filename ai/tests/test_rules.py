@@ -73,18 +73,20 @@ class QuestionTurnTest(unittest.TestCase):
         def llm(_payload):
             return {"action": "ask", "question_id": "made.up", "utterance": "어디가 아프신가요?", "slots_delta": {}}
 
-        result = handle_turn({"slots": {"systemic": "none"}, "user_text": "긁혔어요"}, self.bank, self.rules, llm)
+        result = handle_turn({"slots": {"systemic": "none", "scenario":"burn", "cause":"heat_liquid",
+                              "site":"other", "elapsed":"lt_1h"}}, self.bank, self.rules, llm)
         self.assertTrue(result["overrode_llm"])
-        self.assertEqual(result["question_id"], "common.elapsed")
+        self.assertEqual(result["question_id"], "burn.blister")
         self.assertTrue(result["llm_called"])
 
     def test_drug_utterance_is_discarded(self):
         def llm(_payload):
-            return {"action": "ask", "question_id": "common.elapsed", "utterance": "이 연고를 바르셨나요?", "slots_delta": {}}
+            return {"action": "ask", "question_id": "burn.blister", "utterance": "이 연고를 바르셨나요?", "slots_delta": {}}
 
-        result = handle_turn({"slots": {"systemic": "none"}, "user_text": "긁혔어요"}, self.bank, self.rules, llm)
+        result = handle_turn({"slots": {"systemic": "none", "scenario":"burn", "cause":"heat_liquid",
+                              "site":"other", "elapsed":"lt_1h"}}, self.bank, self.rules, llm)
         self.assertTrue(result["overrode_llm"])
-        self.assertEqual(result["utterance"], "언제부터인가요?")
+        self.assertEqual(result["utterance"], "물집이 보이나요?")
 
     def test_tenth_turn_fills_unknown_and_finishes(self):
         result = handle_turn({"slots": {"scenario": "abrasion"}, "turn": 10, "user_text": ""}, self.bank, self.rules)

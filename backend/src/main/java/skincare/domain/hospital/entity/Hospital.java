@@ -4,6 +4,7 @@ import skincare.domain.global.BaseTimeEntity;
 import skincare.domain.hospital.entity.ENUM.HospitalType;
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.Objects;
 
 // [의료기관 데이터] 공공데이터 OpenAPI 연동 피부과 병원 및 약국 데이터 엔티티
 @Entity
@@ -69,4 +70,58 @@ public class Hospital extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private String status = "ACTIVE";
+public static final String STATUS_ACTIVE="ACTIVE", STATUS_INACTIVE="INACTIVE", STATUS_HIDDEN="HIDDEN";
+ @Column private Double latitude;
+ @Column private Double longitude;
+ @Column(name="weekday_hours",length=50) private String weekdayHours;
+ @Column(name="saturday_hours",length=50) private String saturdayHours;
+ @Column(name="sunday_holiday_hours",length=50) private String sundayHolidayHours;
+    public boolean updateFrom(Hospital source) {
+        boolean hidden = STATUS_HIDDEN.equals(status);
+        boolean changed = !Objects.equals(name, source.name)
+                || hospitalType != source.hospitalType
+                || !Objects.equals(region, source.region)
+                || !Objects.equals(address, source.address)
+                || !Objects.equals(tel, source.tel)
+                || !Objects.equals(latitude, source.latitude)
+                || !Objects.equals(longitude, source.longitude)
+                || !Objects.equals(weekdayHours, source.weekdayHours)
+                || !Objects.equals(saturdayHours, source.saturdayHours)
+                || !Objects.equals(sundayHolidayHours, source.sundayHolidayHours)
+                || nightCare != source.nightCare
+                || emergency != source.emergency
+                || (!hidden && !STATUS_ACTIVE.equals(status));
+
+        if (changed) {
+            this.name = source.name;
+            this.hospitalType = source.hospitalType;
+            this.region = source.region;
+            this.address = source.address;
+            this.tel = source.tel;
+            this.latitude = source.latitude;
+            this.longitude = source.longitude;
+            this.weekdayHours = source.weekdayHours;
+            this.saturdayHours = source.saturdayHours;
+            this.sundayHolidayHours = source.sundayHolidayHours;
+            this.nightCare = source.nightCare;
+            this.emergency = source.emergency;
+            this.dataSource = source.dataSource;
+            if (!hidden) {
+                this.status = STATUS_ACTIVE;
+            }
+        }
+        return changed;
+    }
+
+    // 공공데이터에서 제외된 기관 운영 중지 처리
+    public void deactivate() {
+        this.status = STATUS_INACTIVE;
+    }
+
+    // 관리자 운영 상태 변경 (ACTIVE: 노출, HIDDEN: 숨김 - 다음 동기화에서도 숨김 유지)
+    public void changeStatusByAdmin(String status) {
+        this.status = status;
+    }
+
+
 }

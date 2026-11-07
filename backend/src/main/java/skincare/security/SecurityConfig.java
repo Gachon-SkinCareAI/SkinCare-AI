@@ -64,6 +64,12 @@ public class SecurityConfig {
                         // Drafts are readable before login; consent still requires configured published documents.
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
                             "/api/wc/policy-previews/terms", "/api/wc/policy-previews/privacy", "/api/wc/policies/2026-11-03/terms", "/api/wc/policies/2026-11-03/privacy", "/api/wc/policies/2026-11-01.2/terms", "/api/wc/policies/2026-11-01.2/privacy").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,"/api/wc/policies/2026-11-04/guest",
+                            "/api/wc/policies/2026-11-04/training","/api/wc/policies/2026-11-04/location","/api/wc/auth/guest/policy").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST,"/api/wc/auth/guest","/api/wc/auth/guest/resume").permitAll()
+                        .requestMatchers("/api/wc/guest/**").hasRole("GUEST")
+                        .requestMatchers("/api/wc/analyses", "/api/wc/analyses/**").hasAnyRole("USER","GUEST")
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,"/api/wc/hospitals/public").hasAnyRole("USER","GUEST")
                         // 회원가입, 로그인 및 OAuth2 인증 경로 접근 허용
                         .requestMatchers(
                                 "/api/wc/auth/consent-policy",
@@ -80,7 +86,7 @@ public class SecurityConfig {
                         // Public login UI contains no account data; every admin API remains role-protected.
                         .requestMatchers("/admin", "/admin/", "/admin/index.html", "/admin/app.js", "/admin/style.css").permitAll()
                         // ES modules/styles must load before the administrator can sign in.
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/admin/src/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/admin/src/**", "/admin/assets/**").permitAll()
                         // Swagger 문서 관련 경로 접근 허용
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.DELETE,"/api/wc/users/me").hasAnyRole("USER","ONBOARDING")

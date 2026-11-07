@@ -1,16 +1,12 @@
+import Sidebar from './layouts/Sidebar'
 import { useEffect, useState } from 'react'
 import { Bell, Check, ChevronRight, Menu, Search, X } from 'lucide-react'
-import { Modal, RiskBadge } from './components'
+import GlobalSearch from './components/GlobalSearch'
+import { pages, getRoute } from './constants/navigation'
+import { usePreviewStore } from './hooks/usePreviewStore'
 import {
-  createSeed,
-  parseStore,
-  risks,
-  STORAGE_KEY,
   type Detail,
   type Navigate,
-  type Page,
-  type Risk,
-  type Store,
 } from './data'
 import Dashboard from './pages/Dashboard'
 import Diagnoses from './pages/Diagnoses'
@@ -20,34 +16,8 @@ import Users from './pages/Users'
 import Inquiries from './pages/Inquiries'
 import Details from './Details'
 
-const pages: { id: Page; title: string; icon: string }[] = [
-  { id: 'dashboard', title: '대시보드', icon: '📊' },
-  { id: 'diagnoses', title: '진단 로그', icon: '📋' },
-  { id: 'monitoring', title: 'AI 모니터링', icon: '🤖' },
-  { id: 'facilities', title: '의료기관 관리', icon: '🏥' },
-  { id: 'users', title: '사용자 관리', icon: '👤' },
-  { id: 'inquiries', title: '문의 관리', icon: '✉' },
-]
-function getRoute() {
-  const [hash, query] = location.hash.slice(1).split('?')
-  const id = hash === 'analyses' ? 'diagnoses' : hash
-  const page: Page = pages.find((p) => p.id === id)?.id || 'dashboard'
-  const risk = new URLSearchParams(query).get('risk')
-  return {
-    page,
-    risk: risks.includes(risk as Risk) ? (risk as Risk) : undefined,
-  }
-}
-function loadStore() {
-  try {
-    return parseStore(localStorage.getItem(STORAGE_KEY))
-  } catch {
-    return createSeed()
-  }
-}
-
 export default function App() {
-  const [store, setStore] = useState(loadStore)
+  const { store, setStore, storageError } = usePreviewStore()
   const [route, setRoute] = useState(getRoute)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenu, setMobileMenu] = useState(false)
@@ -55,7 +25,6 @@ export default function App() {
   const [notifications, setNotifications] = useState(false)
   const [detail, setDetail] = useState<Detail | null>(null)
   const [toast, setToast] = useState('')
-  const [storageError, setStorageError] = useState(false)
   const active = pages.find((p) => p.id === route.page)!
   useEffect(() => {
     const sync = () => {
@@ -67,14 +36,7 @@ export default function App() {
     window.addEventListener('hashchange', sync)
     return () => window.removeEventListener('hashchange', sync)
   }, [])
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
-      setStorageError(false)
-    } catch {
-      setStorageError(true)
-    }
-  }, [store])
+
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(''), 4500)
@@ -123,71 +85,7 @@ export default function App() {
           onClick={() => setMobileMenu(false)}
         />
       )}
-      <aside className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
-        <div className="brand-row">
-          <a
-            className="brand"
-            href="#dashboard"
-            onClick={(e) => {
-              e.preventDefault()
-              navigate('dashboard')
-            }}
-            aria-label="SkinCare AI 대시보드"
-          >
-            <img
-              className="brand-mark"
-              src="/branding/skincare-ai-symbol-inverse.svg"
-              alt=""
-              width="36"
-              height="36"
-            />
-            <span className="brand-text">
-              <img
-                className="brand-wordmark"
-                src="/branding/skincare-ai-wordmark-inverse.svg"
-                alt="SkinCare AI"
-                width="122"
-                height="24"
-              />
-              <small>관리자 대시보드</small>
-            </span>
-          </a>
-          <button
-            className="sidebar-toggle"
-            aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
-            onClick={toggleSidebar}
-          >
-            <Menu size={18} />
-          </button>
-        </div>
-        <nav className="main-nav" aria-label="주 메뉴">
-          {pages.map((page) => (
-            <a
-              key={page.id}
-              className={`nav-item ${page.id === route.page ? 'active' : ''}`}
-              aria-current={page.id === route.page ? 'page' : undefined}
-              title={page.title}
-              href={`#${page.id}`}
-              onClick={(e) => {
-                e.preventDefault()
-                navigate(page.id)
-              }}
-            >
-              <span className="nav-icon" aria-hidden="true">
-                {page.icon}
-              </span>
-              <span className="nav-label">{page.title}</span>
-            </a>
-          ))}
-        </nav>
-        <div className="admin-profile">
-          <span className="admin-avatar">관</span>
-          <div>
-            <strong>관리자</strong>
-            <small>admin@skincare.ai</small>
-          </div>
-        </div>
-      </aside>
+      <Sidebar mobileMenu={mobileMenu} collapsed={collapsed} toggleSidebar={toggleSidebar} navigate={navigate} pageId={route.page} />
       <div className="main-shell">
         <header className="topbar">
           <div className="header-title">
@@ -339,105 +237,3 @@ export default function App() {
   )
 }
 
-function GlobalSearch({
-  store,
-  close,
-  open,
-}: {
-  store: Store
-  close: () => void
-  open: (d: Detail) => void
-}) {
-  const [query, setQuery] = useState('')
-  const q = query.trim().toLocaleLowerCase()
-  const results: {
-    detail: Detail
-    title: string
-    subtitle: string
-    risk?: Risk
-  }[] = q
-    ? [
-        ...store.diagnoses
-          .filter((d) =>
-            `${d.id} ${d.userId} ${d.condition} ${d.area}`
-              .toLocaleLowerCase()
-              .includes(q),
-          )
-          .slice(0, 5)
-          .map((d) => ({
-            detail: { type: 'diagnosis' as const, id: d.id },
-            title: d.id,
-            subtitle: `${d.userId} · ${d.condition} · ${d.area}`,
-            risk: d.risk,
-          })),
-        ...store.users
-          .filter((u) => `${u.id} ${u.name}`.toLocaleLowerCase().includes(q))
-          .slice(0, 5)
-          .map((u) => ({
-            detail: { type: 'user' as const, id: u.id },
-            title: u.name,
-            subtitle: `사용자 · ${u.id}`,
-          })),
-        ...store.facilities
-          .filter((f) =>
-            `${f.name} ${f.region}`.toLocaleLowerCase().includes(q),
-          )
-          .slice(0, 5)
-          .map((f) => ({
-            detail: { type: 'facility' as const, id: f.id },
-            title: f.name,
-            subtitle: `의료기관 · ${f.region} · ${f.type}`,
-          })),
-        ...store.inquiries
-          .filter((i) =>
-            `${i.id} ${i.subject} ${i.author}`.toLocaleLowerCase().includes(q),
-          )
-          .slice(0, 5)
-          .map((i) => ({
-            detail: { type: 'inquiry' as const, id: i.id },
-            title: i.subject,
-            subtitle: `문의 #${i.id} · ${i.author}`,
-          })),
-      ]
-    : []
-  return (
-    <Modal title="전체 검색" close={close} wide>
-      <label className="global-search-input">
-        <Search size={19} />
-        <input
-          autoFocus
-          aria-label="전체 검색어"
-          placeholder="진단 ID, 사용자, 의료기관 또는 문의 검색"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </label>
-      <div className="global-results">
-        {!q ? (
-          <p className="search-placeholder">
-            찾고 싶은 사용자나 기록을 입력해 주세요.
-          </p>
-        ) : results.length ? (
-          <>
-            <p className="search-result-count">유형별 최대 5개씩 표시합니다.</p>
-            {results.map((result) => (
-              <button
-                key={`${result.detail.type}-${'id' in result.detail ? result.detail.id : ''}`}
-                onClick={() => open(result.detail)}
-              >
-                <div>
-                  <strong>{result.title}</strong>
-                  <small>{result.subtitle}</small>
-                </div>
-                {result.risk && <RiskBadge risk={result.risk} />}
-                <ChevronRight size={15} />
-              </button>
-            ))}
-          </>
-        ) : (
-          <p className="search-placeholder">검색 결과가 없습니다.</p>
-        )}
-      </div>
-    </Modal>
-  )
-}

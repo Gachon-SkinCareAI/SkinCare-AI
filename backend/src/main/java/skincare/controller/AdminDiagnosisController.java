@@ -18,6 +18,7 @@ import skincare.service.AdminDiagnosisService;
 
 // 관리자 AI 분석 로그 관리 API 요청 처리 컨트롤러
 @Tag(name = "Admin - Analysis Log Management", description = "관리자 전용 사용자 AI 분석 로그 관리 API")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="skincare.legacy.controllers-enabled",havingValue="true")
 @RestController
 @RequestMapping("/api/wc/admin/diagnoses")
 @RequiredArgsConstructor

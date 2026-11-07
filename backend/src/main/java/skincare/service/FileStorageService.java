@@ -40,11 +40,11 @@ public class FileStorageService {
 
     private Path rootPath; // 정규화된 저장 루트 경로
 
-    // 저장 루트 폴더 생성
+    // Resolve at startup; create directories only for an actual legacy file upload.
+    // The active analysis API stores photos in MySQL, including read-only containers.
     @PostConstruct
     protected void init() throws IOException {
         this.rootPath = Path.of(uploadDir).toAbsolutePath().normalize();
-        Files.createDirectories(rootPath);
         log.info("[FileStorage] 업로드 파일 저장 경로: {}", rootPath);
     }
 

@@ -1,0 +1,58 @@
+{
+    admin off
+    auto_https off
+}
+:80 {
+    request_body {
+        max_size 9MB
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+    }
+    route {
+        forward_auth maintenance:9100 {
+            uri /ready?
+            header_up -Authorization
+            header_up -Cookie
+            lb_try_duration 5s
+            lb_try_interval 250ms
+            transport http {
+                dial_timeout 1s
+                response_header_timeout 12s
+            }
+        }
+        @private path /api/v1/* /swagger* /v3/api-docs* /actuator* /api/wc/policy-previews/*
+        respond @private 404
+        redir / /download/ 302
+        redir /download /download/ 308
+        @install {
+            method GET HEAD
+            path /download/ /download/index.html /download/SkinCare-AI.apk /download/install-qr.png /download/release.json
+        }
+        handle @install {
+            uri strip_prefix /download
+            root * /srv/public-web/download
+            header Cache-Control "no-store"
+            @apk path /download/SkinCare-AI.apk /SkinCare-AI.apk
+            header @apk {
+                Content-Type application/vnd.android.package-archive
+                Content-Disposition "attachment; filename=SkinCare-AI.apk"
+            }
+            file_server
+        }
+        @backend path /api/wc/* /admin /admin/* /oauth2/* /login/oauth2/*
+        handle @backend {
+            reverse_proxy backend:9800 {
+                header_up -Forwarded
+                header_up X-Forwarded-Proto https
+                header_up X-Forwarded-Host {$PUBLIC_HOST}
+                header_up X-Forwarded-Port 443
+                transport http {
+                    response_header_timeout 90s
+                }
+            }
+        }
+        respond 404
+    }
+}

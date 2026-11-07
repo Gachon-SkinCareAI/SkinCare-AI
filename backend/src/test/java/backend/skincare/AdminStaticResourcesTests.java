@@ -25,16 +25,18 @@ class AdminStaticResourcesTests extends BackendApplicationTests {
 
     @Test void loginCanLoadAllPackagedModulesAndStylesWithoutAuthentication() throws Exception {
         var paths = new ArrayList<>(List.of("index.html", "app.js", "style.css"));
-        var resolver = new PathMatchingResourcePatternResolver();
-        for (String pattern : List.of("classpath*:static/admin/src/**/*.js", "classpath*:static/admin/src/**/*.css")) {
-            for (var resource : resolver.getResources(pattern)) {
-                String url = resource.getURL().toString();
-                paths.add(url.substring(url.indexOf("static/admin/") + "static/admin/".length()));
-            }
+        for (var resource : new PathMatchingResourcePatternResolver().getResources("classpath*:static/admin/src/*.js")) {
+            paths.add("src/" + resource.getFilename());
         }
-        assertTrue(paths.contains("src/main.js"));
-        assertTrue(paths.contains("src/layouts/admin.css"));
-        assertTrue(paths.contains("src/pages/AuthPage.js"));
+        assertTrue(paths.containsAll(List.of("src/api.js", "src/state.js", "src/inquiries.js", "src/hospitals.js",
+                "src/operations.js", "src/reviews.js", "src/audit.js", "src/ui.js", "src/dashboard.js", "src/constants.js")));
+        String html=new ClassPathResource("static/admin/index.html").getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(html.contains("id=\"login-form\""));
+        assertTrue(html.contains("./app.js"));
+        assertTrue(html.contains("type=\"module\""));
+        String script = new ClassPathResource("static/admin/app.js").getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(script.contains("/api/wc/admin/auth/login"));
+        assertFalse(script.contains("createSeed"));
         for (String path : paths) {
             byte[] expected = new ClassPathResource("static/admin/" + path).getContentAsByteArray();
             var response = mvc.perform(get("/admin/" + path)).andExpect(status().isOk())

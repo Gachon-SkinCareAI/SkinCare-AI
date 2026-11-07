@@ -14,6 +14,7 @@ import skincare.service.AdminAiMonitoringService;
 
 // 관리자 AI 모델 성능, 파이프라인 상태, MLOps 재학습 이력 모니터링 API 요청 처리 컨트롤러
 @Tag(name = "Admin - AI Monitoring", description = "관리자 전용 AI 모델 성능, 파이프라인, MLOps 재학습 이력 모니터링 API")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="skincare.legacy.controllers-enabled",havingValue="true")
 @RestController
 @RequestMapping("/api/wc/admin/ai")
 @RequiredArgsConstructor

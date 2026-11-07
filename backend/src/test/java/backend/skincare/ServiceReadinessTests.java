@@ -42,8 +42,8 @@ class ServiceReadinessTests extends BackendApplicationTests {
     }
     @Test void malformedTrainingUrlBlocksOptInButAllowsWithdrawal()throws Exception{
         var u=users.findById(id).orElseThrow();u.acceptConsents("2026-11-03","2026-11-03");u.acceptHealthConsent("2026-11-03");u.trainingConsent(true,"2026-11-01");users.saveAndFlush(u);
-        mvc.perform(put("/api/wc/users/me/consents/training").header("Authorization",token).contentType("application/json").content("{\"granted\":true,\"version\":\"2026-11-01\"}")).andExpect(status().isConflict());
-        mvc.perform(put("/api/wc/users/me/consents/training").header("Authorization",token).contentType("application/json").content("{\"granted\":false,\"version\":\"2026-11-01\"}")).andExpect(status().isNoContent());
+        mvc.perform(put("/api/wc/users/me/consents/training").header("Authorization",token).contentType("application/json").content("{\"granted\":true,\"version\":\"2026-11-04\"}")).andExpect(status().isConflict());
+        mvc.perform(put("/api/wc/users/me/consents/training").header("Authorization",token).contentType("application/json").content("{\"granted\":false,\"version\":\"2026-11-04\"}")).andExpect(status().isNoContent());
         assertFalse(users.findById(id).orElseThrow().isTrainingGranted());
     }
     @Test void readinessIsAdminOnlyAndConfiguredDoesNotMeanVerified()throws Exception{

@@ -68,4 +68,10 @@ public class Inquiry extends BaseTimeEntity {
     public void completeAnswer() {
         this.status = InquiryStatus.COMPLETED;
     }
+public void completeAnswer(InquiryAnswer value) { this.answer=value; completeAnswer(); }
+ public void resetAnswerStatus() { this.answer=null; this.status=InquiryStatus.WAITING; }
+ public void updateInquiry(InquiryType type,String title,String content,Diagnosis diagnosis) {
+ this.inquiryType=type;this.title=title;this.content=content;this.diagnosis=diagnosis;
+ }
+
 }

@@ -49,9 +49,9 @@ class ServiceCompletionTests extends BackendApplicationTests {
     @Test void optionalTrainingCanBeRevokedWithoutLosingServiceAndHistoryIsOwnerOnly()throws Exception{
         assertEquals(false,getData(owner,"/api/wc/users/me/consents").get("trainingGranted"));
         put(owner,"/api/wc/users/me/consents/training",Map.of("granted",true,"version","old"),400);
-        put(owner,"/api/wc/users/me/consents/training",Map.of("granted",true,"version","2026-11-01"),204);
-        put(owner,"/api/wc/users/me/consents/training",Map.of("granted",false,"version","2026-11-01"),204);
-        put(owner,"/api/wc/users/me/consents/training",Map.of("granted",false,"version","2026-11-01"),204);
+        put(owner,"/api/wc/users/me/consents/training",Map.of("granted",true,"version",skincare.service.ConsentPolicy.TRAINING_VERSION),204);
+        put(owner,"/api/wc/users/me/consents/training",Map.of("granted",false,"version",skincare.service.ConsentPolicy.TRAINING_VERSION),204);
+        put(owner,"/api/wc/users/me/consents/training",Map.of("granted",false,"version",skincare.service.ConsentPolicy.TRAINING_VERSION),204);
         var state=getData(owner,"/api/wc/users/me/consents");assertEquals(false,state.get("trainingGranted"));assertEquals(false,state.get("trainingExportEnabled"));assertEquals(2,count("consent_events","user_id",id));
         assertEquals(0,((Map<?,?>)getData(other,"/api/wc/users/me/consents").get("history")).get("total"));
         mvc.perform(get("/api/wc/users/me").header("Authorization",owner)).andExpect(status().isOk());
@@ -63,7 +63,7 @@ class ServiceCompletionTests extends BackendApplicationTests {
         answers.saveAndFlush(new AnalysisAnswer(s.getId(),UUID.randomUUID().toString(),"q","a","private",1,"question","answer"));
         String inquiry=inquiry();var i=getData(admin,"/api/wc/admin/inquiries/"+inquiry);
         put(admin,"/api/wc/admin/inquiries/"+inquiry+"/answer",Map.of("clientRequestId",UUID.randomUUID().toString(),"expectedVersion",i.get("version"),"content","QA 답변"),200);
-        put(owner,"/api/wc/users/me/consents/training",Map.of("granted",false,"version","2026-11-01"),204);
+        put(owner,"/api/wc/users/me/consents/training",Map.of("granted",false,"version",skincare.service.ConsentPolicy.TRAINING_VERSION),204);
         withdraw(owner,Map.of(),400);assertTrue(users.existsById(id));withdraw(owner,Map.of("confirmation","탈퇴"),200);
         assertFalse(users.existsById(id));assertFalse(sessions.existsById(s.getId()));assertEquals(0,count("analysis_answers","session_id",s.getId()));
         for(String table:List.of("inquiries","consent_events","user_settings","user_refresh_tokens"))assertEquals(0,count(table,"user_id",id));
@@ -129,6 +129,8 @@ class ServiceCompletionTests extends BackendApplicationTests {
         String url="/api/wc/hospitals/public/nearby";
         var data=new HashMap<String,Object>(Map.of("kind","PHARMACY","latitude",37.5665,"longitude",126.978));
         long before=count("analysis_sessions","user_id",id);
+        post(owner,url,data,403);
+        put(owner,"/api/wc/users/me/consents/location",Map.of("granted",true,"version",skincare.service.ConsentPolicy.LOCATION_VERSION),204);
         var r=post(owner,url,data,200);assertEquals("UNCONFIGURED",r.get("status"));assertEquals(before,count("analysis_sessions","user_id",id));
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(url).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(data))).andExpect(status().isUnauthorized());
         data.put("latitude",91);post(owner,url,data,400);data.put("latitude",37.56);data.remove("longitude");post(owner,url,data,400);

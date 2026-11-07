@@ -1,0 +1,19 @@
+{
+  "settings_version": "0.0.8",
+  "datasets_dir": "C:\\Users\\kirit\\SkinCare-AI\\ai\\datasets",
+  "weights_dir": "weights",
+  "runs_dir": "runs",
+  "uuid": "375e0c8dfd96eec7ec4e11c10c19dc8f4f37c3f3c92606e82340c053cf06deae",
+  "sync": true,
+  "api_key": "",
+  "openai_api_key": "",
+  "clearml": true,
+  "comet": true,
+  "dvc": true,
+  "mlflow": true,
+  "raytune": true,
+  "tensorboard": false,
+  "wandb": false,
+  "vscode_msg": true,
+  "openvino_msg": true
+}

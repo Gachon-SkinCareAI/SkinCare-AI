@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import zipfile
 
 import torch
 import torch.nn as nn
@@ -80,7 +81,12 @@ def predict(model, rows, device, batch: int) -> tuple[torch.Tensor, torch.Tensor
 
 
 def load_model(checkpoint: Path, device: torch.device) -> nn.Module:
-    payload = torch.load(checkpoint, map_location=device, weights_only=True)
+    # Map modern checkpoints instead of eagerly allocating/copying every storage
+    # through get_storage_from_record. The deployed CPU image stalls in that read
+    # path. Default private mappings preserve the read-only baseline weights.
+    # Legacy torch.save files are not mmap-compatible; retain their existing path.
+    options = {"mmap": True} if zipfile.is_zipfile(checkpoint) else {}
+    payload = torch.load(checkpoint, map_location=device, weights_only=True, **options)
     if payload.get("classes") != CLASSES:
         raise ValueError("Checkpoint class order does not match expected classes")
     # Every parameter is replaced by the checkpoint. Avoid allocating and randomly

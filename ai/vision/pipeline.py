@@ -5,11 +5,13 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import time
 import uuid
 from pathlib import Path
 
 import numpy as np
+import cv2
 import torch
 import yaml
 
@@ -46,12 +48,31 @@ class VisionPipeline:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.detector: WoundDetector | None = None
         self.classifier: WoundClassifier | None = None
+        self.cpu_threads = max(1, min(4, int(os.environ.get('AI_CPU_THREADS', '2'))))
+
+    def configure_cpu(self):
+        # Keep OpenCV's image operations on the dedicated vision worker, avoiding
+        # a second native pool after quality-stage stalls in the container.
+        # Torch retains its independently bounded inference thread count.
+        if cv2.getNumThreads() != 1:
+            cv2.setNumThreads(1)
+        if self.device.type == 'cpu':
+            if torch.get_num_threads() != self.cpu_threads:
+                torch.set_num_threads(self.cpu_threads)
 
     def load(self, detect_path: Path = DEFAULT_DETECT, classify_path: Path = DEFAULT_CLASSIFY) -> None:
+        def stage(value):
+            PERFORMANCE.info(json.dumps({'event': 'vision_prepare_stage', 'stage': value,
+                                         'device': self.device.type, 'cpu_threads': self.cpu_threads}))
+        stage('cpu-thread-setup')
+        self.configure_cpu()
         det = self.config["detect"]
         device = "0" if self.device.type == "cuda" else "cpu"
+        stage('detector-load')
         self.detector = WoundDetector(detect_path, det["conf"], det["iou"], det["max_det"], device)
+        stage('classifier-load')
         self.classifier = WoundClassifier(classify_path, self.device)
+        stage('models-loaded')
 
     @property
     def ready(self) -> bool:
@@ -62,16 +83,31 @@ class VisionPipeline:
         if not self.ready:
             raise RuntimeError("Models must be loaded before warmup")
         started = time.perf_counter()
-        # Typical camera orientations plus square. Discard all synthetic outputs.
-        for height, width in ((640, 640), (480, 640), (640, 480)):
-            self.detector.predict(np.full((height, width, 3), 127, dtype=np.uint8))
-        detection_end = time.perf_counter()
-        probabilities, energy = self.classifier.probabilities(np.full((640, 640, 3), 127, dtype=np.uint8))
-        if len(probabilities) != 5 or not np.isfinite(probabilities).all() or not np.isfinite(energy):
-            raise RuntimeError("Invalid classifier warmup output")
+        # Exercise camera-sized preprocessing, both models, and common aspect
+        # ratios. Uniform small images did not prepare the real upload path.
+        rng = np.random.default_rng(20261107)
+        detector_ms = classifier_ms = 0.0
+        for height, width in ((640, 640), (1200, 1600), (1600, 1200)):
+            image = rng.integers(40, 210, (height, width, 3), dtype=np.uint8)
+            self.configure_cpu()
+            quality = check_image(image, self.quality_cfg)
+            if not quality['ok']:
+                raise RuntimeError('Synthetic warmup image failed quality check')
+            tick = time.perf_counter()
+            self.detector.predict(image)
+            detector_ms += (time.perf_counter() - tick) * 1000
+            # Ultralytics may change the Torch thread count during first setup.
+            self.configure_cpu()
+            tick = time.perf_counter()
+            probabilities, energy = self.classifier.probabilities(image)
+            classifier_ms += (time.perf_counter() - tick) * 1000
+            if len(probabilities) != 5 or not np.isfinite(probabilities).all() or not np.isfinite(energy):
+                raise RuntimeError("Invalid classifier warmup output")
         result = {"event": "vision_warmup", "device": self.device.type,
-                  "detector_ms": round((detection_end - started) * 1000, 2),
-                  "classifier_ms": round((time.perf_counter() - detection_end) * 1000, 2),
+                  "detector_ms": round(detector_ms, 2),
+                  "classifier_ms": round(classifier_ms, 2),
+                  "total_ms": round((time.perf_counter() - started) * 1000, 2),
+                  "cpu_threads": self.cpu_threads,
                   "synthetic_input_only": True}
         PERFORMANCE.info(json.dumps(result))
         return result
@@ -83,6 +119,7 @@ class VisionPipeline:
         return self.predict_array(image)
 
     def predict_array(self, image: np.ndarray) -> dict:
+        self.configure_cpu()
         started = time.perf_counter()
         timings = {}
         try:
@@ -129,6 +166,7 @@ class VisionPipeline:
             return result
 
         started = time.perf_counter()
+        self.configure_cpu()
         probs, energy = self.classifier.probabilities(image)
         timings["classifier_ms"] = round((time.perf_counter() - started) * 1000, 2)
         result["classification"] = apply_gate(probs, score, area, energy, self.energy_max, self.gate_cfg)

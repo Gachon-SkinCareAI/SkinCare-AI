@@ -136,6 +136,6 @@ class BasicServiceFlowTests extends BackendApplicationTests {
         mvc.perform(get("/api/wc/admin/dashboard").header("Authorization",admin)).andExpect(status().isOk());
         mvc.perform(get("/api/wc/users/me")).andExpect(status().isUnauthorized());
         mvc.perform(get("/admin/index.html")).andExpect(status().isOk());
-        mvc.perform(get("/admin/app.js")).andExpect(status().isOk());
+        // Current admin UI ships hashed Vite assets, checked by AdminStaticResourcesTests.
     }
 }

@@ -67,6 +67,13 @@ def parse_content(content: str) -> dict:
     return data
 
 
+def ollama_options() -> dict:
+    # The pinned Ollama runtime disables mmap automatically under this
+    # container's 4 GiB limit. Explicit file-backed loading avoids that path;
+    # startup and questionnaire requests must use identical runner options.
+    return {"temperature": 0, "num_predict": 80, "num_ctx": 4096, "use_mmap": True}
+
+
 def complete(payload: dict, post=None) -> dict:
     if not configured() and post is None:
         raise RuntimeError("llm_unconfigured")
@@ -76,7 +83,7 @@ def complete(payload: dict, post=None) -> dict:
         body = {"model": model_name(), "messages": build_messages(payload)}
         if provider() == "ollama":
             body.update(stream=False, think=False, keep_alive=-1,
-                        options={"temperature": 0, "num_predict": 80, "num_ctx": 4096},
+                        options=ollama_options(),
                         format={"type": "object", "properties": {
                             "action": {"type": "string", "enum": ["ask"]},
                             "question_id": {"type": "string", "enum": payload["question_ids"]}},

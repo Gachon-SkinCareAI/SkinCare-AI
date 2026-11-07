@@ -37,4 +37,6 @@ public class DiagnosisMetrics {
     // AI 추론 소요 시간 (ex. 120ms)
     @Column(name = "inference_time", length = 20)
     private String inferenceTime;
+    @Column(name="detect_confidence") private Double detectConfidence;
+    @Column(name="energy_score") private Double energyScore;
 }

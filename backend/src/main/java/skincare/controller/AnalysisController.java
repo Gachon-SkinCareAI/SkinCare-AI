@@ -16,8 +16,8 @@ public class AnalysisController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> create(@AuthenticationPrincipal String user,
             @RequestPart("file") MultipartFile file, @RequestParam String clientRequestId,
-            @RequestParam(required = false) String parentId) {
-        var result = service.create(user, clientRequestId, parentId, AnalysisImage.read(file));
+            @RequestParam(required = false) String parentId, @RequestParam(required = false) String capturedOn) {
+        var result = service.create(user, clientRequestId, parentId, AnalysisImage.read(file), capturedOn);
         return ResponseEntity.created(URI.create("/api/wc/analyses/" + result.get("id"))).cacheControl(CacheControl.noStore()).body(result);
     }
     @GetMapping public ResponseEntity<List<Map<String, Object>>> list(@AuthenticationPrincipal String user,

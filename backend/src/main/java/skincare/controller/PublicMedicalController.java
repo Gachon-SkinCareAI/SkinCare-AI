@@ -8,10 +8,12 @@ import skincare.external.PublicMedicalClient;
 @RestController @RequestMapping("/api/wc/hospitals/public") @RequiredArgsConstructor
 public class PublicMedicalController {
     private final PublicMedicalClient client;
+    private final skincare.service.AccountConsentService consents;
     public record NearbyRequest(PublicMedicalClient.Kind kind, Double latitude, Double longitude, Integer page, Integer size) {}
 
     // Coordinates stay out of URLs/access logs and are never persisted.
-    @PostMapping("/nearby") public ResponseEntity<PublicMedicalClient.Result> nearby(@RequestBody NearbyRequest body) {
+    @PostMapping("/nearby") public ResponseEntity<PublicMedicalClient.Result> nearby(@org.springframework.security.core.annotation.AuthenticationPrincipal String user,@RequestBody NearbyRequest body) {
+        consents.requireLocation(user);
         int page=body.page()==null?0:body.page(),size=body.size()==null?20:body.size();
         if(body.kind()==null||body.latitude()==null||body.longitude()==null
             ||!Double.isFinite(body.latitude())||!Double.isFinite(body.longitude())

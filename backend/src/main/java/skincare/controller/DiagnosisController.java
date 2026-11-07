@@ -20,6 +20,7 @@ import java.util.Map;
 
 // 사용자 AI 피부·상처 분석(Diagnosis) 관련 API 요청 처리 컨트롤러
 @Tag(name = "User - AI Wound Analysis", description = "사용자 AI 피부·상처 분석 및 이력 관리 API")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="skincare.legacy.controllers-enabled",havingValue="true")
 @RestController
 @RequestMapping("/api/wc/diagnoses")
 @RequiredArgsConstructor

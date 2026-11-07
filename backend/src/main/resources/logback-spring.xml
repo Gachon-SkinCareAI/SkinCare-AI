@@ -12,6 +12,12 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
+    <!-- Containers collect console output with bounded Docker log rotation.
+         Local file logging is explicit so read-only deployments can start. -->
+    <springProfile name="!file-logs">
+        <root level="INFO"><appender-ref ref="CONSOLE"/></root>
+    </springProfile>
+    <springProfile name="file-logs">
     <!-- 로그 저장 폴더 (application.yml의 logging.file.path, 미설정 시 ./logs) -->
     <springProperty scope="context" name="LOG_DIR" source="logging.file.path" defaultValue="logs"/>
 
@@ -97,4 +103,5 @@
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="APP_FILE"/>
     </root>
+    </springProfile>
 </configuration>

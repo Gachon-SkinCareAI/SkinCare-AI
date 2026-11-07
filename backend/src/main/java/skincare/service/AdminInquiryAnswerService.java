@@ -42,7 +42,7 @@ public class AdminInquiryAnswerService {
                 .answerId(answerId)
                 .inquiry(inquiry)
                 .answerContent(dto.getAnswerContent())
-                .answeredBy(adminId)
+                .adminId(adminId)
                 .build();
 
         // 직접 할당 ID 엔티티의 save()는 merge로 동작하여 전달한 객체와 다른 영속 객체를 반환하므로,

@@ -5,7 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAssets } from 'expo-asset';
 import { SvgUri } from 'react-native-svg';
-import { recentAnalyses, recovery as demoRecovery } from '../data/homeDemo';
+import { PrivateImage } from '../components/PrivateImage';
+import { EmergencyHelp, ErrorNote } from '../components/ConsentControls';
+import { RiskBadge } from '../components/RiskIndicator';
 
 const NAVY = '#0D2B6B';
 const modules = [require('../../assets/home/bell.svg'), require('../../assets/home/camera.svg'), require('../../assets/home/chevron.svg'), require('../../assets/home/home.svg'), require('../../assets/home/history.svg'), require('../../assets/home/book.svg'), require('../../assets/home/pin.svg'), require('../../assets/home/user.svg'), require('../../assets/home/arrow.svg'), require('../../assets/home/tip.svg'), require('../../assets/home/scanner.svg')];
@@ -16,10 +18,10 @@ function T({style, ...props}) { return <Text {...props} style={[s.text, style]} 
 
 // onNavigate(route, params)를 연결하면 기존 네비게이터로 화면 이동을 위임합니다.
 // 아직 구현하지 않은 목적지는 홈을 유지하면서 안내 모달을 표시합니다.
-export default function HomeScreen({ onLogout, onNavigate, analyses = recentAnalyses, recovery = demoRecovery }) {
+export default function HomeScreen({ onLogout, onNavigate, analyses = [], recovery = null, api, token, error: requestError, notice, busy, showHistory = false }) {
   const [assets, error] = useAssets(modules);
   const [dialog, setDialog] = useState(null);
-  const [unread, setUnread] = useState(true);
+  const [unread, setUnread] = useState(false);
   const scroll = useRef(null);
   function open(route, title, params) {
     if (onNavigate) { onNavigate(route, params); return; }
@@ -40,22 +42,24 @@ export default function HomeScreen({ onLogout, onNavigate, analyses = recentAnal
       <ScrollView ref={scroll} style={s.scroller} contentContainerStyle={s.content} showsVerticalScrollIndicator={false} testID="home-scroll">
         <LinearGradient colors={['#081F50','#0D2B6B','#17478F']} locations={[0,0.5,1]} start={{x:0,y:0}} end={{x:1,y:1}} style={s.banner}>
           <View pointerEvents="none" style={s.scanner}><Icon name="scanner" /></View>
-          <T style={s.bannerTitle}>갑자기 다쳤나요?</T><T style={s.bannerDescription}>{'사진 한 장으로 상처 상태를\n확인해보세요.'}</T><T style={s.bannerCaption}>화상 · 찰과상 · 베임 등 외상 분석</T>
+          <T style={s.bannerTitle}>갑자기 다쳤나요?</T><T style={s.bannerDescription}>{'로그인 없이 사진을 찍고\n분석을 시작해보세요.'}</T><T style={s.bannerCaption}>화상 · 찰과상 · 베임 등 외상 분석</T>
           <Pressable accessibilityRole="button" onPress={() => open('analysis','상처 분석 시작하기')} style={({pressed}) => [s.analyzeButton, pressed && s.pressed]}><Icon name="camera" /><T style={s.analyzeText}>상처 분석 시작하기</T></Pressable>
         </LinearGradient>
-        <View style={s.recentSection}>
+        <View style={{marginTop:18}}><EmergencyHelp /><ErrorNote message={requestError} /></View>
+        {!!notice && <View style={s.recentCard}><T accessibilityLiveRegion="polite">{notice}</T></View>}
+        {showHistory && <View style={s.recentSection}>
           <View style={s.sectionHeading}><T style={s.heading}>최근 분석</T><Pressable accessibilityRole="button" onPress={() => open('history','전체 기록')} style={s.inline}><T style={s.allText}>전체보기</T><Icon name="chevron" /></Pressable></View>
           <View style={s.recentCard}>{analyses.length ? analyses.slice(0,3).map((item,index) => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.title} 분석 상세`} onPress={() => open('analysisDetail',`${item.title} 분석 상세`,{id:item.id})} style={({pressed}) => [s.record, index > 0 && s.recordBorder, pressed && s.pressed]}>
-            <Image source={item.image} accessibilityLabel={`${item.title} 예시 사진`} style={s.thumbnail} /><View style={s.recordInfo}><T style={s.recordTitle}>{item.title}</T><T style={s.recordSubtitle}>{item.summary}</T></View><View style={[s.badge,item.status==='경고' && s.warning]}><T style={[s.badgeText,item.status==='경고' && s.warningText]}>{item.status}</T></View><Icon name="chevron" />
+            <View style={{width:48}}><PrivateImage url={api.base + item.imagePath} token={token} height={48} /></View><View style={s.recordInfo}><T style={s.recordTitle}>{item.title}</T><T style={s.recordSubtitle}>{item.summary}</T></View><RiskBadge record={item} /><Icon name="chevron" />
           </Pressable>) : <T style={s.empty}>아직 분석 기록이 없어요.</T>}</View>
-        </View>
-        {recovery && <Pressable accessibilityRole="button" accessibilityLabel="상처 회복 과정 상세" onPress={() => open('recovery','상처 회복 과정',{id:recovery.id})} style={s.recovery}>
+        </View>}
+        {showHistory && recovery && <Pressable accessibilityRole="button" accessibilityLabel="상처 회복 과정 상세" onPress={() => open('recovery','상처 회복 과정',{id:recovery.id})} style={s.recovery}>
           <View style={s.recoveryHeading}><View><T style={s.eyebrow}>내 상처 회복 과정</T><T style={[s.heading,{marginTop:4}]}>{recovery.title}</T><T style={s.recoveryDescription}>회복 경과를 확인해보세요.</T></View><Icon name="chevron" /></View>
           <View style={s.photos}>{recovery.photos.slice(0,3).map((photo,index) => <React.Fragment key={photo.date}>{index > 0 && <View style={s.photoArrow}><Icon name="arrow" /></View>}<View style={s.photoColumn}><Image source={photo.image} accessibilityLabel={`${photo.date} 회복 예시 사진`} style={s.recoveryImage} /><T style={s.date}>{photo.date}</T></View></React.Fragment>)}</View>
           <View style={s.recoveryFooter}><T style={s.small}>최근 촬영 {recovery.latestDate}</T><T style={s.recoveryStatus}>{recovery.status}</T></View>
         </Pressable>}
-        <View style={s.tip}><View style={s.tipIcon}><Icon name="tip" /></View><View style={s.tipCopy}><T style={s.tipTitle}>오늘의 상처 케어 TIP</T><T style={s.tipBody}>상처를 만지기 전에는 손을 깨끗이 씻고, 습윤 밴드는 오염되면 바로 교체해주세요.</T></View></View>
-        <T style={s.disclaimer}>예시 기록이 포함된 시연 화면입니다. 의학적 진단이 아닙니다.</T>
+        <View style={s.tip}><View style={s.tipIcon}><Icon name="tip" /></View><View style={s.tipCopy}><T style={s.tipTitle}>사진 촬영 TIP</T><T style={s.tipBody}>밝은 곳에서 한 부위에 초점을 맞춰 촬영해 주세요. 얼굴·이름 등 불필요한 개인정보는 사진에서 제외해 주세요.</T></View></View>
+        <T style={s.disclaimer}>연구·시연용 분석입니다. 의학적 진단을 대신하지 않아요.</T>
       </ScrollView>
       <BottomTabs active="home" onNavigate={key => key==='home' ? scroll.current?.scrollTo({y:0,animated:true}) : open(key,key)} />
     </View>

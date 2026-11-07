@@ -13,6 +13,38 @@ from train_classify import CLASSES
 from vision.pipeline import VisionPipeline
 
 
+def test_opencv_is_serial_while_torch_keeps_its_inference_budget(monkeypatch):
+    import cv2
+    original_cv, original_torch = cv2.getNumThreads(), torch.get_num_threads()
+    monkeypatch.setenv('AI_CPU_THREADS', '2')
+    try:
+        cv2.setNumThreads(2)
+        pipeline=VisionPipeline();pipeline.device=torch.device('cpu')
+        pipeline.configure_cpu()
+        assert cv2.getNumThreads()==1
+        assert torch.get_num_threads()==2
+    finally:
+        cv2.setNumThreads(original_cv);torch.set_num_threads(original_torch)
+
+
+def test_serial_opencv_preserves_quality_values_and_rejections():
+    import cv2
+    from vision.quality import check_image
+    original=cv2.getNumThreads()
+    rng=np.random.default_rng(19)
+    samples=[rng.integers(40,210,shape,dtype=np.uint8) for shape in
+             ((1200,1600,3),(1600,1200,3),(1154,1987,3))]
+    samples += [np.full((320,320,3),v,dtype=np.uint8) for v in (0,120,255)]
+    samples.append(np.zeros((100,100,3),dtype=np.uint8))
+    try:
+        cv2.setNumThreads(2);before=[check_image(sample) for sample in samples]
+        cv2.setNumThreads(1);after=[check_image(sample) for sample in samples]
+        assert before==after
+        assert all(value['ok'] for value in after[:3])
+        assert all(not value['ok'] for value in after[3:])
+    finally:cv2.setNumThreads(original)
+
+
 class TinyVit(nn.Module):
     def __init__(self):
         super().__init__()
@@ -21,6 +53,19 @@ class TinyVit(nn.Module):
 
     def forward(self, value):
         return self.heads.head(value)
+
+
+def test_load_diagnostic_identifies_the_stage_without_exception_text(monkeypatch,caplog):
+    import vision.pipeline as serving
+    pipeline=VisionPipeline()
+    monkeypatch.setattr(pipeline,'configure_cpu',lambda:None)
+    def detector(*args):raise RuntimeError('private checkpoint context')
+    monkeypatch.setattr(serving,'WoundDetector',detector)
+    with caplog.at_level(logging.INFO,logger='skincare.performance'):
+        with pytest.raises(RuntimeError):pipeline.load()
+    events=[json.loads(record.message) for record in caplog.records]
+    assert [event['stage'] for event in events]==['cpu-thread-setup','detector-load']
+    assert 'private checkpoint context' not in caplog.text
 
 
 def test_checkpoint_values_and_cpu_outputs_are_preserved_without_random_initialization(tmp_path, monkeypatch):
@@ -54,6 +99,32 @@ def test_half_checkpoint_retains_previous_float32_serving_behavior(tmp_path, mon
         assert torch.equal(value.float(), actual.state_dict()[name])
 
 
+@pytest.mark.parametrize('legacy',[False,True])
+def test_mapped_and_legacy_checkpoint_values_and_backing_file_remain_unchanged(tmp_path,monkeypatch,legacy):
+    import hashlib
+    reference=TinyVit().eval()
+    checkpoint=tmp_path/'weights.pt'
+    torch.save({'classes':CLASSES,'model':reference.state_dict()},checkpoint,
+               _use_new_zipfile_serialization=not legacy)
+    before=hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    load=torch.load;options=[]
+    def observed_load(*args,**kwargs):
+        options.append(kwargs.copy())
+        return load(*args,**kwargs)
+    monkeypatch.setattr(eval_classify.torch,'load',observed_load)
+    monkeypatch.setattr(eval_classify,'vit_b_16',lambda weights:TinyVit())
+    actual=eval_classify.load_model(checkpoint,torch.device('cpu'))
+    assert options[0]['weights_only'] is True
+    assert options[0].get('mmap',False) is (not legacy)
+    sample=torch.arange(12,dtype=torch.float32).reshape(3,4)
+    assert torch.equal(reference(sample),actual(sample))
+    # An accidental in-memory edit must not alter the immutable checkpoint.
+    with torch.no_grad():actual.heads.head.weight.add_(1)
+    assert hashlib.sha256(checkpoint.read_bytes()).hexdigest()==before
+    stored=load(checkpoint,map_location='cpu',weights_only=True)
+    assert torch.equal(stored['model']['heads.head.weight'],reference.heads.head.weight)
+
+
 def test_incomplete_or_wrong_class_checkpoint_still_fails(tmp_path, monkeypatch):
     checkpoint = tmp_path / 'fixture.pt'
     monkeypatch.setattr(eval_classify, 'vit_b_16', lambda weights: TinyVit())
@@ -69,8 +140,8 @@ def test_warmup_exercises_classifier_even_when_detector_has_no_box():
     pipeline.detector = SimpleNamespace(predict=lambda image: shapes.append(image.shape) or [])
     pipeline.classifier = SimpleNamespace(probabilities=lambda image: classified.append(image.shape) or (np.ones(5)/5, -1.))
     result=pipeline.warmup()
-    assert shapes == [(640,640,3),(480,640,3),(640,480,3)]
-    assert classified == [(640,640,3)]
+    assert shapes == [(640,640,3),(1200,1600,3),(1600,1200,3)]
+    assert classified == shapes
     assert result['synthetic_input_only'] is True
 
 

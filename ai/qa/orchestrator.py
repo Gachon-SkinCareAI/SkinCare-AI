@@ -140,6 +140,10 @@ def handle_turn(body: dict, bank: dict, rules: dict, llm=None) -> dict:
     # Mandatory risk questions precede ordinary questions, even with an LLM.
     rank = _RANK.get(options[0], 4)
     options = [qid for qid in options if _RANK.get(qid, 4) == rank]
+    # All clinical parsing and priority checks above still run. With one eligible
+    # question there is no model choice to make, so do not wait on the network.
+    if len(options) == 1:
+        return _ask(_question(bank, options[0]), heard, delta, overrode=False, called=False)
 
     called = llm is not None
     output = {}

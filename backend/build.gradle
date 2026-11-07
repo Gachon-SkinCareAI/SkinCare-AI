@@ -75,11 +75,20 @@ dependencies {
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 }
 
+tasks.register('buildAdminWeb', Exec) {
+    workingDir '../admin-web'
+    commandLine(System.getProperty('os.name').toLowerCase().contains('windows') ? ['cmd', '/c', 'npm', 'run', 'build'] : ['npm', 'run', 'build'])
+    inputs.files(fileTree('../admin-web/src'), fileTree('../admin-web/public'), '../admin-web/index.html', '../admin-web/package-lock.json', '../admin-web/vite.config.ts', '../admin-web/tsconfig.json')
+    outputs.dir('../admin-web/dist')
+}
+
 tasks.named('processResources') {
     from('../ai/guide') { include 'cards.yaml'; into 'review-catalog' }
     from('../ai/qa') { include 'bank.yaml','rules.yaml'; into 'review-catalog' }
-    from('../admin-web') {
-        include 'index.html', 'app.js', 'style.css', 'src/**/*.js', 'src/**/*.css'
+    // The React design preview uses sample data. Ship the authenticated API-backed
+    // operations UI until the preview has completed its real-service integration.
+    from('../admin-web/operational') {
+        include 'index.html', 'app.js', 'style.css', 'src/**/*.js'
         into 'static/admin'
     }
 }

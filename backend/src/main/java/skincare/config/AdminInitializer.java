@@ -16,6 +16,7 @@ import skincare.repository.AdminRepository;
 // 환경변수(ADMIN_INIT_ID / ADMIN_INIT_PASSWORD)로 지정한 계정을 서버 기동 시 1회 생성
 @Slf4j
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="skincare.legacy.admin-initializer-enabled",havingValue="true")
 @RequiredArgsConstructor
 public class AdminInitializer implements ApplicationRunner {
 

@@ -13,11 +13,13 @@ class LocalServicesTests(unittest.TestCase):
             calls=[]
             def run(command,name,timeout):
                 calls.append((name,command))
-                if name=='local-model-ready':raise RuntimeError('model timed out')
+                if name=='local-model-loaded-state':return '{"gpuLoaded":true}'
+                if name.startswith('local-model-ready'):raise RuntimeError('model timed out')
                 return ''
             with self.assertRaises(RuntimeError):
                 start_verified_services(['docker','compose'],{'localLlmEnabled':True},run,Path(directory))
-            self.assertEqual([name for name,_ in calls],['local-model-start','local-model-ready'])
+            self.assertNotIn('container-start',[name for name,_ in calls])
+            self.assertEqual([name for name,_ in calls].count('local-model-ready-after-restart'),1)
             self.assertEqual(calls[0][1][-2:],['llm','ai'])
 
     def test_startup_opens_services_only_after_successful_model_check(self):
@@ -25,11 +27,24 @@ class LocalServicesTests(unittest.TestCase):
             calls=[]
             def run(command,name,timeout):
                 calls.append(name)
-                return '{"event":"warmup"}\n{"passed":true}' if name=='local-model-ready' else ''
+                if name=='local-model-loaded-state':return '{"gpuLoaded":true}'
+                return '{"event":"warmup"}\n{"passed":true,"gpuBytes":1}' if name in ('local-model-ready','vision-model-ready') else ''
             result=start_verified_services(['docker','compose'],{'localLlmEnabled':True},run,Path(directory))
-            self.assertEqual(calls,['local-model-start','local-model-ready','container-start'])
+            self.assertEqual(calls,['local-model-start','local-model-gpu-check','local-model-loaded-state',
+                'local-model-ready','vision-model-ready','container-start'])
             self.assertTrue(result['passed'])
             self.assertTrue(json.loads((Path(directory)/'local-llm-startup-check.json').read_text())['passed'])
+
+    def test_vision_timeout_keeps_backend_and_edge_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            calls=[]
+            def run(command,name,timeout):
+                calls.append(name)
+                if name=='vision-model-ready':raise RuntimeError('first image timed out')
+                return '{"gpuLoaded":true,"passed":true,"gpuBytes":1}'
+            with self.assertRaises(RuntimeError):
+                start_verified_services(['docker','compose'],{'localLlmEnabled':True},run,Path(directory))
+            self.assertNotIn('container-start',calls)
 
     def test_diagnostics_reject_other_projects_public_ports_or_cloud_configuration(self):
         project='skincare-free-demo-12345678'

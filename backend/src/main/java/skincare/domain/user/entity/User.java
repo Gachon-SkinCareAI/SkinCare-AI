@@ -114,6 +114,19 @@ public class User extends BaseTimeEntity {
     public void acceptHealthConsent(String version) {healthConsentVersion=version;healthConsentedAt=LocalDateTime.now();}
     public void trainingConsent(boolean granted,String version) {trainingGranted=granted;trainingConsentVersion=version;trainingConsentedAt=LocalDateTime.now();}
 
+    // A device capability owns guest records; no email/social identity is fabricated.
+    @Column(name="guest_key_hash",length=64,unique=true) private String guestKeyHash;
+    @Column(name="guest_policy_version",length=40) private String guestPolicyVersion;
+    @Column(name="location_granted",nullable=false) private boolean locationGranted;
+    @Column(name="location_consent_version",length=40) private String locationConsentVersion;
+    @Column(name="location_consented_at") private LocalDateTime locationConsentedAt;
+    public void acceptGuest(String hash,String version) {guestKeyHash=hash;guestPolicyVersion=version;consentedAt=LocalDateTime.now();}
+    public void locationConsent(boolean granted,String version) {locationGranted=granted;locationConsentVersion=version;locationConsentedAt=LocalDateTime.now();}
+    public boolean hasLocationConsent() {return locationGranted&&skincare.service.ConsentPolicy.LOCATION_VERSION.equals(locationConsentVersion);}
+    public boolean activeGuest() {return provider==Provider.GUEST && status==UserStatus.ACTIVE && guestKeyHash!=null
+        && skincare.service.ConsentPolicy.GUEST_VERSION.equals(guestPolicyVersion) && consentedAt!=null
+        && getCreatedAt()!=null && getCreatedAt().plusYears(5).isAfter(LocalDateTime.now());}
+
     // 최종 서비스 접속 일시
     @Column(name = "last_access_at")
     private LocalDateTime lastAccessAt;
@@ -146,4 +159,6 @@ public class User extends BaseTimeEntity {
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
+    public void changePlan(PlanType plan){if(plan!=null)this.plan=plan;}
+    public void changeStatus(UserStatus status){if(status!=null){this.status=status;revokeTokens();}}
 }

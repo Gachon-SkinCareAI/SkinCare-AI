@@ -35,11 +35,11 @@ public class AiServiceClient {
     private final RestTemplate restTemplate; // AI 서버 전용 RestTemplate (snake_case JSON 변환)
 
     // AI 서버 기본 주소 (ex. http://127.0.0.1:8000)
-    @Value("${ai.server.url}")
+    @Value("${ai.server.url:${skincare.ai.base-url:http://127.0.0.1:8000}}")
     private String aiServerUrl;
 
     // AI 서버 Bearer 인증 토큰 (AI_SERVICE_TOKEN)
-    @Value("${ai.server.token:}")
+    @Value("${ai.server.token:${skincare.ai.token:}}")
     private String aiServiceToken;
 
     public AiServiceClient(@Qualifier("aiRestTemplate") RestTemplate restTemplate) {
@@ -52,8 +52,9 @@ public class AiServiceClient {
         body.add("file", toResource(imageFile, "wound_image.jpg"));
         body.add("body_part", bodyPart.name());
 
-        AiPredictResponseDto result = post("/predict", multipartEntity(body), AiPredictResponseDto.class,
+        AiProtocol.Prediction wire = post("/predict", multipartEntity(body), AiProtocol.Prediction.class,
                 ErrorCode.MODEL_INFERENCE_FAILED);
+        AiPredictResponseDto result = wire.toResult();
 
         if (result.label() == null) {
             log.error("[AI] predict 응답에 label 누락 (request_id: {})", result.requestId());
@@ -66,15 +67,18 @@ public class AiServiceClient {
 
     // 동적 문진 다음 질문 요청
     public AiQuestionResponseDto question(AiQuestionRequestDto request) {
-        return post("/question", jsonEntity(request), AiQuestionResponseDto.class, ErrorCode.QUESTION_ENGINE_FAILED);
+        AiProtocol.Question wire = post("/question", jsonEntity(AiProtocol.questionBody(request)),
+                AiProtocol.Question.class, ErrorCode.QUESTION_ENGINE_FAILED);
+        return wire.toResult();
     }
 
     // 분석 결과 + 문진 슬롯 기반 위험도 평가 요청 (응급 규칙 우선)
     public AiAnalyzeResponseDto analyze(AiAnalyzeRequestDto request) {
-        AiAnalyzeResponseDto result = post("/analyze", jsonEntity(request), AiAnalyzeResponseDto.class,
+        AiAnalyzeResponseDto result = post("/analyze", jsonEntity(AiProtocol.analyzeBody(request)), AiAnalyzeResponseDto.class,
                 ErrorCode.RISK_ENGINE_FAILED);
         if (result.level() == null) {
-            throw new CustomException(ErrorCode.RISK_ENGINE_FAILED, "위험도 평가 결과에 level이 누락되었습니다.");
+            return new AiAnalyzeResponseDto(skincare.domain.diagnosis.entity.ENUM.RiskLevel.UNKNOWN,
+                    result.ruleIds(), result.missingSlots(), result.scenarioSource());
         }
         log.info("[AI] 위험도 평가 완료 (level: {}, rule_ids: {})", result.level(), result.ruleIds());
         return result;
@@ -82,7 +86,7 @@ public class AiServiceClient {
 
     // 위험도에 맞는 공인 케어 카드 조회 요청
     public AiGuideResponseDto guide(AiGuideRequestDto request) {
-        return post("/guide", jsonEntity(request), AiGuideResponseDto.class, ErrorCode.GUIDE_RETRIEVAL_FAILED);
+        return post("/guide", jsonEntity(AiProtocol.guideBody(request)), AiGuideResponseDto.class, ErrorCode.GUIDE_RETRIEVAL_FAILED);
     }
 
     // 이전/이후 두 사진의 환부 면적 변화 참고값 요청
@@ -110,7 +114,8 @@ public class AiServiceClient {
 
     // 재학습 잡 등록 요청 (reason: manual, recall_drop, feedback_threshold)
     public AiJobResponseDto retrain(String reason) {
-        AiJobResponseDto result = post("/retrain", jsonEntity(Map.of("reason", reason)), AiJobResponseDto.class,
+        AiJobResponseDto result = post("/retrain?reason=" + org.springframework.web.util.UriUtils.encodeQueryParam(
+                reason, java.nio.charset.StandardCharsets.UTF_8), jsonEntity(Map.of()), AiJobResponseDto.class,
                 ErrorCode.TRAINING_FAILED);
         log.info("[AI] 재학습 잡 등록 (job_id: {}, status: {})", result.jobId(), result.status());
         return result;
@@ -156,10 +161,10 @@ public class AiServiceClient {
             throw new CustomException(errorCode);
         } catch (ResourceAccessException e) {
             // 연결 실패 또는 응답 시간 초과
-            log.error("[AI] AI 서버 연결 실패 또는 응답 시간 초과 ({} {}): {}", method, path, e.getMessage());
+            log.error("[AI] AI 서버 연결 실패 또는 응답 시간 초과 ({} {})", method, path);
             throw new CustomException(ErrorCode.AI_SERVER_TIMEOUT);
         } catch (Exception e) {
-            log.error("[AI] AI 서버 통신 중 예외 발생 ({} {}): {}", method, path, e.getMessage(), e);
+            log.error("[AI] AI 서버 통신 중 예외 발생 ({} {}): {}", method, path, e.getClass().getSimpleName());
             throw new CustomException(defaultError);
         }
     }

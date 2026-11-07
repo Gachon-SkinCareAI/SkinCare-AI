@@ -16,9 +16,31 @@
             uri /ready?
             header_up -Authorization
             header_up -Cookie
+            # Retry only the cloned readiness GET on connection/DNS failures.
+            lb_try_duration 5s
+            lb_try_interval 250ms
+            transport http {
+                dial_timeout 1s
+                response_header_timeout 12s
+            }
         }
         @private path /api/v1/* /swagger* /v3/api-docs* /actuator* /api/wc/policy-previews/*
         respond @private 404
+        # Only explicit public installation assets; no directory browsing or private bundle files.
+        @downloadCurrent {
+            method GET HEAD
+            host {$DISTRIBUTION_HOST:disabled.invalid}
+            path /download/ /download/index.html /download/SkinCare-AI.apk /download/install-qr.png /download/release.json
+        }
+        handle @downloadCurrent {
+            uri strip_prefix /download
+            root * /srv/distribution
+            header Cache-Control "no-store"
+            file_server
+        }
+        redir /download /download/ 302
+        @downloadOther path /download/*
+        respond @downloadOther "설치 링크를 준비 중입니다. 새 QR을 확인해 주세요." 404
         redir / /admin/ 302
         reverse_proxy backend:9800 {
             header_up -Forwarded

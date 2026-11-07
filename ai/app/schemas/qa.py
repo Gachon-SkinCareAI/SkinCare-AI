@@ -33,6 +33,7 @@ class QuestionRequest(SlotRequest):
 
 
 class AnalyzeRequest(SlotRequest):
+    user_text: str = ""
     session_id: str | None = None
     slots: dict = Field(default_factory=dict)
     vision: dict = Field(default_factory=dict)

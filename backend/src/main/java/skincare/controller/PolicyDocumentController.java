@@ -17,6 +17,8 @@ public class PolicyDocumentController {
     public ResponseEntity<String> terms() throws IOException {return document("2026-11-03","terms");}
     @GetMapping(value="/api/wc/policies/2026-11-03/privacy",produces="text/html;charset=UTF-8")
     public ResponseEntity<String> privacy() throws IOException {return document("2026-11-03","privacy");}
+    @GetMapping(value="/api/wc/policies/2026-11-04/{name:guest|training|location}",produces="text/html;charset=UTF-8")
+    public ResponseEntity<String> dataUse(@PathVariable String name) throws IOException {return document("2026-11-04",name);}
     private ResponseEntity<String> document(String version,String name) throws IOException {
         String html=new ClassPathResource("policies/"+version+"/"+name+".html").getContentAsString(StandardCharsets.UTF_8);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())

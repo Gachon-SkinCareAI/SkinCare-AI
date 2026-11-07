@@ -12,4 +12,5 @@ public class UserResponseDto {
     private String nickname;
     private String token;
     private boolean consentRequired;
+    public static UserResponseDto from(skincare.domain.user.entity.User u){return UserResponseDto.builder().userId(u.getUserId()).nickname(u.getNickname()).consentRequired(!u.hasRequiredConsents()).build();}
 }

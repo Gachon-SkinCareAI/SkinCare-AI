@@ -16,20 +16,20 @@ data/photos/*
 .idea/
 .DS_Store
 
-# Local secrets and runtime artifacts (keep shareable templates)
-.env.*
-!.env.example
-*.log
-*.db
-*.sqlite
-*.sqlite3
-*.keystore
-*.jks
-*.p12
-*.pfx
-*.key
-*.pem
-*.gguf
-*.safetensors
-*.ckpt
-ai/Ultralytics/
+# Server build outputs and local private deployment data
+backend/build/
+backend/.gradle/
+admin-web/dist/
+admin-web/test-results/
+admin-web/playwright-report/
+admin-web/.npm-cache/
+*.local.properties
+
+# Mobile generated projects and test output
+mobile/android/
+mobile/ios/
+mobile/.expo/
+mobile/dist*/
+mobile/test-results/
+
+backend/logs/

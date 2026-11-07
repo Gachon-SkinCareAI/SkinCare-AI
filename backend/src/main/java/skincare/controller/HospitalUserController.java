@@ -14,6 +14,7 @@ import skincare.service.HospitalQueryService;
 // 사용자용 의료기관(병원/약국) 검색 및 상세 조회 API 요청 처리 컨트롤러
 @Tag(name = "User - Hospital & Pharmacy", description = "사용자용 피부과/약국 검색 및 상세정보 API")
 @RestController
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="skincare.legacy.controllers-enabled",havingValue="true")
 @RequestMapping("/api/wc/hospitals")
 @RequiredArgsConstructor
 public class HospitalUserController {

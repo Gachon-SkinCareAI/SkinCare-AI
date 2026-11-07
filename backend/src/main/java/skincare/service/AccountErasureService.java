@@ -35,11 +35,14 @@ public class AccountErasureService {
         "DELETE FROM inquiries WHERE user_id=?",
         "DELETE FROM recoveries WHERE diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id=?)",
         "DELETE FROM diagnosis_metrics WHERE diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id=?)",
+        "DELETE FROM diagnosis_action_histories WHERE diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id=?)",
         "DELETE FROM diagnoses WHERE user_id=?",
         "DELETE FROM analysis_answers WHERE session_id IN (SELECT id FROM analysis_sessions WHERE user_id=?)",
         "DELETE FROM analysis_sessions WHERE user_id=?",
         "DELETE FROM consent_events WHERE user_id=?",
         "DELETE FROM user_refresh_tokens WHERE user_id=?",
+        "DELETE FROM refresh_tokens WHERE subject_id=? AND role='USER'",
+        "DELETE FROM user_change_histories WHERE user_id=?",
         "DELETE FROM user_settings WHERE user_id=?"
     };
 }

@@ -79,4 +79,5 @@ public class JwtTokenProvider {
         }
         return false;
     }
+public long getTokenValiditySeconds(){return tokenValidityInMilliseconds/1000L;}
 }

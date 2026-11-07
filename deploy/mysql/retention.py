@@ -4,7 +4,7 @@ from pathlib import Path
 import hashlib, json, calendar
 
 # Operational datasets and model-training files are intentionally outside this scope.
-PERSONAL_TIMES = {'users':'created_at','analysis_sessions':'created_at','analysis_answers':'created_at',
+PERSONAL_TIMES = {'refresh_tokens':'created_at','user_change_histories':'created_at','diagnosis_action_histories':'created_at','users':'created_at','analysis_sessions':'created_at','analysis_answers':'created_at',
     'inquiries':'created_at','inquiry_answers':'created_at','diagnoses':'created_at','recoveries':'created_at',
     'consent_events':'occurred_at','user_settings':'created_at','user_refresh_tokens':'created_at',
     'password_reset_tokens':'created_at','email_verification_tokens':'created_at',
@@ -12,8 +12,8 @@ PERSONAL_TIMES = {'users':'created_at','analysis_sessions':'created_at','analysi
 OWNED = [('inquiry_answers','inquiry_id IN (SELECT inquiry_id FROM inquiries WHERE user_id IN ({ids}))'),
     ('inquiries','user_id IN ({ids})'),('recoveries','diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id IN ({ids}))'),
     ('diagnosis_metrics','diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id IN ({ids}))'),
-    ('diagnoses','user_id IN ({ids})'),('analysis_answers','session_id IN (SELECT id FROM analysis_sessions WHERE user_id IN ({ids}))'),
-    ('analysis_sessions','user_id IN ({ids})'),('consent_events','user_id IN ({ids})'),('user_refresh_tokens','user_id IN ({ids})'),('user_settings','user_id IN ({ids})')]
+    ('diagnosis_action_histories','diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id IN ({ids}))'),('diagnoses','user_id IN ({ids})'),('analysis_answers','session_id IN (SELECT id FROM analysis_sessions WHERE user_id IN ({ids}))'),
+    ('analysis_sessions','user_id IN ({ids})'),('consent_events','user_id IN ({ids})'),('user_refresh_tokens','user_id IN ({ids})'),('user_settings','user_id IN ({ids})'),('refresh_tokens',"subject_id IN ({ids}) AND role='USER'"),('user_change_histories','user_id IN ({ids})')]
 
 def unexpired_receipts(values,now):
     """Use collection-date anniversaries, including leap-day clamping, like MySQL DATE_ADD."""
@@ -41,9 +41,16 @@ def expire(instance,name,dry_run=False):
     counts={table:int(instance.sql('SELECT COUNT(*) FROM '+table+' WHERE '+due(column)+';',name))
             for table,column in PERSONAL_TIMES.items() if table in tables}
     if dry_run:return counts
-    sql=['START TRANSACTION;','SELECT user_id FROM users ORDER BY user_id FOR UPDATE;',
+    # Lock only expired accounts. READ COMMITTED releases locks on nonmatching
+    # rows during scans, so a live analysis does not block an empty expiry pass.
+    # A locking scan can wait on a live account before evaluating its age, even
+    # at READ COMMITTED. Build the expired-ID set with a nonlocking read first;
+    # lock only those primary keys, in order, before erasing their owned rows.
+    sql=['SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;',
+         'SET SESSION innodb_lock_wait_timeout=5;', 'START TRANSACTION;',
          'CREATE TEMPORARY TABLE retention_users (id VARCHAR(36) PRIMARY KEY) ENGINE=InnoDB;',
          'INSERT INTO retention_users SELECT user_id FROM users WHERE '+due('created_at')+';']
+    sql.append('SELECT u.user_id FROM retention_users r STRAIGHT_JOIN users u ON u.user_id=r.id ORDER BY u.user_id FOR UPDATE;')
     if 'account_erasure_receipts' in tables:
         sql.append('INSERT IGNORE INTO account_erasure_receipts(id,user_id,requested_at) SELECT UUID(),id,CURRENT_TIMESTAMP(6) FROM retention_users;')
     for token in ['password_reset_tokens','email_verification_tokens']:
@@ -60,6 +67,8 @@ def expire(instance,name,dry_run=False):
     if 'inquiries' in tables:
         sql += ['DELETE FROM inquiry_answers WHERE inquiry_id IN (SELECT inquiry_id FROM inquiries WHERE '+due('created_at')+');',
                 'DELETE FROM inquiries WHERE '+due('created_at')+';']
+    if 'diagnosis_action_histories' in tables:
+        sql.append('DELETE FROM diagnosis_action_histories WHERE diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE '+due('created_at')+');')
     if 'diagnoses' in tables:
         sql += ['UPDATE inquiries SET diagnosis_id=NULL WHERE diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE '+due('created_at')+');',
                 'DELETE FROM recoveries WHERE diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE '+due('created_at')+');',

@@ -50,20 +50,52 @@ public class AnalysisService {
 
     @Transactional
     public Map<String, Object> create(String user, String requestId, String parentId, AnalysisImage image) {
+        return create(user, requestId, parentId, image, null);
+    }
+
+    private java.time.LocalDate captureDate(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            if (!value.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")) throw new IllegalArgumentException();
+            var date = java.time.LocalDate.parse(value);
+            if (date.getYear() < 1900 || date.isAfter(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul"))))
+                throw new IllegalArgumentException();
+            return date;
+        } catch (java.time.DateTimeException | IllegalArgumentException e) {
+            throw bad("촬영일은 1900년부터 오늘까지의 실제 날짜(YYYY-MM-DD)로 입력해 주세요.");
+        }
+    }
+    private String symptom(String value, String previous) {
+        if (value == null) return previous; // Older clients must not erase newly recorded metadata.
+        if ("UNRECORDED".equals(value)) return null;
+        if (!Set.of("NONE", "PRESENT", "UNKNOWN").contains(value)) throw bad("증상은 없음, 있음, 잘 모르겠음 중에서 선택해 주세요.");
+        return value;
+    }
+
+    @Transactional
+    public Map<String, Object> create(String user, String requestId, String parentId, AnalysisImage image, String capturedOn) {
         uuid(requestId);
+        var date = captureDate(capturedOn);
         // Serialize per-account creation, including idempotent retries, at the database boundary.
-        users.lockForAnalysisCreation(user).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        var owner = users.lockForAnalysisCreation(user).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         String caseId = parentId == null || parentId.isBlank() ? null : owned(user, parentId, false).getCaseId();
         var existing = sessions.findByUserIdAndClientRequestId(user, requestId);
         if (existing.isPresent()) {
             var session = existing.get();
-            if (!Arrays.equals(session.getImage(), image.bytes()) || (caseId == null ? !session.getCaseId().equals(session.getId()) : !caseId.equals(session.getCaseId())))
+            if (!Arrays.equals(session.getImage(), image.bytes()) || !Objects.equals(date, session.getCapturedOn())
+                    || (caseId == null ? !session.getCaseId().equals(session.getId()) : !caseId.equals(session.getCaseId())))
                 throw conflict();
             return view(session, true);
         }
-        var session = sessions.saveAndFlush(new AnalysisSession(user, requestId, caseId, image.bytes(), image.contentType()));
+        if(owner.getProvider()==skincare.domain.user.entity.ENUM.Provider.GUEST
+            && sessions.countByUserIdAndCreatedAtAfter(user,java.time.LocalDateTime.now().minusDays(1))>=20)
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,"비회원 분석은 하루 20회까지 이용할 수 있습니다.");
+        var session = new AnalysisSession(user, requestId, caseId, image.bytes(), image.contentType());
+        session.recordCapture(date);
+        session.snapshotDataUse(owner);
+        session = sessions.saveAndFlush(session);
         advance(session, null);
-        sessions.saveAndFlush(session);
+        session = sessions.saveAndFlush(session);
         return view(session, true);
     }
 
@@ -79,6 +111,7 @@ public class AnalysisService {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", s.getId()); item.put("caseId", s.getCaseId()); item.put("status", s.getStatus());
             item.put("version", s.getVersion()); item.put("turn", s.getTurn()); item.put("createdAt", s.getCreatedAt());
+            item.put("capturedOn", s.getCapturedOn());
             item.put("updatedAt", s.getUpdatedAt()); item.put("errorCode", s.getErrorCode());
             item.put("level", read(s.getResultJson()).get("level"));
             item.put("imagePath", "/api/wc/analyses/" + s.getId() + "/image"); return item;
@@ -155,11 +188,18 @@ public class AnalysisService {
         String note = body.note() == null ? "" : body.note().strip();
         if (note.length() > 2000) throw bad("경과 메모는 2000자 이하여야 합니다.");
         var session = owned(user, id, true);
+        var capturedOn = body.capturedOn() == null ? session.getCapturedOn() : captureDate(body.capturedOn());
+        String swelling = symptom(body.swelling(), session.getSwelling());
+        String exudate = symptom(body.exudate(), session.getExudate());
         // A response-lost retry is safe only while the current saved values still match.
         if (Objects.equals(pain, session.getPainScore())
+                && Objects.equals(capturedOn, session.getCapturedOn()) && Objects.equals(swelling, session.getSwelling())
+                && Objects.equals(exudate, session.getExudate())
                 && note.equals(Objects.requireNonNullElse(session.getProgressNote(), ""))) return view(session, true);
         version(session, body.expectedVersion());
         session.recordProgress(pain, note);
+        session.recordCapture(capturedOn);
+        session.recordSymptoms(swelling, exudate);
         sessions.saveAndFlush(session);
         return view(session, true);
     }
@@ -256,8 +296,14 @@ public class AnalysisService {
         result.put("createdAt", session.getCreatedAt()); result.put("updatedAt", session.getUpdatedAt());
         result.put("imagePath", "/api/wc/analyses/" + session.getId() + "/image");
         result.put("errorCode", session.getErrorCode());
+        result.put("sourceKind",session.getSourceKind());
+        result.put("trainingEligible",session.isTrainingEligible());
+        result.put("capturedOn", session.getCapturedOn());
+        result.put("trainingReviewStatus",session.getTrainingReviewStatus());
         var progress = new LinkedHashMap<String, Object>();
         progress.put("painScore", session.getPainScore());
+        progress.put("swelling", session.getSwelling());
+        progress.put("exudate", session.getExudate());
         progress.put("note", Objects.requireNonNullElse(session.getProgressNote(), ""));
         result.put("progress", progress);
         var evaluation = read(session.getResultJson());

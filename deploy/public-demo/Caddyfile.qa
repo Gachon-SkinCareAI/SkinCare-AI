@@ -10,6 +10,13 @@
             uri /ready
             header_up -Authorization
             header_up -Cookie
+            # Retry only the cloned readiness GET on connection/DNS failures.
+            lb_try_duration 5s
+            lb_try_interval 250ms
+            transport http {
+                dial_timeout 1s
+                response_header_timeout 12s
+            }
         }
         @private path /api/v1/* /swagger* /v3/api-docs* /actuator* /api/wc/policy-previews/*
         respond @private 404

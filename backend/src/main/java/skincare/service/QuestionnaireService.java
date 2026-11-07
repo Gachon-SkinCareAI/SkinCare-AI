@@ -73,7 +73,9 @@ public class QuestionnaireService {
         WoundType label = diagnosis.getAiLabel() != null ? diagnosis.getAiLabel() : WoundType.UNKNOWN;
         AiQuestionResponseDto next = aiServiceClient.question(new AiQuestionRequestDto(
                 diagnosis.getAiRequestId(), label.getCode(), slots,
-                hasAnswer ? dto.getQuestionId() : null, hasAnswer ? dto.getAnswer().trim() : null, turn));
+                hasAnswer ? dto.getQuestionId() : null, hasAnswer
+                        ? Objects.toString(castMap(pending.get("option_values")).get(dto.getAnswer().trim()),
+                                dto.getAnswer().trim()) : null, turn));
         if (next.slots() != null) {
             slots.putAll(next.slots());
         }
@@ -93,6 +95,7 @@ public class QuestionnaireService {
         question.put("question_id", next.questionId());
         question.put("question", next.question());
         question.put("options", next.options());
+        question.put("option_values", next.optionValues());
         question.put("turn", turn + 1);
         question.put("max_turn", MAX_TURN);
         state.put("pending_question", question);

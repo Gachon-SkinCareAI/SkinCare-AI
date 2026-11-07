@@ -208,7 +208,9 @@ class AnalysisFlowTests extends BackendApplicationTests {
         var first=create(UUID.randomUUID().toString(),null);
         assertEquals("", ((Map<?,?>)first.get("progress")).get("note")); assertNull(((Map<?,?>)first.get("progress")).get("painScore"));
         var saved=progress(first,owner,4,"  사용자 경과 기록  ",200);
-        assertEquals(Map.of("painScore",4,"note","사용자 경과 기록"),saved.get("progress"));
+        assertEquals(4,((Map<?,?>)saved.get("progress")).get("painScore"));
+        assertEquals("사용자 경과 기록",((Map<?,?>)saved.get("progress")).get("note"));
+        assertNull(((Map<?,?>)saved.get("progress")).get("swelling"));
         assertEquals(first.get("question"),saved.get("question"));assertEquals(first.get("vision"),saved.get("vision"));
         assertEquals(first.get("turn"),saved.get("turn"));assertEquals(first.get("status"),saved.get("status"));
         assertEquals(saved.get("version"),progress(first,owner,4,"사용자 경과 기록",200).get("version"));
@@ -226,6 +228,53 @@ class AnalysisFlowTests extends BackendApplicationTests {
         mvc.perform(put("/api/wc/analyses/"+first.get("id")+"/progress").header("Authorization",owner)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"painScore\":4}")).andExpect(status().isBadRequest());
         assertEquals(((Number)first.get("version")).longValue(),sessions.findById((String)first.get("id")).orElseThrow().getVersion());
+    }
+
+    @Test void captureDateAndSymptomsRoundTripWithoutChangingCollectionOrAi() throws Exception {
+        String requestId=UUID.randomUUID().toString();
+        var first=data(mvc.perform(multipart("/api/wc/analyses").file(new MockMultipartFile("file","x.png","image/png",photo))
+            .param("clientRequestId",requestId).param("capturedOn","2025-02-28").header("Authorization",owner))
+            .andExpect(status().isCreated()).andReturn());
+        assertEquals("2025-02-28",first.get("capturedOn"));
+        var body=Map.of("expectedVersion",first.get("version"),"painScore",3,"note","증상 기록","capturedOn","2025-03-01","swelling","PRESENT","exudate","UNKNOWN");
+        String url="/api/wc/analyses/"+first.get("id");
+        var saved=data(mvc.perform(put(url+"/progress").header("Authorization",owner).contentType(MediaType.APPLICATION_JSON)
+            .content(json.writeValueAsString(body))).andExpect(status().isOk()).andReturn());
+        assertEquals("2025-03-01",saved.get("capturedOn"));assertEquals(first.get("createdAt"),saved.get("createdAt"));
+        assertEquals(first.get("question"),saved.get("question"));assertEquals("PRESENT",((Map<?,?>)saved.get("progress")).get("swelling"));
+        assertEquals("UNKNOWN",((Map<?,?>)saved.get("progress")).get("exudate"));
+        var replay=data(mvc.perform(put(url+"/progress").header("Authorization",owner).contentType(MediaType.APPLICATION_JSON)
+            .content(json.writeValueAsString(body))).andExpect(status().isOk()).andReturn());assertEquals(saved.get("version"),replay.get("version"));
+        var oldClient=progress(saved,owner,4,"older client",200);assertEquals("2025-03-01",oldClient.get("capturedOn"));
+        assertEquals("PRESENT",((Map<?,?>)oldClient.get("progress")).get("swelling"));
+        var loaded=data(mvc.perform(get(url).header("Authorization",owner)).andExpect(status().isOk()).andReturn());
+        assertEquals(oldClient.get("progress"),loaded.get("progress"));
+        var listed=json.readValue(mvc.perform(get("/api/wc/analyses").header("Authorization",owner)).andReturn().getResponse().getContentAsString(),List.class);
+        assertEquals("2025-03-01",((Map<?,?>)listed.get(0)).get("capturedOn"));
+        var compare=data(mvc.perform(get(url+"/comparison").header("Authorization",owner)).andReturn());
+        assertEquals(loaded.get("progress"),((Map<?,?>)compare.get("current")).get("progress"));
+        verify(ai,times(1)).predict(any(),anyString());verify(ai,times(1)).question(anyMap());
+    }
+
+    @Test void captureValidationReplayAndSymptomConflicts() throws Exception {
+        for(String date:List.of("2025-02-29","2099-01-01","0001-01-01","2025-2-1"))
+            mvc.perform(multipart("/api/wc/analyses").file(new MockMultipartFile("file","x.png","image/png",photo))
+                .param("clientRequestId",UUID.randomUUID().toString()).param("capturedOn",date).header("Authorization",owner))
+                .andExpect(status().isBadRequest());
+        String requestId=UUID.randomUUID().toString();var first=create(requestId,null);assertNull(first.get("capturedOn"));
+        mvc.perform(multipart("/api/wc/analyses").file(new MockMultipartFile("file","x.png","image/png",photo))
+            .param("clientRequestId",requestId).param("capturedOn","2025-01-01").header("Authorization",owner)).andExpect(status().isConflict());
+        String url="/api/wc/analyses/"+first.get("id")+"/progress";
+        for(var body:List.of(Map.of("capturedOn","2025-02-30"),Map.of("swelling","MILD"),Map.of("exudate","YES"))) {
+            var request=new LinkedHashMap<String,Object>(body);request.put("expectedVersion",first.get("version"));
+            mvc.perform(put(url).header("Authorization",owner).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(request))).andExpect(status().isBadRequest());
+        }
+        var body=Map.of("expectedVersion",first.get("version"),"swelling","PRESENT");
+        mvc.perform(put(url).header("Authorization",other).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body))).andExpect(status().isNotFound());
+        var saved=data(mvc.perform(put(url).header("Authorization",owner).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body))).andExpect(status().isOk()).andReturn());
+        mvc.perform(put(url).header("Authorization",owner).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("expectedVersion",first.get("version"),"swelling","NONE")))).andExpect(status().isConflict());
+        var cleared=data(mvc.perform(put(url).header("Authorization",owner).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("expectedVersion",saved.get("version"),"swelling","UNRECORDED")))).andExpect(status().isOk()).andReturn());
+        assertNull(((Map<?,?>)cleared.get("progress")).get("swelling"));
     }
     @Test void comparisonScopesCaseAndOwnerAndUsesEarliestRemainingRecordAfterDeletion() throws Exception {
         var first=create(UUID.randomUUID().toString(),null);

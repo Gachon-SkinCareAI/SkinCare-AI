@@ -6,7 +6,9 @@ import skincare.exception.ErrorCode;
 public final class ConsentPolicy {
     private ConsentPolicy() {}
     public static final String HEALTH_VERSION = "2026-11-03";
-    public static final String TRAINING_VERSION = "2026-11-01";
+    public static final String TRAINING_VERSION = "2026-11-04";
+    public static final String GUEST_VERSION = "2026-11-04";
+    public static final String LOCATION_VERSION = "2026-11-04";
     public static final String VERSION = "2026-11-03";
 
     public static void validate(boolean terms, boolean privacy, String termsVersion, String privacyVersion) {

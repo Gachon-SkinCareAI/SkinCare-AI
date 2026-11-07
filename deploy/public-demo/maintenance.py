@@ -15,11 +15,45 @@ from retention import snapshots
 os.umask(0o077)
 DB = 'skincare_dev'
 state = {'ok': False, 'last': 0.0}
+ready_event = threading.Event()
+
+
+def set_ready(ready):
+    state.update(ok=ready, last=time.monotonic() if ready else 0.0)
+    if ready:
+        ready_event.set()
+    else:
+        ready_event.clear()
+
+
+def run_maintenance_cycle(db, pause=time.sleep):
+    set_ready(False)
+    # Deadlocks and lock timeouts roll back on connection close. Retry the whole
+    # idempotent cycle, keeping the readiness HTTP server alive and fail-closed.
+    for attempt in range(3):
+        try:
+            result = db.maintain(DB)
+            daily_backup(db)
+            set_ready(True)
+            return result
+        except RuntimeError as error:
+            code = re.search(r'MySQL command failed \(error (1205|1213)\)', str(error))
+            if not code:
+                raise
+            print(json.dumps({'maintenance': 'retrying', 'mysqlErrorCode': int(code.group(1)),
+                              'attempt': attempt + 1}), flush=True)
+            if attempt < 2:
+                pause(1)
+    return None
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
     def do_GET(self):
+        if self.path == '/ready':
+            # Brief scheduled work may finish while this safe GET waits. Never
+            # return a cached success while retention/backup is incomplete.
+            ready_event.wait(timeout=10)
         ready = self.path == '/ready' and state['ok'] and time.monotonic() - state['last'] < 120
         body = json.dumps({'status': 'ok' if ready else 'unavailable'}).encode()
         self.send_response(200 if ready else 503)
@@ -60,16 +94,13 @@ def main():
         db.migrate(DB, '/opt/migrations')
         while True:
             # Do not serve a public request while expiry/backup replacement is underway.
-            state['ok'] = False
-            phase = 'retention'
-            result = db.maintain(DB)
-            phase = 'daily-backup'
-            daily_backup(db)
-            state.update(ok=True, last=time.monotonic())
-            print(json.dumps({'maintenance': 'ok', **result}), flush=True)
-            time.sleep(60)
+            phase = 'maintenance-cycle'
+            result = run_maintenance_cycle(db)
+            if result is not None:
+                print(json.dumps({'maintenance': 'ok', **result}), flush=True)
+            time.sleep(60 if result is not None else 5)
     except Exception as error:
-        state['ok'] = False
+        set_ready(False)
         # Only structural diagnostic fields; never SQL, credentials or raw exceptions.
         code = re.search(r'MySQL command failed \(error (\d+)\)', str(error))
         print(json.dumps({'maintenance': 'failed', 'phase': phase,

@@ -29,4 +29,7 @@ public class InquiryAnswer extends BaseTimeEntity {
     // 관리자 답변 본문 내용
     @Column(nullable = false, columnDefinition = "TEXT")
     private String answerContent;
+public String getAnsweredBy(){return adminId;}
+ public void updateAnswerContent(String content,String admin){answerContent=content;adminId=admin;}
+
 }

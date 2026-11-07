@@ -34,4 +34,8 @@ public class Recovery extends BaseTimeEntity {
     // 자가 자각 통증 점수 (1 ~ 10)
     @Column(name = "pain_score")
     private Integer painScore;
+@Column(name="area_ratio_delta") private Double areaRatioDelta;
+ @Column(name="trend_hint",length=30) private String trendHint;
+ @Column(name="tracking_note",columnDefinition="TEXT") private String trackingNote;
+
 }

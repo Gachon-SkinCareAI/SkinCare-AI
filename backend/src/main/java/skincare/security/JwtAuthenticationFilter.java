@@ -46,10 +46,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (id != null && version != null && "USER".equals(role)) {
                 var user = userRepository.findById(id).orElse(null);
                 if (user != null && user.getProvider() != skincare.domain.user.entity.ENUM.Provider.LOCAL
+                        && user.getProvider() != skincare.domain.user.entity.ENUM.Provider.GUEST
                         && user.getStatus() == UserStatus.ACTIVE
                         && version.equals(user.currentTokenVersion())) {
                     authority = user.hasRequiredConsents() ? "ROLE_USER" : "ROLE_ONBOARDING";
                 }
+            } else if (id != null && version != null && "GUEST".equals(role)) {
+                var guest=userRepository.findById(id).orElse(null);
+                if(guest!=null&&guest.activeGuest()&&version.equals(guest.currentTokenVersion()))authority="ROLE_GUEST";
             } else if (id != null && version != null && "ADMIN".equals(role)) {
                 var admin = adminRepository.findById(id).orElse(null);
                 if (admin != null && version.equals(admin.currentTokenVersion())) authority = "ROLE_ADMIN";
@@ -63,4 +67,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         chain.doFilter(request, response);
     }
+public static final String AUTH_ERROR_ATTRIBUTE="skincare.authError";
 }

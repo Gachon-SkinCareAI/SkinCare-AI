@@ -6,6 +6,14 @@ from qa.bank_loader import load_bank
 from qa.rules_engine import load_rules
 from qa.orchestrator import handle_turn
 from qa.llm_client import complete, configured, model_name, provider, prepare_local
+from qa import llm_client
+
+
+def preload_options():
+    # Older immutable local images predate the public runtime patch. Preserve
+    # their options when this same probe is used by a local recovery launcher.
+    options = getattr(llm_client, 'ollama_options', None)
+    return options() if options is not None else {'num_ctx': 4096}
 
 
 def main():
@@ -20,6 +28,14 @@ def main():
     model=next(m for m in models if m['name']==model_name())
     assert model['digest']=='359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7', 'Local model digest changed'
     start=time.monotonic()
+    # A cold WSL/GPU load may outlast a normal questionnaire request. Load the
+    # cached model explicitly first; only this synthetic startup step gets the
+    # larger budget. Production /question timeouts remain unchanged.
+    options=preload_options()
+    print(json.dumps({'event':'smoke_loading','modelOptions':options}),flush=True)
+    preload=fetch('/api/generate',{'model':model_name(),'prompt':'','stream':False,
+        'keep_alive':-1,'think':False,'options':options},timeout=600)
+    if preload.get('done') is not True:raise RuntimeError('Local model preload did not finish')
     prepare_local()
     warm_seconds=round(time.monotonic()-start,2)
     loaded=fetch('/api/ps')['models']
@@ -57,7 +73,8 @@ def main():
     running=next(m for m in loaded if m['name']==model_name())
     assert running.get('size_vram',0)>0, 'Expected local NVIDIA GPU acceleration'
     print(json.dumps({'passed':True,'model':model_name(),'digest':model['digest'],'modelBytes':model['size'],
-        'warmupSeconds':warm_seconds,'gpuBytes':running['size_vram'],'turns':measurements,'questionIds':seen,
+        'warmupSeconds':warm_seconds,'gpuBytes':running['size_vram'],'modelOptions':options,
+        'turns':measurements,'questionIds':seen,
         'emergencyBypassedLlm':True,'clinicalValidation':False,'realPatientDataUsed':False}))
 
 if __name__=='__main__':main()

@@ -78,6 +78,10 @@ public class UserController {
         userService.changePassword(id,body);return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/users/me/consents/location") public ResponseEntity<Void> location(@AuthenticationPrincipal String id,
+            @RequestBody skincare.service.AccountConsentService.LocationRequest body) {
+        consents.location(id,body);return ResponseEntity.noContent().build();
+    }
     // 사용자 프로필 변경
     @PutMapping("/users/me")
     public ResponseEntity<ApiResponseDto<UserResponseDto>> updateProfile(

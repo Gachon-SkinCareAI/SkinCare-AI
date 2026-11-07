@@ -1,5 +1,11 @@
 # Gachon SkinCare AI · Admin Web
 
+> 공개 서버의 실제 관리자 화면은 `operational/`이며 백엔드 빌드 시 `/admin/`에 포함됩니다.
+> 아래 React 실행 방법은 디자인 미리보기용입니다. 실제 문의·기관·AI 상태·검수 관리는
+> 공개 서버의 `/admin/`을 사용하세요. 모듈별 구조는 `operational/README.md`를 참고하세요.
+> React도 `constants/navigation.ts`, `hooks/usePreviewStore.ts`, `layouts/Sidebar.tsx`,
+> `components/GlobalSearch.tsx`로 라우팅·저장소·사이드바·전체 검색을 분리했습니다.
+
 공유된 관리자 웹 와이어프레임을 기준으로 만든 한국어 React + TypeScript + Vite 프로젝트입니다. 남색 사이드바, 흰색 카드, 위험도 배지와 6개 관리 화면으로 구성했습니다.
 
 ## 내 컴퓨터에서 실행하기

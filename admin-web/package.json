@@ -12,7 +12,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:operational": "playwright test --config playwright.operational.config.ts"
   },
   "dependencies": {
     "lucide-react": "1.59.0",

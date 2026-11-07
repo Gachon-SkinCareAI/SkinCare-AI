@@ -150,9 +150,9 @@ class Instance:
         tables=set(self.sql('SHOW TABLES;',name).splitlines());statements=['START TRANSACTION;']
         pairs=[('inquiry_answers','inquiry_id IN (SELECT inquiry_id FROM inquiries WHERE user_id={})'),
             ('inquiries','user_id={}'),('recoveries','diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id={})'),
-            ('diagnosis_metrics','diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id={})'),('diagnoses','user_id={}'),
+            ('diagnosis_metrics','diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id={})'),('diagnosis_action_histories','diagnosis_id IN (SELECT diagnosis_id FROM diagnoses WHERE user_id={})'),('diagnoses','user_id={}'),
             ('analysis_answers','session_id IN (SELECT id FROM analysis_sessions WHERE user_id={})'),('analysis_sessions','user_id={}'),
-            ('consent_events','user_id={}'),('user_refresh_tokens','user_id={}'),('user_settings','user_id={}'),('users','user_id={}')]
+            ('consent_events','user_id={}'),('user_refresh_tokens','user_id={}'),('user_settings','user_id={}'),('refresh_tokens',"subject_id={} AND role='USER'"),('user_change_histories','user_id={}'),('users','user_id={}')]
         for user in users:
             key="CONVERT(0x"+user.encode('utf-8').hex()+" USING utf8mb4)"
             if 'users' in tables:
@@ -165,6 +165,21 @@ class Instance:
                 statements.append('INSERT IGNORE INTO account_erasure_receipts(id,user_id,requested_at) VALUES (UUID(),'+key+',CURRENT_TIMESTAMP);')
         statements.append('COMMIT;');self.sql('\n'.join(statements),name)
         return len(users)
+    def suspend_restored_training(self,name):
+        # A snapshot can predate a withdrawal. Until fresh opt-in, restored data must not be eligible.
+        identifier(name)
+        if not name.startswith('skincare_restore_'):raise RuntimeError('Training reset requires an isolated restore target.')
+        columns=set(tuple(row.split('\t')) for row in self.sql(
+            "SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='"+name+"';").splitlines())
+        statements=['START TRANSACTION;']
+        if ('users','training_granted') in columns:
+            statements.append('UPDATE users SET training_granted=false;')
+        if ('analysis_sessions','training_eligible') in columns:
+            statements.append("UPDATE analysis_sessions SET training_eligible=false,training_review_status='RECONSENT_REQUIRED' WHERE training_eligible=true;")
+        if ('diagnoses','training_use') in columns:
+            statements.append('UPDATE diagnoses SET training_use=false;')
+        statements.append('COMMIT;');self.sql('\n'.join(statements),name)
+
     def export_record_erasures(self,name):
         identifier(name)
         # Source must still exist: a stale file alone must never authorize a restore.
@@ -231,6 +246,7 @@ class Instance:
             with path.open('rb') as source:
                 result=hidden(self.client()+['--binary-mode','--default-character-set=utf8mb4',name],stdin=source,stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=self.env())
             if result.returncode:raise RuntimeError('Restore failed. Partial target retained for review; source DB untouched.')
+            self.suspend_restored_training(name)
             self.apply_erasures(name,erased)
             self.apply_record_erasures(name,records)
             from retention import expire

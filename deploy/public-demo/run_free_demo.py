@@ -25,7 +25,9 @@ class StopRequested(Exception):
 class AlreadyRunning(RuntimeError):
     pass
 
-def compose_command(bundle,manifest):
+def compose_command(bundle,manifest,*,allow_public_web=False):
+    if (bundle/'public-web-active.json').exists() and not allow_public_web:
+        raise RuntimeError('Stop the public phone demo with STOP-PUBLIC-PHONE.cmd before changing services.')
     if manifest.get('deploymentMode')!='temporary-tunnel' or not re.fullmatch(r'skincare-free-demo-[0-9a-f]{8}',manifest.get('project','')):
         raise RuntimeError('Refusing to operate on a different deployment bundle.')
     command=['docker','compose','--env-file',str(bundle/'.env'),'-p',manifest['project'],
@@ -40,6 +42,15 @@ def compose_command(bundle,manifest):
         if not overlay.is_file() or checksum(overlay)!=manifest['sources'].get('compose.vision-cache.yaml'):
             raise RuntimeError('Vision cache overlay checksum mismatch.')
         command += ['-f',str(overlay)]
+    if manifest.get('distributionEnabled'):
+        overlay=bundle/'compose.distribution.yaml'
+        if not overlay.is_file() or checksum(overlay)!=manifest['sources'].get('compose.distribution.yaml'):
+            raise RuntimeError('APK distribution overlay checksum mismatch.')
+        command += ['-f',str(overlay)]
+    active = bundle / 'startup-stability.json'
+    if active.exists():
+        from startup_stability_release import active_overlay
+        command += ['-f', str(active_overlay(bundle, manifest))]
     return command
 
 def checksum(path):
@@ -127,12 +138,17 @@ def start_verified_services(compose,manifest,run,out):
     if manifest.get('localLlmEnabled'):
         # Keep edge/backend closed until synthetic questionnaire requests succeed.
         # Every restart repeats this because GPU state is lost when containers stop.
-        run(compose+['up','-d','--wait','--wait-timeout','300','llm','ai'],'local-model-start',420)
-        smoke=run(compose+['exec','-T','ai','python','-B','-c',
-            (HERE/'local_llm_smoke.py').read_text(encoding='utf-8')],'local-model-ready',480)
-        result=json.loads(smoke.strip().splitlines()[-1])
-        if result.get('passed') is not True:raise RuntimeError('Local LLM startup verification failed')
+        run(compose+['up','-d','--wait','--wait-timeout','600','llm','ai'],'local-model-start',660)
+        from prepare_local_model import prepare_local_model
+        result=prepare_local_model(compose,run,HERE/'local_llm_smoke.py')
         json_write(out/'local-llm-startup-check.json',result)
+    if not manifest.get('localLlmEnabled'):
+        run(compose+['up','-d','--wait','--wait-timeout','600','ai'],'vision-model-start',660)
+    smoke=run(compose+['exec','-T','ai','python','-B','-c',
+        (HERE/'vision_startup_probe.py').read_text(encoding='utf-8')],'vision-model-ready',120)
+    vision=json.loads(smoke.strip().splitlines()[-1])
+    if vision.get('passed') is not True:raise RuntimeError('Vision startup verification failed')
+    json_write(out/'vision-startup-check.json',vision)
     run(compose+['up','-d','--wait','--wait-timeout','300'],'container-start',420)
     return result
 
@@ -272,6 +288,23 @@ def main():
             def record_endpoints(report):
                 json_write(out/'public-endpoint-checks.json',{'url':url,'updatedAt':time.time(),**report})
             checks=verify_public_endpoints(get,check_stop,record_endpoints)
+            if manifest.get('guestRelease'):
+                for public in (False, True):
+                    code,body=get('/api/wc/auth/guest/policy',public)
+                    policy=json.loads(body) if code==200 else {}
+                    if policy.get('version')!='2026-11-04' or policy.get('trainingExportEnabled') is not False:
+                        raise RuntimeError('Guest release API is not available on both routes')
+                    for name in ('guest','training','location'):
+                        code,_=get('/api/wc/policies/2026-11-04/'+name,public)
+                        if code!=200:raise RuntimeError('Guest release policy document is unavailable')
+                    code,body=get('/admin/',public)
+                    if code!=200 or b'id="login-form"' not in body:
+                        raise RuntimeError('Operational administrator login page is unavailable')
+                checks['guestReleaseVerified']=manifest['guestRelease']
+                # Keep the readiness attempt history from verify_public_endpoints.
+                report=json.loads((out/'public-endpoint-checks.json').read_text(encoding='utf-8'))
+                report['guestReleaseVerified']=manifest['guestRelease']
+                json_write(out/'public-endpoint-checks.json',report)
             run(compose+['exec','-T','ai','python','/opt/demo/probe.py','ai'],'baseline-model-health',30)
             callbacks={provider:url+'/login/oauth2/code/'+provider for provider in ('google','kakao','naver')}
             json_write(out/'public-connection.json',{'active':True,'origin':url,'callbacks':callbacks,'nativeCallback':'skincareai://oauth/callback',

@@ -19,7 +19,7 @@ import java.util.Set;
 public class MedicalApiClient {
 
     // 공공데이터포털 OpenAPI 서비스 인증키
-    @Value("${emergency.openapi.service-key}")
+    @Value("${emergency.openapi.service-key:}")
     private String emergencyServiceKey;
 
     // 최신 E-Gen 응급의료기관 목록 조회 URL로 변경

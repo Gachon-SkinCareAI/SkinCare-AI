@@ -18,6 +18,7 @@ import skincare.service.AdminUserService;
 
 // 관리자 회원 관리 API 요청 처리 컨트롤러
 @Tag(name = "Admin - User Management", description = "관리자 전용 회원 목록/상세 조회 및 계정 상태·플랜 관리 API")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="skincare.legacy.controllers-enabled",havingValue="true")
 @RestController
 @RequestMapping("/api/wc/admin/users")
 @RequiredArgsConstructor

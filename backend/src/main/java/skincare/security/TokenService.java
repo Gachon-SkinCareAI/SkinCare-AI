@@ -6,13 +6,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import skincare.domain.global.RefreshToken;
+import skincare.domain.global.RotatingRefreshToken;
 import skincare.domain.user.entity.User;
 import skincare.dto.AuthTokenDto;
 import skincare.exception.CustomException;
 import skincare.exception.ErrorCode;
 import skincare.repository.AdminRepository;
-import skincare.repository.RefreshTokenRepository;
+import skincare.repository.RotatingRefreshTokenRepository;
 import skincare.repository.UserRepository;
 
 import java.nio.charset.StandardCharsets;
@@ -34,7 +34,7 @@ public class TokenService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom(); // Refresh Token 난수 생성기
 
     private final JwtTokenProvider jwtTokenProvider;             // Access Token(JWT) 생성
-    private final RefreshTokenRepository refreshTokenRepository; // Refresh Token 해시 저장소
+    private final RotatingRefreshTokenRepository refreshTokenRepository; // Refresh Token 해시 저장소
     private final UserRepository userRepository;                 // 사용자 계정 상태 확인
     private final AdminRepository adminRepository;               // 관리자 계정 존재 확인
 
@@ -49,7 +49,7 @@ public class TokenService {
         refreshTokenRepository.deleteExpired(LocalDateTime.now());
 
         String rawRefreshToken = generateRawToken();
-        refreshTokenRepository.save(RefreshToken.builder()
+        refreshTokenRepository.save(RotatingRefreshToken.builder()
                 .tokenHash(hash(rawRefreshToken))
                 .subjectId(subjectId)
                 .role(role)
@@ -57,7 +57,7 @@ public class TokenService {
                 .build());
 
         return AuthTokenDto.builder()
-                .accessToken(jwtTokenProvider.createToken(subjectId, role))
+                .accessToken(jwtTokenProvider.createToken(subjectId, role, tokenVersion(subjectId, role)))
                 .expiresIn(jwtTokenProvider.getTokenValiditySeconds())
                 .refreshToken(rawRefreshToken)
                 .refreshExpiresIn(refreshTokenValidityDays * 24 * 60 * 60)
@@ -72,7 +72,7 @@ public class TokenService {
             throw new CustomException(ErrorCode.INVALID_TOKEN, "refresh_token이 필요합니다.");
         }
 
-        RefreshToken stored = refreshTokenRepository.findById(hash(rawRefreshToken))
+        RotatingRefreshToken stored = refreshTokenRepository.findById(hash(rawRefreshToken))
                 .filter(token -> token.getRole().equals(expectedRole))
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_TOKEN, "유효하지 않은 리프레시 토큰입니다. 다시 로그인해 주세요."));
 
@@ -133,4 +133,14 @@ public class TokenService {
             throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", e);
         }
     }
+private String tokenVersion(String id,String role) {
+ if("USER".equals(role)) {
+ var user=userRepository.findById(id).orElseThrow(()->new CustomException(ErrorCode.USER_NOT_FOUND));
+ if(user.getProvider()==skincare.domain.user.entity.ENUM.Provider.GUEST || user.getProvider()==skincare.domain.user.entity.ENUM.Provider.LOCAL || !user.hasRequiredConsents()) throw new CustomException(ErrorCode.INVALID_TOKEN);
+ return user.currentTokenVersion();
+ }
+ if("ADMIN".equals(role)) return adminRepository.findById(id).orElseThrow(()->new CustomException(ErrorCode.ADMIN_NOT_FOUND)).currentTokenVersion();
+ throw new CustomException(ErrorCode.INVALID_TOKEN);
+}
+
 }

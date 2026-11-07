@@ -9,7 +9,7 @@ public class PublishedPolicies {
     public record Document(String version,String url) {}
     public record Previews(String version,String terms,String privacy,String healthData) {}
     public record Manifest(boolean requiredAvailable,Document terms,Document privacy,Document healthData,
-                           Document training,boolean trainingAvailable,boolean trainingExportEnabled,Previews previews) {}
+                           Document training,boolean trainingAvailable,boolean trainingExportEnabled,Previews previews,Document location) {}
     private final String terms,privacy,training;
     public PublishedPolicies(String terms,String privacy,String training) {this(terms,privacy,training,false,"");}
     @org.springframework.beans.factory.annotation.Autowired
@@ -21,7 +21,7 @@ public class PublishedPolicies {
         String origin=builtin?policyOrigin(base):null;
         this.terms=origin!=null?origin+"/api/wc/policies/"+ConsentPolicy.VERSION+"/terms":publicHttps(terms);
         this.privacy=origin!=null?origin+"/api/wc/policies/"+ConsentPolicy.VERSION+"/privacy":publicHttps(privacy);
-        this.training=publicHttps(training);
+        this.training=origin!=null?origin+"/api/wc/policies/2026-11-04/training":publicHttps(training);
     }
     public static String policyOrigin(String value) {
         try {
@@ -46,5 +46,5 @@ public class PublishedPolicies {
     public Manifest manifest(){return new Manifest(requiredAvailable(),new Document(ConsentPolicy.VERSION,terms),
         new Document(ConsentPolicy.VERSION,privacy),new Document(ConsentPolicy.HEALTH_VERSION,privacy==null?null:privacy.split("#",2)[0]+"#health-data"),
         new Document(ConsentPolicy.TRAINING_VERSION,training),training!=null,false,
-        new Previews("draft-2026-11-01.1","/api/wc/policy-previews/terms","/api/wc/policy-previews/privacy","/api/wc/policy-previews/privacy#health-data"));}
+        new Previews("draft-2026-11-01.1","/api/wc/policy-previews/terms","/api/wc/policy-previews/privacy","/api/wc/policy-previews/privacy#health-data"),new Document(ConsentPolicy.LOCATION_VERSION,"/api/wc/policies/2026-11-04/location"));}
 }
