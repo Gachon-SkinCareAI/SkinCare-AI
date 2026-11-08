@@ -1,4 +1,4 @@
-import { BottomTabs } from '../components/Common';
+import { BottomTabs, BrandSymbol } from '../components/Common';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,7 +34,7 @@ export default function HomeScreen({ onLogout, onNavigate, analyses = recentAnal
   return <SafeAreaView style={s.safe}>
     <View style={s.shell}>
       <View style={s.header}>
-        <View style={s.brandRow}><View style={s.brandCircle}><T style={s.brandInitial}>S</T></View><View><T style={s.brandTitle}>SkinCare AI</T><T style={s.brandSubtitle}>AI가 함께하는 상처 케어</T></View></View>
+        <View style={s.brandRow}><BrandSymbol size={32}/><View><T style={s.brandTitle}>SkinCare AI</T><T style={s.brandSubtitle}>AI가 함께하는 상처 케어</T></View></View>
         <Pressable accessibilityRole="button" accessibilityLabel="알림" onPress={() => { setUnread(false); open('notifications','알림'); }} style={s.bell}><Icon name="bell" />{unread && <View style={s.dot} />}</Pressable>
       </View>
       <ScrollView ref={scroll} style={s.scroller} contentContainerStyle={s.content} showsVerticalScrollIndicator={false} testID="home-scroll">

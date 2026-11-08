@@ -1,0 +1,15 @@
+import React from 'react';
+import {View,Image,Pressable} from 'react-native';
+import {T,Card,Button,C} from '../components/Common';
+import {SmallTitle,Field,TextAction,Notice,EmptyPhoto,Icon,styles as s} from '../components/ServiceUI';
+import {symptomNames,symptomChoices} from '../utils/serviceState';
+export default function WoundFormScreen({record,photo,date,onDate,symptoms,onSymptoms,memo,onMemo,error,onPhoto,onRemove}){
+ return <><View style={{gap:3}}><T style={{fontSize:18,fontFamily:'NotoSansKR_700Bold'}}>{record?record.title:'신규 상처'}</T><T style={s.small}>{record?record.summary:'선택한 사진으로 새 상처 분석을 시작해요.\n기존 상처와 별도로 등록돼요.'}</T>{record&&<T style={s.small}>최초 등록 {record.startedAt||record.date}</T>}</View>
+ <Card style={s.card}><SmallTitle>{record?'오늘의 상처 사진 추가':'선택한 상처 사진'}</SmallTitle>{photo?<Image accessibilityLabel="선택한 상처 사진" source={{uri:photo.uri}} style={{width:'100%',height:record?110:230,borderRadius:12,backgroundColor:'#EBEFF5'}} resizeMode="contain"/>:<EmptyPhoto height={record?110:200}/>}
+ {!photo&&<View style={{flexDirection:'row',gap:8}}><Button secondary style={{flex:1,minHeight:38,padding:6}} onPress={()=>onPhoto('camera')}>카메라로 촬영</Button><Button secondary style={{flex:1,minHeight:38,padding:6}} onPress={()=>onPhoto('gallery')}>앨범에서 선택</Button></View>}
+ <View style={{flexDirection:'row',alignItems:'center',gap:8}}><T style={[s.small,{flex:1}]}>촬영 날짜</T><Field label="촬영 날짜" value={date} onChangeText={onDate} placeholder="YYYY-MM-DD" maxLength={10} style={{width:146,textAlign:'right'}}/><Icon name="calendar"/></View>
+ {!!photo&&<View style={{flexDirection:'row',gap:20}}><TextAction onPress={()=>onPhoto('gallery')}>사진 변경</TextAction><TextAction onPress={onRemove}>사진 삭제</TextAction></View>}</Card>
+ {record&&<Card style={s.card}><SmallTitle>증상 변화</SmallTitle><T style={s.small}>이전 기록과 비교해 선택해 주세요.</T>{symptomNames.map(name=><View key={name} style={{gap:5}}><T style={{fontSize:11,fontFamily:'NotoSansKR_700Bold'}}>{name}</T><View style={{flexDirection:'row',gap:5}}>{symptomChoices.map(choice=><Pressable key={choice} accessibilityRole="radio" accessibilityLabel={`${name} ${choice}`} accessibilityState={{checked:symptoms[name]===choice}} onPress={()=>onSymptoms({...symptoms,[name]:choice})} style={{flex:1,minHeight:34,alignItems:'center',justifyContent:'center',borderRadius:8,backgroundColor:symptoms[name]===choice?C.navy:C.bg}}><T style={{fontSize:10,color:symptoms[name]===choice?'white':C.muted}}>{choice}</T></Pressable>)}</View></View>)}<SmallTitle>추가 메모 <T style={s.small}>선택</T></SmallTitle><Field label="추가 메모" value={memo} onChangeText={onMemo} multiline maxLength={500} placeholder="증상이나 관리 내용을 기록해주세요." style={{height:72,textAlignVertical:'top'}}/><T style={[s.small,{textAlign:'right'}]}>{memo.length}/500</T></Card>}
+ {!!error&&<T accessibilityRole="alert" style={{fontSize:12,color:'#B42318'}}>{error}</T>}
+ <Notice>본 분석은 진단이 아닌 참고 정보예요. 사진만으로 회복 여부를 확정할 수 없어요. 증상이 악화되면 의료진과 상담해 주세요.</Notice><T style={s.small}>시연 모드 · 입력한 사진과 기록은 앱 실행 중에만 보관돼요.</T></>;
+}

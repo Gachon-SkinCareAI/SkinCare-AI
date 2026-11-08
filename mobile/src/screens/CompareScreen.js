@@ -1,0 +1,19 @@
+import React,{useState} from 'react';
+import {View,Image,Pressable,Modal,ScrollView} from 'react-native';
+import {T,Card,Button,C} from '../components/Common';
+import {SmallTitle,Notice,EmptyPhoto,Icon,styles as s} from '../components/ServiceUI';
+import {timeline} from './ProgressScreen';
+import {symptomNames} from '../utils/serviceState';
+export default function CompareScreen({record}){
+ const entries=record?timeline(record):[];
+ const [before,setBefore]=useState(Math.max(0,entries.length-2)),[after,setAfter]=useState(Math.max(0,entries.length-1)),[picker,setPicker]=useState(null),[zoom,setZoom]=useState(null);
+ if(!record)return <Card><T>기록을 찾을 수 없어요.</T></Card>;
+ if(entries.length<2)return <Card><T>비교하려면 사진 기록이 2개 이상 필요해요.</T></Card>;
+ const current=entries[after];
+ function photo(entry,height){return entry.image?<Image source={entry.image} resizeMode="contain" style={{width:'100%',height,backgroundColor:'#EBEFF5',borderRadius:12}}/>:<View style={{height,backgroundColor:'#EBEFF5',borderRadius:12,alignItems:'center',justifyContent:'center',gap:8}}><Icon name="image"/><T style={s.small}>사진 예시</T></View>}
+ return <><View><SmallTitle>{record.title}</SmallTitle><T style={s.small}>{record.summary}</T><T style={s.small}>최초 등록 {record.startedAt||entries[0].date}</T></View><Card style={s.card}><View style={{flexDirection:'row',gap:12}}>{[['이전',before,'before'],['현재',after,'after']].map(([label,index,key])=><View key={key} style={{flex:1,gap:8}}><SmallTitle>{label}</SmallTitle><Pressable accessibilityRole="button" accessibilityLabel={`${label} 촬영일 선택`} onPress={()=>setPicker(key)} style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:C.bg,padding:8,borderRadius:8}}><T style={{fontSize:11}}>{entries[index].date.replaceAll('-','.')}</T><Icon name="down"/></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`${label} 사진 확대`} onPress={()=>setZoom(index)}>{photo(entries[index],184)}</Pressable><T style={{fontSize:10,color:C.muted}}>촬영일 {entries[index].date}</T></View>)}</View><T style={s.small}>사진을 누르면 크게 볼 수 있어요. 예시 기록에는 실제 분석이 적용되지 않아요.</T></Card>
+ <Card style={s.card}><SmallTitle>현재 증상 변화</SmallTitle><T style={s.small}>사용자 입력 참고</T><View style={{flexDirection:'row',gap:6}}>{symptomNames.map(name=><View key={name} style={{flex:1,backgroundColor:C.bg,borderRadius:12,padding:8}}><T style={{fontSize:10,textAlign:'center'}}>{name} {current.symptoms?.[name]||'미입력'}</T></View>)}</View>{!!current.memo&&<T style={s.small}>{current.memo}</T>}</Card>
+ <Notice>사진 비교 및 AI 분석은 참고 정보이며, 사진만으로 회복 여부를 확정할 수 없어요. 조명과 촬영 거리 차이로 다르게 보일 수 있어요.</Notice>
+ <Modal visible={picker!==null} transparent animationType="fade" onRequestClose={()=>setPicker(null)}><View style={{flex:1,backgroundColor:'#0007',justifyContent:'center',padding:24}}><View style={{backgroundColor:'white',padding:20,borderRadius:20,maxHeight:'75%',gap:12}}><SmallTitle>{picker==='before'?'이전':'현재'} 촬영일 선택</SmallTitle><ScrollView>{entries.map((entry,index)=>{const disabled=picker==='before'?index>=after:index<=before;return <Pressable accessibilityRole="button" accessibilityLabel={`${entry.date} 기록 ${index+1} 선택`} disabled={disabled} accessibilityState={{disabled}} key={index} onPress={()=>{if(picker==='before')setBefore(index);else setAfter(index);setPicker(null)}} style={{padding:12,opacity:disabled?.35:1,borderBottomWidth:1,borderColor:C.line}}><T>{entry.date} · 기록 {index+1}</T></Pressable>})}</ScrollView><T style={s.small}>이전 사진보다 뒤에 촬영한 기록을 현재 사진으로 선택해요.</T><Button secondary onPress={()=>setPicker(null)}>닫기</Button></View></View></Modal>
+ <Modal visible={zoom!==null} transparent animationType="fade" onRequestClose={()=>setZoom(null)}><View style={{flex:1,backgroundColor:'#000B',justifyContent:'center',padding:20}}><Card>{zoom!==null&&<><SmallTitle>{entries[zoom].date}</SmallTitle>{photo(entries[zoom],360)}</>}<Button onPress={()=>setZoom(null)}>사진 닫기</Button></Card></View></Modal></>;
+}

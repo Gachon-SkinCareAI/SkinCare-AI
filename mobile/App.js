@@ -7,8 +7,8 @@ import { SvgUri } from 'react-native-svg';
 import { useFonts, NotoSansKR_400Regular, NotoSansKR_500Medium, NotoSansKR_700Bold, NotoSansKR_900Black } from '@expo-google-fonts/noto-sans-kr';
 
 const BLUE = '#2563EB', NAVY = '#0D2B6B', MUTED = '#6B7A99';
-const assetModules = [require('./assets/back.svg'), require('./assets/eye-off.svg'), require('./assets/shield.svg'), require('./assets/check.svg'), require('./assets/chevron.svg'), require('./assets/google.svg'), require('./assets/mail.svg')];
-const indices = { back: 0, eye: 1, shield: 2, check: 3, chevron: 4, google: 5, mail: 6 };
+const assetModules = [require('./assets/back.svg'), require('./assets/eye-off.svg'), require('./assets/shield.svg'), require('./assets/check.svg'), require('./assets/chevron.svg'), require('./assets/google.svg'), require('./assets/mail.svg'), require('./assets/skincare-ai-symbol.svg')];
+const indices = { back: 0, eye: 1, shield: 2, check: 3, chevron: 4, google: 5, mail: 6, brand: 7 };
 const sizes = { back: 20, eye: 18, shield: 20, check: 12, chevron: 14, google: 20, mail: 16 };
 const AssetContext = React.createContext([]);
 function Icon({ name }) {
@@ -17,7 +17,12 @@ function Icon({ name }) {
   return <View style={{ width: size, height: size }}><SvgUri uri={a.localUri || a.uri} /></View>;
 }
 function T({ style, children, ...props }) { return <Text {...props} style={[s.text, style]}>{children}</Text>; }
-function Symbol({ large = false }) { return large ? <View style={{width:80,height:80}}><Image source={require('./assets/symbol-large.png')} style={{position:'absolute',width:128,height:128,left:-24,top:-16}} /></View> : <Image source={require('./assets/symbol.png')} style={{width:38,height:38}} />; }
+function Symbol({ large = false }) {
+  const assets = React.useContext(AssetContext);
+  const brand = assets[indices.brand];
+  const size = large ? 80 : 38;
+  return <View style={{ width: size, height: size }}><SvgUri uri={brand.localUri || brand.uri} /></View>;
+}
 const featureImages = {'🔍':require('./assets/feature-search.png'), '⚠️':require('./assets/feature-warning.png'), '🏥':require('./assets/feature-hospital.png')};
 
 function Button({ children, onPress, secondary, icon }) { return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s.button, secondary && s.secondary, pressed && { opacity: 0.75 }]}>{icon && <Icon name={icon} />}<T style={[s.buttonText, secondary && { color: icon === 'google' ? '#374151' : MUTED }]}>{children}</T></Pressable>; }

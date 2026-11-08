@@ -16,7 +16,7 @@ export function AnalysisResult({record,onRisk,onHistory}) {
  if(!result)return <Card><T style={s.title}>분석 대기</T><T>아직 AI 분석 결과가 없어요. 등록한 사진은 서버 연결 후 분석할 수 있어요.</T><Button onPress={onHistory}>상처 기록 보기</Button></Card>;
  return <>
   <View style={s.banner}><View style={s.robot}><T style={{fontSize:20}}>🤖</T></View><View style={{flex:1}}><T style={s.white}>분석 완료</T><T style={{fontSize:10,color:'#FFFFFFB3'}}>아래 결과를 확인하세요.</T></View><ResultIcon/></View>
-  <T style={s.demo}>예시 분석 결과 · 실제 사진을 분석한 결과가 아니에요.</T>
+  <T style={s.demo}>예시 분석 결과</T>
   <View style={s.summary}><LinearGradient colors={['#FED7D7','#FECACA']} style={s.preview}><View style={s.outline}><T style={{fontSize:36,lineHeight:46}}>🩹</T></View><T style={s.region}>분석 영역</T></LinearGradient><View style={{padding:12}}><T style={s.title}>분석 요약</T>{[['📋','의심 유형',result.type],['📍','분석 부위',result.part],['📊','분석 신뢰도',`${result.confidence}% (예시)`]].map(([icon,label,value])=><View key={label} style={s.row}><T>{icon}</T><T style={{flex:1,fontSize:11,color:C.muted}}>{label}</T><T style={{fontSize:11,fontFamily:'NotoSansKR_700Bold',maxWidth:'56%',textAlign:'right'}}>{value}</T></View>)}</View></View>
   <Button style={s.button} onPress={onRisk}>위험도 보기 →</Button>
   <View style={s.notice}><T style={{fontSize:10,lineHeight:17,color:'#92400E'}}>⚠️ 본 분석은 의학적 진단이 아니며 참고 목적으로만 활용해주세요. 증상이 심각하거나 빠르게 악화되는 경우 의료진의 진료를 받으세요.</T></View>
