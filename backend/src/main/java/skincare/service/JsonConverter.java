@@ -2,7 +2,9 @@ package skincare.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Component;
+
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -13,6 +15,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+// JsonConverter 비즈니스 로직 처리
 public class JsonConverter {
 
     private final JsonMapper jsonMapper; // Spring Boot 기본 Jackson 설정 공유

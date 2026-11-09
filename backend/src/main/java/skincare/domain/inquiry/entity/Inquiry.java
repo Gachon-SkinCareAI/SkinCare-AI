@@ -1,20 +1,28 @@
 package skincare.domain.inquiry.entity;
 
-import skincare.domain.global.BaseTimeEntity;
+import jakarta.persistence.*;
+
+import lombok.*;
+
 import skincare.domain.diagnosis.entity.Diagnosis;
+import skincare.domain.global.BaseTimeEntity;
 import skincare.domain.inquiry.entity.ENUM.InquiryStatus;
 import skincare.domain.inquiry.entity.ENUM.InquiryType;
 import skincare.domain.user.entity.User;
-import jakarta.persistence.*;
-import lombok.*;
 
 // [1:1 문의] 사용자가 앱에서 작성한 고객 문의 엔티티
 @Entity
-@Table(name = "inquiries",uniqueConstraints=@UniqueConstraint(name="uk_inquiry_user_request",columnNames={"user_id","client_request_id"}))
+@Table(
+        name = "inquiries",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_inquiry_user_request",
+                        columnNames = {"user_id", "client_request_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// Inquiry 도메인 상태 관리
 public class Inquiry extends BaseTimeEntity {
 
     // 문의 고유 ID ex. INQ-20261005-0014
@@ -22,13 +30,15 @@ public class Inquiry extends BaseTimeEntity {
     @Column(name = "inquiry_id", length = 36)
     private String inquiryId;
 
-    @Column(name="client_request_id",length=36)
+    @Column(name = "client_request_id", length = 36)
     private String clientRequestId;
+
     // Optional reference snapshot; deleting a photo must not be blocked by a support request.
-    @Column(name="analysis_id",length=36)
+    @Column(name = "analysis_id", length = 36)
     private String analysisId;
+
     @Version
-    @Column(nullable=false)
+    @Column(nullable = false)
     private long version;
 
     // 문의를 작성한 사용자
@@ -36,7 +46,7 @@ public class Inquiry extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    //문 의에 연동된 상처 진단 기록 (선택 사항)
+    // 문 의에 연동된 상처 진단 기록 (선택 사항)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "diagnosis_id")
     private Diagnosis diagnosis;
@@ -68,10 +78,21 @@ public class Inquiry extends BaseTimeEntity {
     public void completeAnswer() {
         this.status = InquiryStatus.COMPLETED;
     }
-public void completeAnswer(InquiryAnswer value) { this.answer=value; completeAnswer(); }
- public void resetAnswerStatus() { this.answer=null; this.status=InquiryStatus.WAITING; }
- public void updateInquiry(InquiryType type,String title,String content,Diagnosis diagnosis) {
- this.inquiryType=type;this.title=title;this.content=content;this.diagnosis=diagnosis;
- }
 
+    public void completeAnswer(InquiryAnswer value) {
+        this.answer = value;
+        completeAnswer();
+    }
+
+    public void resetAnswerStatus() {
+        this.answer = null;
+        this.status = InquiryStatus.WAITING;
+    }
+
+    public void updateInquiry(InquiryType type, String title, String content, Diagnosis diagnosis) {
+        this.inquiryType = type;
+        this.title = title;
+        this.content = content;
+        this.diagnosis = diagnosis;
+    }
 }

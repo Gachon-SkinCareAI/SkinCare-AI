@@ -4,6 +4,7 @@ import lombok.Getter;
 
 // 전역 예외 처리를 위한 커스텀 RuntimeException 클래스
 @Getter
+// CustomException 예외 응답 처리
 public class CustomException extends RuntimeException {
 
     private final ErrorCode errorCode; // 발생한 에러 코드 정보

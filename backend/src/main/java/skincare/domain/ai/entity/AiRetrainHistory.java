@@ -1,19 +1,23 @@
 package skincare.domain.ai.entity;
 
-import skincare.domain.global.BaseTimeEntity;
 import jakarta.persistence.*;
+
 import lombok.*;
+
+import skincare.domain.global.BaseTimeEntity;
 
 import java.time.LocalDateTime;
 
 // [AI 재학습 이력] MLOps 비전 모델 재학습 및 배포 수행 이력 엔티티
-// 상태 흐름: queued → running → validating → awaiting_deploy → (관리자 승인) deploy_approved → deployed / 실패 시 failed
+// 상태 흐름: queued → running → validating → awaiting_deploy → (관리자 승인) deploy_approved → deployed / 실패
+// 시 failed
 @Entity
 @Table(name = "ai_retrain_histories")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// AiRetrainHistory 도메인 상태 관리
 public class AiRetrainHistory extends BaseTimeEntity {
 
     public static final String STATUS_AWAITING_DEPLOY = "awaiting_deploy"; // 검증 통과, 배포 승인 대기
@@ -59,7 +63,8 @@ public class AiRetrainHistory extends BaseTimeEntity {
     // AI 서버 잡 상태 동기화 (관리자가 승인한 상태는 AI 서버가 awaiting_deploy를 유지하더라도 덮어쓰지 않음)
     public void syncStatus(String status, String message) {
         if (status == null) return;
-        if (STATUS_DEPLOY_APPROVED.equals(this.status) && STATUS_AWAITING_DEPLOY.equals(status)) return;
+        if (STATUS_DEPLOY_APPROVED.equals(this.status) && STATUS_AWAITING_DEPLOY.equals(status))
+            return;
         this.status = status;
         if (message != null) {
             this.message = message.length() > 500 ? message.substring(0, 500) : message;

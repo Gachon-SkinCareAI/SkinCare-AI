@@ -2,12 +2,14 @@ package skincare.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
 import skincare.domain.admin.entity.Admin;
 import skincare.repository.AdminRepository;
 
@@ -16,8 +18,11 @@ import skincare.repository.AdminRepository;
 // 환경변수(ADMIN_INIT_ID / ADMIN_INIT_PASSWORD)로 지정한 계정을 서버 기동 시 1회 생성
 @Slf4j
 @Component
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="skincare.legacy.admin-initializer-enabled",havingValue="true")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+        name = "skincare.legacy.admin-initializer-enabled",
+        havingValue = "true")
 @RequiredArgsConstructor
+// AdminInitializer 애플리케이션 설정
 public class AdminInitializer implements ApplicationRunner {
 
     private final AdminRepository adminRepository; // 관리자 데이터 베이스 접근용 Repository
@@ -48,18 +53,21 @@ public class AdminInitializer implements ApplicationRunner {
         }
 
         if (initAdminId.isBlank() || initAdminEmail.isBlank() || initAdminPassword.isBlank()) {
-            log.warn("[AdminInit] 등록된 관리자가 없습니다. ADMIN_INIT_ID / ADMIN_INIT_EMAIL / ADMIN_INIT_PASSWORD 환경변수를 설정하면 최초 관리자가 자동 생성됩니다.");
+            log.warn(
+                    "[AdminInit] 등록된 관리자가 없습니다. ADMIN_INIT_ID / ADMIN_INIT_EMAIL /"
+                            + " ADMIN_INIT_PASSWORD 환경변수를 설정하면 최초 관리자가 자동 생성됩니다.");
             return;
         }
 
         // 최초 관리자는 관리자 계정 생성 권한을 가진 최고 관리자로 생성
-        Admin admin = Admin.builder()
-                .adminId(initAdminId)
-                .email(initAdminEmail)
-                .role("ROLE_SUPER_ADMIN")
-                .name(initAdminName)
-                .password(passwordEncoder.encode(initAdminPassword))
-                .build();
+        Admin admin =
+                Admin.builder()
+                        .adminId(initAdminId)
+                        .email(initAdminEmail)
+                        .role("ROLE_SUPER_ADMIN")
+                        .name(initAdminName)
+                        .password(passwordEncoder.encode(initAdminPassword))
+                        .build();
         adminRepository.save(admin);
 
         log.info("[AdminInit] 최초 관리자 계정 생성 완료 (adminId: {})", initAdminId);

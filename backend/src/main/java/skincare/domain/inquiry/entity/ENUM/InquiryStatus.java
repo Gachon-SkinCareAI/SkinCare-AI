@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 // 문의 답변 상태 (WAITING: 답변대기, COMPLETED: 답변완료)
 @Getter
 @RequiredArgsConstructor
+// InquiryStatus 도메인 상태 관리
 public enum InquiryStatus {
     WAITING("답변대기"),
     COMPLETED("답변완료");

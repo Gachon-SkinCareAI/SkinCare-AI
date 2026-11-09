@@ -1,30 +1,40 @@
 package skincare.repository;
+
 import jakarta.persistence.criteria.Predicate;
+
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.stereotype.Repository;
+
 import skincare.domain.user.entity.ENUM.PlanType;
 import skincare.domain.user.entity.ENUM.UserStatus;
+import skincare.domain.user.entity.User;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import skincare.domain.user.entity.User;
-
 import java.util.Optional;
 
 // 사용자(User) 엔티티에 대한 데이터베이스 접근 인터페이스
 @Repository
-public interface UserRepository extends JpaRepository<User, String>, JpaSpecificationExecutor<User> {
-    Optional<User> findByProviderAndSocialSubjectHash(skincare.domain.user.entity.ENUM.Provider provider, String hash);
+// UserRepository 데이터 접근 처리
+public interface UserRepository
+        extends JpaRepository<User, String>, JpaSpecificationExecutor<User> {
+    Optional<User> findByProviderAndSocialSubjectHash(
+            skincare.domain.user.entity.ENUM.Provider provider, String hash);
+
     Optional<User> findByGuestKeyHash(String hash);
+
     // Legacy lookup; never use email to link social accounts.
     // 이메일로 사용자 조회
     Optional<User> findByEmail(String email);
-    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+
+    @org.springframework.data.jpa.repository.Lock(
+            jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("select u from User u where u.userId = :id")
-    Optional<User> lockForAnalysisCreation(@org.springframework.data.repository.query.Param("id") String id);
+    Optional<User> lockForAnalysisCreation(
+            @org.springframework.data.repository.query.Param("id") String id);
 
     // 기간 내 가입 회원 수 (대시보드 신규 가입 통계)
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
@@ -47,11 +57,11 @@ public interface UserRepository extends JpaRepository<User, String>, JpaSpecific
             List<Predicate> predicates = new ArrayList<>();
             if (keyword != null && !keyword.isBlank()) {
                 String like = "%" + keyword.trim() + "%";
-                predicates.add(cb.or(
-                        cb.like(root.get("userId"), like),
-                        cb.like(root.get("email"), like),
-                        cb.like(root.get("nickname"), like)
-                ));
+                predicates.add(
+                        cb.or(
+                                cb.like(root.get("userId"), like),
+                                cb.like(root.get("email"), like),
+                                cb.like(root.get("nickname"), like)));
             }
             if (plan != null) {
                 predicates.add(cb.equal(root.get("plan"), plan));

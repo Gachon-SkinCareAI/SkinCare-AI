@@ -1,8 +1,10 @@
 package skincare.domain.ai.entity;
 
-import skincare.domain.global.BaseTimeEntity;
 import jakarta.persistence.*;
+
 import lombok.*;
+
+import skincare.domain.global.BaseTimeEntity;
 
 // [AI 파이프라인] 비전 추론 모델 파이프라인 가동 및 벤치마크 지표 엔티티
 @Entity
@@ -11,6 +13,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// AiPipeline 도메인 상태 관리
 public class AiPipeline extends BaseTimeEntity {
 
     @Id

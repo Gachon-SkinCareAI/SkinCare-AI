@@ -8,7 +8,7 @@ import {
   SearchInput,
   usePagination,
 } from '../components'
-import { demoMetrics as m, type OpenDetail, type Store } from '../data'
+import type { OpenDetail, Store } from '../data'
 
 export default function Users({
   store,
@@ -17,6 +17,7 @@ export default function Users({
   store: Store
   open: OpenDetail
 }) {
+  const m = store.dashboard
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('전체')
   const filtered = store.users.filter(
@@ -32,13 +33,13 @@ export default function Users({
       <section className="metrics-grid four" aria-label="사용자 지표">
         <Metric
           icon="👤"
-          value={m.totalUsers.toLocaleString()}
+          value={String(m.totalUsers ?? store.users.length)}
           label="총 사용자"
           hint="누적 가입자"
         />
         <Metric
           icon="⭐"
-          value={m.premium.toLocaleString()}
+          value={String(m.premium ?? store.users.filter((u) => u.plan === 'Premium').length)}
           label="Premium 사용자"
           hint="전환율 18.2%"
           change="+3.1%"
@@ -46,7 +47,7 @@ export default function Users({
         />
         <Metric
           icon="🗓️"
-          value={m.dau.toLocaleString()}
+          value={String(m.dau ?? 0)}
           label="DAU"
           hint="일간 활성 사용자"
           change="+5.4%"
@@ -54,7 +55,7 @@ export default function Users({
         />
         <Metric
           icon="🔄"
-          value={`${m.retention}%`}
+          value={`${m.retention ?? 0}%`}
           label="7일 재방문율"
           hint="목표: 70%"
           change="+2.1%"

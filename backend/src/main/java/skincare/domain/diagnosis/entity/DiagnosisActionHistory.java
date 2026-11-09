@@ -1,9 +1,12 @@
 package skincare.domain.diagnosis.entity;
 
 import jakarta.persistence.*;
+
 import lombok.*;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
 import skincare.domain.diagnosis.entity.ENUM.DiagnosisStatus;
 import skincare.domain.diagnosis.entity.ENUM.ReviewStatus;
 import skincare.domain.global.BaseTimeEntity;
@@ -16,9 +19,10 @@ import skincare.domain.global.BaseTimeEntity;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// DiagnosisActionHistory 도메인 상태 관리
 public class DiagnosisActionHistory extends BaseTimeEntity {
 
-    // 이력 식별자
+    // 진단 조치 이력 식별자
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

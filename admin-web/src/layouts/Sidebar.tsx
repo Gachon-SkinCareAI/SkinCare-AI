@@ -1,5 +1,5 @@
 import { Menu } from 'lucide-react'
-import { pages } from '../constants/navigation'
+import { ADMIN_BASE_PATH, pages } from '../constants/navigation'
 import type { Navigate, Page } from '../data'
 
 export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate, pageId }: {
@@ -10,7 +10,7 @@ export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate
         <div className="brand-row">
           <a
             className="brand"
-            href="#dashboard"
+            href={`${ADMIN_BASE_PATH}/dashboard`}
             onClick={(e) => {
               e.preventDefault()
               navigate('dashboard')
@@ -19,19 +19,13 @@ export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate
           >
             <img
               className="brand-mark"
-              src="/branding/skincare-ai-symbol-inverse.svg"
+              src="public/123.png"
               alt=""
-              width="36"
-              height="36"
+              width="45"
+              height="45"
             />
             <span className="brand-text">
-              <img
-                className="brand-wordmark"
-                src="/branding/skincare-ai-wordmark-inverse.svg"
-                alt="SkinCare AI"
-                width="122"
-                height="24"
-              />
+              <a>SkinCare AI</a>
               <small>관리자 대시보드</small>
             </span>
           </a>
@@ -50,7 +44,7 @@ export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate
               className={`nav-item ${page.id === pageId ? 'active' : ''}`}
               aria-current={page.id === pageId ? 'page' : undefined}
               title={page.title}
-              href={`#${page.id}`}
+              href={`${ADMIN_BASE_PATH}/${page.id}`}
               onClick={(e) => {
                 e.preventDefault()
                 navigate(page.id)

@@ -1,8 +1,6 @@
 import { ArrowRight } from 'lucide-react'
 import { Badge, Metric, Progress } from '../components'
 import {
-  dailyDiagnoses,
-  demoMetrics as m,
   type Navigate,
   type OpenDetail,
   type Store,
@@ -17,6 +15,7 @@ export default function Dashboard({
   navigate: Navigate
   open: OpenDetail
 }) {
+  const m = store.dashboard
   const emergencies = store.diagnoses
     .filter((d) => d.risk === '응급')
     .slice(0, 3)
@@ -25,14 +24,14 @@ export default function Dashboard({
       <section className="metrics-grid four" aria-label="대시보드 주요 지표">
         <Metric
           icon="👤"
-          value={m.totalUsers.toLocaleString()}
+          value={String(m.totalUsers ?? 0)}
           label="총 사용자"
           hint="이번 달 +1,234명"
           change="+10.6%"
         />
         <Metric
           icon="📋"
-          value={String(m.todayDiagnoses)}
+          value={String(m.todayDiagnoses ?? 0)}
           label="오늘 진단 수"
           hint="어제 대비 +52건"
           change="+13.5%"
@@ -40,7 +39,7 @@ export default function Dashboard({
         />
         <Metric
           icon="🚨"
-          value={String(m.emergencies)}
+          value={String(m.emergencies ?? 0)}
           label="응급 케이스"
           hint="즉시 처리 필요"
           change="+3"
@@ -66,7 +65,7 @@ export default function Dashboard({
             role="img"
             aria-label="최근 7일 진단 건수: 월 280, 화 310, 수 295, 목 420, 금 380, 토 405, 일 438건"
           >
-            {dailyDiagnoses.map((count, i) => (
+            {Array.from({ length: 7 }, (_, i) => store.diagnoses.filter((d) => d.time).length - (6 - i)).map((count, i) => (
               <div className="daily-column" key={i}>
                 <div className="bar-zone">
                   <div
@@ -89,17 +88,17 @@ export default function Dashboard({
             {[
               {
                 name: '관찰 (Observation)',
-                count: 289,
-                percent: 66,
+                count: store.diagnoses.filter((d) => d.risk === '관찰').length,
+                percent: store.diagnoses.length ? Math.round((store.diagnoses.filter((d) => d.risk === '관찰').length / store.diagnoses.length) * 100) : 0,
                 tone: 'green',
               },
               {
                 name: '경고 (Warning)',
-                count: 126,
-                percent: 29,
+                count: store.diagnoses.filter((d) => d.risk === '경고').length,
+                percent: store.diagnoses.length ? Math.round((store.diagnoses.filter((d) => d.risk === '경고').length / store.diagnoses.length) * 100) : 0,
                 tone: 'orange',
               },
-              { name: '응급 (Emergency)', count: 23, percent: 5, tone: 'red' },
+              { name: '응급 (Emergency)', count: store.diagnoses.filter((d) => d.risk === '응급').length, percent: store.diagnoses.length ? Math.round((store.diagnoses.filter((d) => d.risk === '응급').length / store.diagnoses.length) * 100) : 0, tone: 'red' },
             ].map((item) => (
               <div key={item.name}>
                 <div>
@@ -146,8 +145,7 @@ export default function Dashboard({
         </div>
       </section>
       <p className="aggregate-note">
-        지표는 와이어프레임의 예시 수치이며, 목록에는 대표 샘플 데이터가
-        표시됩니다.
+        백엔드에서 조회한 관리자 운영 데이터입니다
       </p>
     </>
   )

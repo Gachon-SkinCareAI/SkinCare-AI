@@ -1,24 +1,15 @@
-import { useEffect, useState } from 'react'
-import { createSeed, parseStore, STORAGE_KEY } from '../data'
+import { useAdminStore } from './useAdminStore'
+import type { Store } from '../data'
 
-function loadStore() {
-  try {
-    return parseStore(localStorage.getItem(STORAGE_KEY))
-  } catch {
-    return createSeed()
+// 기존 저장소 호환용 API 로더
+export function usePreviewStore(enabled = true) {
+  const { store, setStore, reload, loading, error } = useAdminStore(enabled)
+  return {
+    store,
+    setStore: (next: Store) => setStore(next),
+    storageError: Boolean(error),
+    loading,
+    error,
+    reload,
   }
-}
-
-export function usePreviewStore() {
-  const [store, setStore] = useState(loadStore)
-  const [storageError, setStorageError] = useState(false)
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
-      setStorageError(false)
-    } catch {
-      setStorageError(true)
-    }
-  }, [store])
-  return { store, setStore, storageError }
 }

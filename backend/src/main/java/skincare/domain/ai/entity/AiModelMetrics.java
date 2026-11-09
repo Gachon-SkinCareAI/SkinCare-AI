@@ -1,8 +1,10 @@
 package skincare.domain.ai.entity;
 
-import skincare.domain.global.BaseTimeEntity;
 import jakarta.persistence.*;
+
 import lombok.*;
+
+import skincare.domain.global.BaseTimeEntity;
 
 // [AI 모델 성능 평가 지표] 대시보드 노출용 비전 모델 성능 스탯 데이터 엔티티
 @Entity
@@ -11,6 +13,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// AiModelMetrics 도메인 상태 관리
 public class AiModelMetrics extends BaseTimeEntity {
 
     @Id

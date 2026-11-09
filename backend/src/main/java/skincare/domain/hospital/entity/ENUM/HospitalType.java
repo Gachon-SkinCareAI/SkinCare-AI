@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 // 의료기관 유형 (DERMATOLOGY: 피부과, GENERAL_HOSPITAL: 종합병원, PHARMACY: 약국, OTHER: 병원/의원)
 @Getter
 @RequiredArgsConstructor
+// HospitalType 도메인 상태 관리
 public enum HospitalType {
     DERMATOLOGY("피부과"),
     GENERAL_HOSPITAL("종합병원"),

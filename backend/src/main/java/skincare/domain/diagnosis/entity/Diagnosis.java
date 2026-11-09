@@ -1,12 +1,15 @@
 package skincare.domain.diagnosis.entity;
 
+import jakarta.persistence.*;
+
+import lombok.*;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import skincare.domain.diagnosis.entity.ENUM.*;
 import skincare.domain.global.BaseTimeEntity;
 import skincare.domain.user.entity.User;
-import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,6 +23,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// Diagnosis 도메인 상태 관리
 public class Diagnosis extends BaseTimeEntity {
 
     // 분석 고유 ID
@@ -106,7 +110,8 @@ public class Diagnosis extends BaseTimeEntity {
     @Builder.Default
     private DiagnosisStatus status = DiagnosisStatus.COMPLETED;
 
-    // 관리자 검수 상태 (UNREVIEWED: 미검수, NORMAL: 정상, NEEDS_REVIEW: 확인 필요, MISCLASSIFICATION_SUSPECTED: 오분류 의심)
+    // 관리자 검수 상태 (UNREVIEWED: 미검수, NORMAL: 정상, NEEDS_REVIEW: 확인 필요, MISCLASSIFICATION_SUSPECTED: 오분류
+    // 의심)
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "review_status", length = 30)
@@ -153,8 +158,8 @@ public class Diagnosis extends BaseTimeEntity {
     private List<DiagnosisActionHistory> actionHistories = new ArrayList<>();
 
     // 관리자 처리 상태/검수 상태/메모 변경 및 감사 이력 기록 메서드
-    public DiagnosisActionHistory updateByAdmin(DiagnosisStatus status, ReviewStatus reviewStatus,
-                                                String adminNote, String adminId) {
+    public DiagnosisActionHistory updateByAdmin(
+            DiagnosisStatus status, ReviewStatus reviewStatus, String adminNote, String adminId) {
         DiagnosisStatus previousStatus = this.status;
 
         if (status != null) this.status = status;
@@ -163,14 +168,15 @@ public class Diagnosis extends BaseTimeEntity {
         this.reviewedBy = adminId;
         this.reviewedAt = LocalDateTime.now();
 
-        DiagnosisActionHistory history = DiagnosisActionHistory.builder()
-                .diagnosis(this)
-                .previousStatus(previousStatus)
-                .currentStatus(this.status)
-                .reviewStatus(this.reviewStatus)
-                .note(adminNote)
-                .processedBy(adminId)
-                .build();
+        DiagnosisActionHistory history =
+                DiagnosisActionHistory.builder()
+                        .diagnosis(this)
+                        .previousStatus(previousStatus)
+                        .currentStatus(this.status)
+                        .reviewStatus(this.reviewStatus)
+                        .note(adminNote)
+                        .processedBy(adminId)
+                        .build();
         this.actionHistories.add(history);
         return history;
     }
@@ -182,8 +188,13 @@ public class Diagnosis extends BaseTimeEntity {
 
     // 문진 완료 후 위험도 및 케어 가이드 재평가 결과 반영 메서드
     // 재평가 결과가 응급이면 관리자 확인이 필요하므로 처리 상태를 대기(PENDING)로 변경
-    public void applyReassessment(RiskLevel riskLevel, String ruleIds, String appliedCardIds, String careCards,
-                                  String firstAidGuide, String precautionsGuide) {
+    public void applyReassessment(
+            RiskLevel riskLevel,
+            String ruleIds,
+            String appliedCardIds,
+            String careCards,
+            String firstAidGuide,
+            String precautionsGuide) {
         this.riskLevel = riskLevel;
         this.ruleIds = ruleIds;
         this.appliedCardIds = appliedCardIds;
@@ -204,5 +215,9 @@ public class Diagnosis extends BaseTimeEntity {
     public void initMetrics(DiagnosisMetrics metrics) {
         this.metrics = metrics;
     }
-    public void updateStatus(DiagnosisStatus status,String note){this.status=status;if(note!=null)this.adminNote=note;}
+
+    public void updateStatus(DiagnosisStatus status, String note) {
+        this.status = status;
+        if (note != null) this.adminNote = note;
+    }
 }

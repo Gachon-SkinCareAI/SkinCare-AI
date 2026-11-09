@@ -1,7 +1,9 @@
 package skincare.security.oauth;
 
 import jakarta.annotation.PostConstruct;
+
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -9,6 +11,7 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.stereotype.Component;
+
 import skincare.exception.CustomException;
 import skincare.exception.ErrorCode;
 
@@ -23,10 +26,12 @@ import java.util.stream.Stream;
 // - email_verified=true 인 계정만 허용 (미인증 이메일로 기존 회원 계정에 로그인하는 것을 방지)
 @Slf4j
 @Component
+// GoogleIdTokenVerifier 인증과 권한 처리
 public class GoogleIdTokenVerifier {
 
     private static final String GOOGLE_JWK_SET_URI = "https://www.googleapis.com/oauth2/v3/certs";
-    private static final Set<String> GOOGLE_ISSUERS = Set.of("accounts.google.com", "https://accounts.google.com");
+    private static final Set<String> GOOGLE_ISSUERS =
+            Set.of("accounts.google.com", "https://accounts.google.com");
 
     // 웹 OAuth2 로그인용 Google Client ID
     @Value("${spring.security.oauth2.client.registration.google.client-id:}")
@@ -41,22 +46,31 @@ public class GoogleIdTokenVerifier {
     // 허용 Client ID 목록과 검증 규칙을 적용한 JwtDecoder 초기화
     @PostConstruct
     protected void init() {
-        Set<String> allowedAudiences = Stream.concat(Stream.of(webClientId), Arrays.stream(additionalClientIds.split(",")))
-                .map(String::trim)
-                .filter(id -> !id.isEmpty())
-                .collect(Collectors.toSet());
+        Set<String> allowedAudiences =
+                Stream.concat(Stream.of(webClientId), Arrays.stream(additionalClientIds.split(",")))
+                        .map(String::trim)
+                        .filter(id -> !id.isEmpty())
+                        .collect(Collectors.toSet());
 
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(GOOGLE_JWK_SET_URI).build();
-        OAuth2TokenValidator<Jwt> issuerValidator = jwt -> GOOGLE_ISSUERS.contains(jwt.getClaimAsString("iss"))
-                ? OAuth2TokenValidatorResult.success()
-                : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_issuer"));
-        OAuth2TokenValidator<Jwt> audienceValidator = jwt -> jwt.getAudience() != null
-                && jwt.getAudience().stream().anyMatch(allowedAudiences::contains)
-                ? OAuth2TokenValidatorResult.success()
-                : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_audience"));
+        OAuth2TokenValidator<Jwt> issuerValidator =
+                jwt ->
+                        GOOGLE_ISSUERS.contains(jwt.getClaimAsString("iss"))
+                                ? OAuth2TokenValidatorResult.success()
+                                : OAuth2TokenValidatorResult.failure(
+                                        new OAuth2Error("invalid_issuer"));
+        OAuth2TokenValidator<Jwt> audienceValidator =
+                jwt ->
+                        jwt.getAudience() != null
+                                        && jwt.getAudience().stream()
+                                                .anyMatch(allowedAudiences::contains)
+                                ? OAuth2TokenValidatorResult.success()
+                                : OAuth2TokenValidatorResult.failure(
+                                        new OAuth2Error("invalid_audience"));
 
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefault(), issuerValidator, audienceValidator));
+        decoder.setJwtValidator(
+                new DelegatingOAuth2TokenValidator<>(
+                        JwtValidators.createDefault(), issuerValidator, audienceValidator));
         this.jwtDecoder = decoder;
     }
 
@@ -67,8 +81,11 @@ public class GoogleIdTokenVerifier {
             if (!Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified"))) {
                 throw new CustomException(ErrorCode.INVALID_TOKEN, "이메일 인증이 완료되지 않은 구글 계정입니다.");
             }
-            return new GoogleUserInfo(jwt.getSubject(), jwt.getClaimAsString("email"),
-                    jwt.getClaimAsString("name"), jwt.getClaimAsString("picture"));
+            return new GoogleUserInfo(
+                    jwt.getSubject(),
+                    jwt.getClaimAsString("email"),
+                    jwt.getClaimAsString("name"),
+                    jwt.getClaimAsString("picture"));
         } catch (CustomException e) {
             throw e;
         } catch (JwtException e) {
@@ -78,6 +95,5 @@ public class GoogleIdTokenVerifier {
     }
 
     // 검증된 Google ID Token의 사용자 정보
-    public record GoogleUserInfo(String sub, String email, String name, String picture) {
-    }
+    public record GoogleUserInfo(String sub, String email, String name, String picture) {}
 }

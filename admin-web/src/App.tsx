@@ -2,12 +2,14 @@ import Sidebar from './layouts/Sidebar'
 import { useEffect, useState } from 'react'
 import { Bell, Check, ChevronRight, Menu, Search, X } from 'lucide-react'
 import GlobalSearch from './components/GlobalSearch'
-import { pages, getRoute } from './constants/navigation'
+import { ADMIN_BASE_PATH, pages, getRoute } from './constants/navigation'
 import { usePreviewStore } from './hooks/usePreviewStore'
 import {
   type Detail,
   type Navigate,
 } from './data'
+import { hasSession, logout } from './services/api'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Diagnoses from './pages/Diagnoses'
 import Monitoring from './pages/Monitoring'
@@ -17,7 +19,8 @@ import Inquiries from './pages/Inquiries'
 import Details from './Details'
 
 export default function App() {
-  const { store, setStore, storageError } = usePreviewStore()
+  const [authenticated, setAuthenticated] = useState(hasSession)
+  const { store, setStore, storageError, loading, error, reload } = usePreviewStore(authenticated)
   const [route, setRoute] = useState(getRoute)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenu, setMobileMenu] = useState(false)
@@ -33,8 +36,8 @@ export default function App() {
       setNotifications(false)
       setDetail(null)
     }
-    window.addEventListener('hashchange', sync)
-    return () => window.removeEventListener('hashchange', sync)
+    window.addEventListener('popstate', sync)
+    return () => window.removeEventListener('popstate', sync)
   }, [])
 
   useEffect(() => {
@@ -54,7 +57,8 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   const navigate: Navigate = (page, risk) => {
-    location.hash = `${page}${risk ? `?risk=${encodeURIComponent(risk)}` : ''}`
+    const query = risk ? `?risk=${encodeURIComponent(risk)}` : ''
+    window.history.pushState({}, '', `${ADMIN_BASE_PATH}/${page}${query}`)
     setRoute({ page, risk })
     setMobileMenu(false)
     setNotifications(false)
@@ -65,6 +69,9 @@ export default function App() {
       setMobileMenu((v) => !v)
     else setCollapsed((v) => !v)
   }
+  if (!authenticated) return <Login onSuccess={() => setAuthenticated(true)} />
+  if (error) return <main className="loading-state"><p role="alert">{error}</p><button className="button primary" onClick={() => void reload()}>다시 시도</button></main>
+  if (loading || !store) return <main className="loading-state">관리자 데이터를 불러오는 중입니다</main>
   const pending = store.inquiries.filter((q) => !q.reply.trim())
   return (
     <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
@@ -104,12 +111,7 @@ export default function App() {
             </div>
           </div>
           <div className="header-actions">
-            <span
-              className="demo-chip"
-              title="실제 운영 정보가 아닌 가상 데이터입니다."
-            >
-              샘플 데이터
-            </span>
+            <button className="demo-chip" onClick={() => { void logout(); setAuthenticated(false) }}>로그아웃</button>
             <button
               className="global-search-trigger"
               onClick={() => setSearchOpen(true)}
@@ -141,7 +143,7 @@ export default function App() {
                     </button>
                   </div>
                   <p>
-                    답변을 기다리는 샘플 문의가 {pending.length}건 있습니다.
+                    답변을 기다리는 문의가 {pending.length}건 있습니다.
                   </p>
                   {pending.slice(0, 3).map((q) => (
                     <button
@@ -161,7 +163,7 @@ export default function App() {
                   ))}
                   {!pending.length && (
                     <span className="all-done">
-                      모든 샘플 문의에 답변했습니다.
+                      모든 문의에 답변했습니다.
                     </span>
                   )}
                 </div>
@@ -170,12 +172,7 @@ export default function App() {
           </div>
         </header>
         <main id="main-content" tabIndex={-1}>
-          {storageError && (
-            <div role="alert" className="storage-warning">
-              브라우저 저장소를 사용할 수 없습니다. 변경 내용은 현재 탭에서만
-              유지됩니다.
-            </div>
-          )}
+          {storageError && <div role="alert" className="storage-warning">API 데이터를 갱신하지 못했습니다</div>}
           {route.page === 'dashboard' && (
             <Dashboard store={store} navigate={navigate} open={setDetail} />
           )}
@@ -187,7 +184,7 @@ export default function App() {
               initialRisk={route.risk}
             />
           )}
-          {route.page === 'monitoring' && <Monitoring />}
+          {route.page === 'monitoring' && <Monitoring store={store} />}
           {route.page === 'facilities' && (
             <Facilities store={store} open={setDetail} />
           )}
@@ -198,7 +195,7 @@ export default function App() {
         </main>
         <footer className="app-footer">
           <span>SkinCare AI · 관리자 대시보드</span>
-          <span>샘플 데이터 · 실제 AI / 의료기관 연동 전</span>
+          <span>백엔드 API 연동</span>
         </footer>
       </div>
       {detail && (
@@ -236,4 +233,3 @@ export default function App() {
     </div>
   )
 }
-

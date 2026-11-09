@@ -1,21 +1,29 @@
 package skincare.domain.user.entity;
 
+import jakarta.persistence.*;
+
+import lombok.*;
+
 import skincare.domain.global.BaseTimeEntity;
 import skincare.domain.user.entity.ENUM.PlanType;
 import skincare.domain.user.entity.ENUM.Provider;
 import skincare.domain.user.entity.ENUM.UserStatus;
-import jakarta.persistence.*;
-import lombok.*;
 
 import java.time.LocalDateTime;
 
 // 사용자 엔티티
 @Entity
-@Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "uk_users_social_identity", columnNames = {"provider", "social_subject_hash"}))
+@Table(
+        name = "users",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_users_social_identity",
+                        columnNames = {"provider", "social_subject_hash"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// User 도메인 상태 관리
 public class User extends BaseTimeEntity {
     // 사용자 고유 아이디
     @Id
@@ -42,7 +50,9 @@ public class User extends BaseTimeEntity {
     @Column(name = "social_subject_hash", length = 64)
     private String socialSubjectHash;
 
-    public void attachSocialSubject(String hash) { this.socialSubjectHash = hash; }
+    public void attachSocialSubject(String hash) {
+        this.socialSubjectHash = hash;
+    }
 
     // 비밀번호
     @Column(length = 255)
@@ -100,32 +110,83 @@ public class User extends BaseTimeEntity {
     }
 
     public boolean hasRequiredConsents() {
-        return agreedTerms && agreedPrivacy && consentedAt != null
-            && healthConsentedAt != null && skincare.service.ConsentPolicy.HEALTH_VERSION.equals(healthConsentVersion)
-            && skincare.service.ConsentPolicy.VERSION.equals(termsVersion)
-            && skincare.service.ConsentPolicy.VERSION.equals(privacyVersion);
+        return agreedTerms
+                && agreedPrivacy
+                && consentedAt != null
+                && healthConsentedAt != null
+                && skincare.service.ConsentPolicy.HEALTH_VERSION.equals(healthConsentVersion)
+                && skincare.service.ConsentPolicy.VERSION.equals(termsVersion)
+                && skincare.service.ConsentPolicy.VERSION.equals(privacyVersion);
     }
 
-    @Column(name="health_consent_version",length=40) private String healthConsentVersion;
-    @Column(name="health_consented_at") private LocalDateTime healthConsentedAt;
-    @Column(name="training_consent_version",length=40) private String trainingConsentVersion;
-    @Column(name="training_consented_at") private LocalDateTime trainingConsentedAt;
-    @Column(name="training_granted",nullable=false) private boolean trainingGranted;
-    public void acceptHealthConsent(String version) {healthConsentVersion=version;healthConsentedAt=LocalDateTime.now();}
-    public void trainingConsent(boolean granted,String version) {trainingGranted=granted;trainingConsentVersion=version;trainingConsentedAt=LocalDateTime.now();}
+    @Column(name = "health_consent_version", length = 40)
+    private String healthConsentVersion;
+
+    @Column(name = "health_consented_at")
+    private LocalDateTime healthConsentedAt;
+
+    @Column(name = "training_consent_version", length = 40)
+    private String trainingConsentVersion;
+
+    @Column(name = "training_consented_at")
+    private LocalDateTime trainingConsentedAt;
+
+    @Column(name = "training_granted", nullable = false)
+    private boolean trainingGranted;
+
+    public void acceptHealthConsent(String version) {
+        healthConsentVersion = version;
+        healthConsentedAt = LocalDateTime.now();
+    }
+
+    public void trainingConsent(boolean granted, String version) {
+        trainingGranted = granted;
+        trainingConsentVersion = version;
+        trainingConsentedAt = LocalDateTime.now();
+    }
 
     // A device capability owns guest records; no email/social identity is fabricated.
-    @Column(name="guest_key_hash",length=64,unique=true) private String guestKeyHash;
-    @Column(name="guest_policy_version",length=40) private String guestPolicyVersion;
-    @Column(name="location_granted",nullable=false) private boolean locationGranted;
-    @Column(name="location_consent_version",length=40) private String locationConsentVersion;
-    @Column(name="location_consented_at") private LocalDateTime locationConsentedAt;
-    public void acceptGuest(String hash,String version) {guestKeyHash=hash;guestPolicyVersion=version;consentedAt=LocalDateTime.now();}
-    public void locationConsent(boolean granted,String version) {locationGranted=granted;locationConsentVersion=version;locationConsentedAt=LocalDateTime.now();}
-    public boolean hasLocationConsent() {return locationGranted&&skincare.service.ConsentPolicy.LOCATION_VERSION.equals(locationConsentVersion);}
-    public boolean activeGuest() {return provider==Provider.GUEST && status==UserStatus.ACTIVE && guestKeyHash!=null
-        && skincare.service.ConsentPolicy.GUEST_VERSION.equals(guestPolicyVersion) && consentedAt!=null
-        && getCreatedAt()!=null && getCreatedAt().plusYears(5).isAfter(LocalDateTime.now());}
+    @Column(name = "guest_key_hash", length = 64, unique = true)
+    private String guestKeyHash;
+
+    @Column(name = "guest_policy_version", length = 40)
+    private String guestPolicyVersion;
+
+    @Column(name = "location_granted", nullable = false)
+    private boolean locationGranted;
+
+    @Column(name = "location_consent_version", length = 40)
+    private String locationConsentVersion;
+
+    @Column(name = "location_consented_at")
+    private LocalDateTime locationConsentedAt;
+
+    public void acceptGuest(String hash, String version) {
+        guestKeyHash = hash;
+        guestPolicyVersion = version;
+        consentedAt = LocalDateTime.now();
+    }
+
+    public void locationConsent(boolean granted, String version) {
+        locationGranted = granted;
+        locationConsentVersion = version;
+        locationConsentedAt = LocalDateTime.now();
+    }
+
+    public boolean hasLocationConsent() {
+        return locationGranted
+                && skincare.service.ConsentPolicy.LOCATION_VERSION.equals(locationConsentVersion);
+    }
+
+    public boolean activeGuest() {
+        return provider == Provider.GUEST
+                && status == UserStatus.ACTIVE
+                && guestKeyHash != null
+                && skincare.service.ConsentPolicy.GUEST_VERSION.equals(guestPolicyVersion)
+                && consentedAt != null
+                && getCreatedAt() != null
+                && getCreatedAt().plusYears(5).isAfter(LocalDateTime.now());
+    }
 
     // 최종 서비스 접속 일시
     @Column(name = "last_access_at")
@@ -155,10 +216,19 @@ public class User extends BaseTimeEntity {
         this.lastAccessAt = LocalDateTime.now();
     }
 
-    // 비밀번호 업데이트 메서드
+    // 사용자 비밀번호 변경
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
-    public void changePlan(PlanType plan){if(plan!=null)this.plan=plan;}
-    public void changeStatus(UserStatus status){if(status!=null){this.status=status;revokeTokens();}}
+
+    public void changePlan(PlanType plan) {
+        if (plan != null) this.plan = plan;
+    }
+
+    public void changeStatus(UserStatus status) {
+        if (status != null) {
+            this.status = status;
+            revokeTokens();
+        }
+    }
 }

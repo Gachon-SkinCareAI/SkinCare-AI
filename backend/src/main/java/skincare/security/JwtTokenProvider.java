@@ -2,8 +2,11 @@ package skincare.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+
 import jakarta.annotation.PostConstruct;
+
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +16,7 @@ import java.util.Date;
 // JWT 토큰 생성, 해독, 유효성 검증 클래스
 @Slf4j
 @Component
+// JwtTokenProvider 인증과 권한 처리
 public class JwtTokenProvider {
 
     // application.properties 설정 파일에서 secret key 주입 (기본값 설정 포함)
@@ -27,7 +31,8 @@ public class JwtTokenProvider {
     @PostConstruct
     protected void init() {
         byte[] secret = secretKey.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        if (secret.length < 32) throw new IllegalStateException("jwt.secret must contain at least 32 UTF-8 bytes");
+        if (secret.length < 32)
+            throw new IllegalStateException("jwt.secret must contain at least 32 UTF-8 bytes");
         this.key = Keys.hmacShaKeyFor(secret);
     }
 
@@ -54,30 +59,47 @@ public class JwtTokenProvider {
 
     // 토큰에서 ID(Subject) 추출
     public String getId(String token) {
-        return Jwts.parserBuilder().setSigningKey(key).build()
-                .parseClaimsJws(token).getBody().getSubject();
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
     }
 
     // 토큰에서 Role(권한) 추출
     public String getRole(String token) {
-        return (String) Jwts.parserBuilder().setSigningKey(key).build()
-                .parseClaimsJws(token).getBody().get("role");
+        return (String)
+                Jwts.parserBuilder()
+                        .setSigningKey(key)
+                        .build()
+                        .parseClaimsJws(token)
+                        .getBody()
+                        .get("role");
     }
 
     public String getTokenVersion(String token) {
-        return Jwts.parserBuilder().setSigningKey(key).build()
-                .parseClaimsJws(token).getBody().get("ver", String.class);
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("ver", String.class);
     }
 
     // 토큰 유효성 및 만료 여부 검증
     public boolean validateToken(String token) {
         try {
-            Jws<Claims> claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+            Jws<Claims> claims =
+                    Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return !claims.getBody().getExpiration().before(new Date());
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("JWT rejected: {}", e.getClass().getSimpleName());
         }
         return false;
     }
-public long getTokenValiditySeconds(){return tokenValidityInMilliseconds/1000L;}
+
+    public long getTokenValiditySeconds() {
+        return tokenValidityInMilliseconds / 1000L;
+    }
 }

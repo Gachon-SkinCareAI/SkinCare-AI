@@ -1,8 +1,10 @@
 package skincare.domain.diagnosis.entity;
 
-import skincare.domain.global.BaseTimeEntity;
 import jakarta.persistence.*;
+
 import lombok.*;
+
+import skincare.domain.global.BaseTimeEntity;
 
 // [회복 경과] 특정 진단 로그에 대해 추가 등록하는 상처 추이 관찰 기록 엔티티
 @Entity
@@ -11,6 +13,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// Recovery 도메인 상태 관리
 public class Recovery extends BaseTimeEntity {
 
     // 회복 경과 기록 고유 ID
@@ -34,8 +37,13 @@ public class Recovery extends BaseTimeEntity {
     // 자가 자각 통증 점수 (1 ~ 10)
     @Column(name = "pain_score")
     private Integer painScore;
-@Column(name="area_ratio_delta") private Double areaRatioDelta;
- @Column(name="trend_hint",length=30) private String trendHint;
- @Column(name="tracking_note",columnDefinition="TEXT") private String trackingNote;
 
+    @Column(name = "area_ratio_delta")
+    private Double areaRatioDelta;
+
+    @Column(name = "trend_hint", length = 30)
+    private String trendHint;
+
+    @Column(name = "tracking_note", columnDefinition = "TEXT")
+    private String trackingNote;
 }

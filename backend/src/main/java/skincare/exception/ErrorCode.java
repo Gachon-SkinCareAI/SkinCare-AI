@@ -2,11 +2,13 @@ package skincare.exception;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 
 // 애플리케이션 내 에러 코드 및 메세지 정의 Enum
 @Getter
 @RequiredArgsConstructor
+// ErrorCode 예외 응답 처리
 public enum ErrorCode {
 
     // Compatibility codes referenced by the retained service modules.
@@ -20,8 +22,14 @@ public enum ErrorCode {
     DUPLICATE_ADMIN_EMAIL(HttpStatus.CONFLICT, "ADMIN-003", "이미 사용 중인 관리자 이메일입니다."),
     IMAGE_REQUIRED(HttpStatus.BAD_REQUEST, "DIAGNOSIS-001", "분석에 필요한 이미지가 없습니다."),
     IMAGE_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "DIAGNOSIS-003", "업로드 가능한 이미지 용량(10MB)을 초과했습니다."),
-    IMAGE_QUALITY_FAILED(HttpStatus.UNPROCESSABLE_CONTENT, "DIAGNOSIS-004", "이미지 품질 검사에 실패했습니다. 밝은 곳에서 환부가 잘 보이도록 다시 촬영해 주세요."),
-    NO_ROI_DETECTED(HttpStatus.UNPROCESSABLE_CONTENT, "DIAGNOSIS-005", "사진에서 환부를 찾지 못했습니다. 환부가 화면 중앙에 오도록 다시 촬영해 주세요."),
+    IMAGE_QUALITY_FAILED(
+            HttpStatus.UNPROCESSABLE_CONTENT,
+            "DIAGNOSIS-004",
+            "이미지 품질 검사에 실패했습니다. 밝은 곳에서 환부가 잘 보이도록 다시 촬영해 주세요."),
+    NO_ROI_DETECTED(
+            HttpStatus.UNPROCESSABLE_CONTENT,
+            "DIAGNOSIS-005",
+            "사진에서 환부를 찾지 못했습니다. 환부가 화면 중앙에 오도록 다시 촬영해 주세요."),
     DIAGNOSIS_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "DIAGNOSIS-007", "분석 결과 저장에 실패했습니다."),
     IMAGE_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "DIAGNOSIS-008", "이미지 파일을 찾을 수 없습니다."),
     PARENT_DIAGNOSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "RECOVERY-002", "상위 분석 기록이 없습니다."),
@@ -32,7 +40,8 @@ public enum ErrorCode {
     RELATED_DIAGNOSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "INQUIRY-004", "연관된 분석 기록이 없습니다."),
     ANSWER_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "INQUIRY-ANSWER-001", "답변 저장에 실패했습니다."),
     INQUIRY_ANSWER_NOT_FOUND(HttpStatus.NOT_FOUND, "INQUIRY-ANSWER-002", "존재하지 않거나 삭제된 답변 내역입니다."),
-    PUBLIC_API_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "HOSPITAL-002", "공공 API 서비스를 이용할 수 없습니다."),
+    PUBLIC_API_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE, "HOSPITAL-002", "공공 API 서비스를 이용할 수 없습니다."),
     PUBLIC_API_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "HOSPITAL-003", "공공 API 응답 시간이 초과되었습니다."),
     HOSPITAL_SYNC_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "HOSPITAL-004", "병원 정보 동기화에 실패했습니다."),
     AI_SERVICE_UNAUTHORIZED(HttpStatus.BAD_GATEWAY, "AI-001", "AI 서비스 인증에 실패했습니다."),
@@ -88,9 +97,10 @@ public enum ErrorCode {
     HOSPITAL_NOT_FOUND(HttpStatus.NOT_FOUND, "H002", "존재하지 않는 의료기관 정보입니다."),
 
     // MLOps (파이프라인)
-    MLOPS_PIPELINE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "M001", "MLOps 재학습 파이프라인 수행 중 오류가 발생했습니다.");
+    MLOPS_PIPELINE_ERROR(
+            HttpStatus.INTERNAL_SERVER_ERROR, "M001", "MLOps 재학습 파이프라인 수행 중 오류가 발생했습니다.");
 
     private final HttpStatus status; // HTTP 상태 코드
-    private final String code;       // 서비스 커스텀 에러 코드
-    private final String message;    // 에러 메세지
+    private final String code; // 서비스 커스텀 에러 코드
+    private final String message; // 에러 메세지
 }

@@ -3,6 +3,7 @@ package skincare.dto;
 import lombok.Data;
 
 @Data
+// ConsentRequestDto 요청과 응답 데이터
 public class ConsentRequestDto {
     private Boolean agreedLocation;
     private String locationVersion;

@@ -2,10 +2,12 @@ package skincare.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
 import skincare.domain.hospital.entity.ENUM.HospitalType;
 import skincare.domain.hospital.entity.Hospital;
 import skincare.dto.HospitalSyncRequestDto;
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// HospitalSyncService 비즈니스 로직 처리
 public class HospitalSyncService {
 
     private static final String HOSPITAL_FILE = "/static/hospitals.csv";
@@ -43,12 +46,21 @@ public class HospitalSyncService {
     @Transactional
     public HospitalSyncResponseDto syncHospitals(HospitalSyncRequestDto dto) {
         long startTime = System.currentTimeMillis();
-        String syncId = "SYNC-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-        String scope = StringUtils.hasText(dto.getTargetScope()) ? dto.getTargetScope().trim().toUpperCase(Locale.ROOT) : "ALL";
-        boolean syncHospitalFile = scope.equals("ALL") || scope.equals("HOSPITAL") || scope.equals("DERMATOLOGY");
+        String syncId =
+                "SYNC-"
+                        + LocalDateTime.now()
+                                .format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        String scope =
+                StringUtils.hasText(dto.getTargetScope())
+                        ? dto.getTargetScope().trim().toUpperCase(Locale.ROOT)
+                        : "ALL";
+        boolean syncHospitalFile =
+                scope.equals("ALL") || scope.equals("HOSPITAL") || scope.equals("DERMATOLOGY");
         boolean syncPharmacyFile = scope.equals("ALL") || scope.equals("PHARMACY");
         if (!syncHospitalFile && !syncPharmacyFile) {
-            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE, "target_scope는 ALL, HOSPITAL, PHARMACY 중 하나여야 합니다.");
+            throw new CustomException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "target_scope는 ALL, HOSPITAL, PHARMACY 중 하나여야 합니다.");
         }
 
         try {
@@ -63,20 +75,35 @@ public class HospitalSyncService {
             // 3. 공공데이터 CSV 파싱 (대상 스코프 / 지역 필터 적용)
             List<Hospital> fetched = new ArrayList<>();
             if (syncHospitalFile) {
-                fetched.addAll(parseCsvFile(HOSPITAL_FILE, false, apiEmergencyHospitalNames, detailMap, dto.getRegionCode()));
+                fetched.addAll(
+                        parseCsvFile(
+                                HOSPITAL_FILE,
+                                false,
+                                apiEmergencyHospitalNames,
+                                detailMap,
+                                dto.getRegionCode()));
             }
             if (syncPharmacyFile) {
-                fetched.addAll(parseCsvFile(PHARMACY_FILE, true, apiEmergencyHospitalNames, detailMap, dto.getRegionCode()));
+                fetched.addAll(
+                        parseCsvFile(
+                                PHARMACY_FILE,
+                                true,
+                                apiEmergencyHospitalNames,
+                                detailMap,
+                                dto.getRegionCode()));
             }
 
             // CSV를 하나도 읽지 못한 경우 기존 데이터 전체가 운영 중지되지 않도록 중단
             if (fetched.isEmpty()) {
-                throw new CustomException(ErrorCode.HOSPITAL_SYNC_FAILED, "공공데이터 파일에서 기관 정보를 읽지 못했습니다.");
+                throw new CustomException(
+                        ErrorCode.HOSPITAL_SYNC_FAILED, "공공데이터 파일에서 기관 정보를 읽지 못했습니다.");
             }
 
             // 4. 기존 DB 정보와 비교하여 신규 추가 / 변경 수정
-            Map<String, Hospital> existingMap = hospitalRepository.findAll().stream()
-                    .collect(Collectors.toMap(Hospital::getHospitalId, Function.identity()));
+            Map<String, Hospital> existingMap =
+                    hospitalRepository.findAll().stream()
+                            .collect(
+                                    Collectors.toMap(Hospital::getHospitalId, Function.identity()));
 
             List<Hospital> newHospitals = new ArrayList<>();
             Set<String> fetchedIds = new HashSet<>();
@@ -96,8 +123,13 @@ public class HospitalSyncService {
             int deactivatedCount = 0;
             if (!StringUtils.hasText(dto.getRegionCode())) {
                 for (Hospital existing : existingMap.values()) {
-                    boolean inScope = existing.getHospitalType() == HospitalType.PHARMACY ? syncPharmacyFile : syncHospitalFile;
-                    if (inScope && Hospital.STATUS_ACTIVE.equals(existing.getStatus()) && !fetchedIds.contains(existing.getHospitalId())) {
+                    boolean inScope =
+                            existing.getHospitalType() == HospitalType.PHARMACY
+                                    ? syncPharmacyFile
+                                    : syncHospitalFile;
+                    if (inScope
+                            && Hospital.STATUS_ACTIVE.equals(existing.getStatus())
+                            && !fetchedIds.contains(existing.getHospitalId())) {
                         existing.deactivate();
                         deactivatedCount++;
                     }
@@ -105,27 +137,41 @@ public class HospitalSyncService {
             }
 
             // 6. 신규 기관 Batch Insert (1,000건씩 분할 저장)
-            log.info("[Sync] 대량 DB 저장 시작 (신규 {}건, 수정 {}건, 운영중지 {}건)...", newHospitals.size(), updatedCount, deactivatedCount);
+            log.info(
+                    "[Sync] 대량 DB 저장 시작 (신규 {}건, 수정 {}건, 운영중지 {}건)...",
+                    newHospitals.size(),
+                    updatedCount,
+                    deactivatedCount);
             for (int i = 0; i < newHospitals.size(); i += BATCH_SIZE) {
-                hospitalRepository.saveAll(newHospitals.subList(i, Math.min(i + BATCH_SIZE, newHospitals.size())));
+                hospitalRepository.saveAll(
+                        newHospitals.subList(i, Math.min(i + BATCH_SIZE, newHospitals.size())));
                 hospitalRepository.flush(); // 배치 플러시
             }
 
             double durationSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            log.info("[Sync] 정상 처리, 공공데이터 OpenAPI 의료기관 동기화 완료 (fetched: {}, added: {}, updated: {}, deactivated: {}, {}초)",
-                    fetched.size(), newHospitals.size(), updatedCount, deactivatedCount, durationSeconds);
+            log.info(
+                    "[Sync] 정상 처리, 공공데이터 OpenAPI 의료기관 동기화 완료 (fetched: {}, added: {}, updated: {},"
+                            + " deactivated: {}, {}초)",
+                    fetched.size(),
+                    newHospitals.size(),
+                    updatedCount,
+                    deactivatedCount,
+                    durationSeconds);
 
             return HospitalSyncResponseDto.builder()
                     .syncId(syncId)
                     .targetScope(scope)
-                    .executedAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                    .executedAt(
+                            LocalDateTime.now()
+                                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                     .durationSeconds(durationSeconds)
-                    .metrics(HospitalSyncResponseDto.SyncMetrics.builder()
-                            .totalFetched(fetched.size())
-                            .newAdded(newHospitals.size())
-                            .updated(updatedCount)
-                            .deactivated(deactivatedCount)
-                            .build())
+                    .metrics(
+                            HospitalSyncResponseDto.SyncMetrics.builder()
+                                    .totalFetched(fetched.size())
+                                    .newAdded(newHospitals.size())
+                                    .updated(updatedCount)
+                                    .deactivated(deactivatedCount)
+                                    .build())
                     .status("COMPLETED")
                     .build();
 
@@ -147,7 +193,8 @@ public class HospitalSyncService {
             return map;
         }
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(resource.getInputStream(), "EUC-KR"))) {
+        try (BufferedReader br =
+                new BufferedReader(new InputStreamReader(resource.getInputStream(), "EUC-KR"))) {
             String line;
             boolean isHeader = true;
 
@@ -178,12 +225,23 @@ public class HospitalSyncService {
                 }
 
                 // 진료시간 (평일: 월~금 중 가장 이른 시작 ~ 가장 늦은 종료, 토요일, 일요일)
-                String weekdayHours = formatHours(tokens, new int[]{22, 24, 26, 28, 30}, new int[]{23, 25, 27, 29, 31});
-                String saturdayHours = formatHours(tokens, new int[]{32}, new int[]{33});
-                String sundayHours = formatHours(tokens, new int[]{20}, new int[]{21});
+                String weekdayHours =
+                        formatHours(
+                                tokens,
+                                new int[] {22, 24, 26, 28, 30},
+                                new int[] {23, 25, 27, 29, 31});
+                String saturdayHours = formatHours(tokens, new int[] {32}, new int[] {33});
+                String sundayHours = formatHours(tokens, new int[] {20}, new int[] {21});
 
                 boolean isEmergency = "Y".equalsIgnoreCase(nightErmnyYn);
-                map.put(ykiho, new HospitalDetailInfo(isNightCare, isEmergency, weekdayHours, saturdayHours, sundayHours));
+                map.put(
+                        ykiho,
+                        new HospitalDetailInfo(
+                                isNightCare,
+                                isEmergency,
+                                weekdayHours,
+                                saturdayHours,
+                                sundayHours));
             }
         } catch (Exception e) {
             log.error("[Sync] hospital_details.csv 읽기 실패: {}", e.getMessage());
@@ -192,8 +250,12 @@ public class HospitalSyncService {
     }
 
     // 병원/약국 CSV 파일 파싱 후 동기화 비교용 엔티티 목록 생성 (DB 조회를 반복문 안에서 하지 않음)
-    private List<Hospital> parseCsvFile(String fileName, boolean isPharmacyFile, Set<String> apiEmergencyNames,
-                                        Map<String, HospitalDetailInfo> detailMap, String regionCode) {
+    private List<Hospital> parseCsvFile(
+            String fileName,
+            boolean isPharmacyFile,
+            Set<String> apiEmergencyNames,
+            Map<String, HospitalDetailInfo> detailMap,
+            String regionCode) {
         List<Hospital> result = new ArrayList<>();
         ClassPathResource resource = new ClassPathResource(fileName);
         if (!resource.exists()) {
@@ -206,7 +268,8 @@ public class HospitalSyncService {
         int latitudeIndex = isPharmacyFile ? 14 : 29;
         Set<String> parsedIds = new HashSet<>();
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(resource.getInputStream(), "EUC-KR"))) {
+        try (BufferedReader br =
+                new BufferedReader(new InputStreamReader(resource.getInputStream(), "EUC-KR"))) {
             String line;
             boolean isHeader = true;
 
@@ -243,35 +306,42 @@ public class HospitalSyncService {
                     continue;
                 }
 
-                HospitalType hospitalType = isPharmacyFile ? HospitalType.PHARMACY : determineHospitalType(clCdNm, name);
+                HospitalType hospitalType =
+                        isPharmacyFile
+                                ? HospitalType.PHARMACY
+                                : determineHospitalType(clCdNm, name);
                 String region = (sido + " " + sggu).trim();
                 if (region.isEmpty()) region = "기타";
 
                 HospitalDetailInfo detail = detailMap.get(ykiho);
                 boolean isNightCare = detail != null && detail.isNightCare();
-                boolean isEmergency = (detail != null && detail.isEmergency()) || apiEmergencyNames.contains(name);
+                boolean isEmergency =
+                        (detail != null && detail.isEmergency())
+                                || apiEmergencyNames.contains(name);
 
-                result.add(Hospital.builder()
-                        .hospitalId(hospitalId)
-                        .name(truncate(name, 100))
-                        .hospitalType(hospitalType)
-                        .region(truncate(region, 50))
-                        .address(truncate(addr, 200))
-                        .tel(truncate(tel, 20))
-                        .longitude(parseCoordinate(tokens, longitudeIndex))
-                        .latitude(parseCoordinate(tokens, latitudeIndex))
-                        .weekdayHours(detail != null ? detail.weekdayHours() : null)
-                        .saturdayHours(detail != null ? detail.saturdayHours() : null)
-                        .sundayHolidayHours(detail != null ? detail.sundayHours() : null)
-                        .nightCare(isNightCare)
-                        .emergency(isEmergency)
-                        .dataSource("공공데이터 포털")
-                        .status("ACTIVE")
-                        .build());
+                result.add(
+                        Hospital.builder()
+                                .hospitalId(hospitalId)
+                                .name(truncate(name, 100))
+                                .hospitalType(hospitalType)
+                                .region(truncate(region, 50))
+                                .address(truncate(addr, 200))
+                                .tel(truncate(tel, 20))
+                                .longitude(parseCoordinate(tokens, longitudeIndex))
+                                .latitude(parseCoordinate(tokens, latitudeIndex))
+                                .weekdayHours(detail != null ? detail.weekdayHours() : null)
+                                .saturdayHours(detail != null ? detail.saturdayHours() : null)
+                                .sundayHolidayHours(detail != null ? detail.sundayHours() : null)
+                                .nightCare(isNightCare)
+                                .emergency(isEmergency)
+                                .dataSource("공공데이터 포털")
+                                .status("ACTIVE")
+                                .build());
             }
         } catch (Exception e) {
             log.error("[Sync] {} 파싱 중 에러: {}", fileName, e.getMessage(), e);
-            throw new CustomException(ErrorCode.HOSPITAL_SYNC_FAILED, "공공데이터 파일 파싱에 실패했습니다: " + fileName);
+            throw new CustomException(
+                    ErrorCode.HOSPITAL_SYNC_FAILED, "공공데이터 파일 파싱에 실패했습니다: " + fileName);
         }
         log.info("[Sync] {} 파싱 완료 ({}건)", fileName, result.size());
         return result;
@@ -280,7 +350,8 @@ public class HospitalSyncService {
     // 피부과 또는 병원급(종합병원 포함) 의료기관 여부 판별
     private boolean isDermatologyOrGeneralHospital(String name, String clCdNm) {
         if (clCdNm.contains("피부") || name.contains("피부")) return true;
-        if (clCdNm.contains("종합병원") || clCdNm.contains("상급종합") || clCdNm.contains("병원")) return true;
+        if (clCdNm.contains("종합병원") || clCdNm.contains("상급종합") || clCdNm.contains("병원"))
+            return true;
         return false;
     }
 
@@ -311,7 +382,9 @@ public class HospitalSyncService {
         if (latestEnd < 0) {
             return "휴무";
         }
-        return String.format("%02d:%02d - %02d:%02d", earliestStart / 100, earliestStart % 100, latestEnd / 100, latestEnd % 100);
+        return String.format(
+                "%02d:%02d - %02d:%02d",
+                earliestStart / 100, earliestStart % 100, latestEnd / 100, latestEnd % 100);
     }
 
     // HHmm 형식 시간 컬럼을 정수로 변환 (ex. "900" → 900, 값이 없거나 형식 오류면 0)
@@ -383,6 +456,10 @@ public class HospitalSyncService {
     }
 
     // 세부정보 CSV에서 추출한 야간진료/응급실 여부 및 진료시간 정보
-    private record HospitalDetailInfo(boolean isNightCare, boolean isEmergency,
-                                      String weekdayHours, String saturdayHours, String sundayHours) {}
+    private record HospitalDetailInfo(
+            boolean isNightCare,
+            boolean isEmergency,
+            String weekdayHours,
+            String saturdayHours,
+            String sundayHours) {}
 }

@@ -2,27 +2,29 @@ package skincare.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import skincare.domain.ai.entity.AiModelMetrics;
 import skincare.domain.ai.entity.AiPipeline;
 import skincare.domain.ai.entity.AiRetrainHistory;
+import skincare.domain.diagnosis.entity.ENUM.WoundType;
 import skincare.dto.AiModelMetricResponseDto;
 import skincare.dto.AiPipelineResponseDto;
 import skincare.dto.AiRetrainHistoryResponseDto;
 import skincare.dto.Paging;
-import skincare.repository.AiModelMetricsRepository;
-import skincare.repository.AiPipelineRepository;
-import skincare.repository.AiRetrainHistoryRepository;
-import skincare.repository.DiagnosisRepository;
-import skincare.domain.diagnosis.entity.ENUM.WoundType;
 import skincare.dto.ai.AiHealthResponseDto;
 import skincare.dto.ai.AiJobResponseDto;
 import skincare.exception.CustomException;
 import skincare.exception.ErrorCode;
 import skincare.external.AiServiceClient;
+import skincare.repository.AiModelMetricsRepository;
+import skincare.repository.AiPipelineRepository;
+import skincare.repository.AiRetrainHistoryRepository;
+import skincare.repository.DiagnosisRepository;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -36,11 +38,14 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+// AdminAiMonitoringService 비즈니스 로직 처리
 public class AdminAiMonitoringService {
 
-    private final AiModelMetricsRepository aiModelMetricsRepository; // AI 모델 성능 지표 데이터 베이스 접근용 Repository
+    private final AiModelMetricsRepository
+            aiModelMetricsRepository; // AI 모델 성능 지표 데이터 베이스 접근용 Repository
     private final AiPipelineRepository aiPipelineRepository; // AI 파이프라인 상태 데이터 베이스 접근용 Repository
-    private final AiRetrainHistoryRepository aiRetrainHistoryRepository; // AI 재학습 이력 데이터 베이스 접근용 Repository
+    private final AiRetrainHistoryRepository
+            aiRetrainHistoryRepository; // AI 재학습 이력 데이터 베이스 접근용 Repository
     private final DiagnosisRepository diagnosisRepository; // 재학습 후보(학습 활용 동의 분석) 조회
     private final AiServiceClient aiServiceClient; // AI/MLOps 서버 연동 (health, retrain, jobs)
 
@@ -65,7 +70,8 @@ public class AdminAiMonitoringService {
     // MLOps 모델 재학습 이력 정보 조회 (페이지네이션)
     public Page<AiRetrainHistoryResponseDto> getAiRetrainHistory(int page, int size) {
         Pageable pageable = Paging.of(page, size);
-        Page<AiRetrainHistory> historyPage = aiRetrainHistoryRepository.findAllByOrderByExecutedAtDesc(pageable);
+        Page<AiRetrainHistory> historyPage =
+                aiRetrainHistoryRepository.findAllByOrderByExecutedAtDesc(pageable);
 
         return historyPage.map(AiRetrainHistoryResponseDto::fromEntity);
     }
@@ -103,20 +109,27 @@ public class AdminAiMonitoringService {
         // AI 서버는 진행 중인 잡이 있으면 기존 job_id를 반환하므로 이미 등록된 잡인지 확인
         if (aiRetrainHistoryRepository.existsById(job.jobId())) {
             log.warn("[MLOps] 재학습 중복 요청 - 이미 진행 중인 잡 (job_id: {})", job.jobId());
-            throw new CustomException(ErrorCode.RETRAIN_ALREADY_RUNNING,
+            throw new CustomException(
+                    ErrorCode.RETRAIN_ALREADY_RUNNING,
                     "이미 진행 중인 재학습이 있습니다. (job_id: " + job.jobId() + ")");
         }
 
-        AiRetrainHistory history = aiRetrainHistoryRepository.saveAndFlush(AiRetrainHistory.builder()
-                .historyId(job.jobId())
-                .executedAt(LocalDateTime.now())
-                .triggerReason(reason)
-                .performanceChange("측정 전")
-                .status(job.status() != null ? job.status() : "queued")
-                .requestedBy(adminId)
-                .build());
+        AiRetrainHistory history =
+                aiRetrainHistoryRepository.saveAndFlush(
+                        AiRetrainHistory.builder()
+                                .historyId(job.jobId())
+                                .executedAt(LocalDateTime.now())
+                                .triggerReason(reason)
+                                .performanceChange("측정 전")
+                                .status(job.status() != null ? job.status() : "queued")
+                                .requestedBy(adminId)
+                                .build());
 
-        log.info("[MLOps] 정상 처리, 재학습 잡 등록 (job_id: {}, status: {}, admin_id: {})", job.jobId(), history.getStatus(), adminId);
+        log.info(
+                "[MLOps] 정상 처리, 재학습 잡 등록 (job_id: {}, status: {}, admin_id: {})",
+                job.jobId(),
+                history.getStatus(),
+                adminId);
         return AiRetrainHistoryResponseDto.fromEntity(history);
     }
 
@@ -142,8 +155,11 @@ public class AdminAiMonitoringService {
         history.syncStatus(job.status(), job.message());
 
         if (!AiRetrainHistory.STATUS_AWAITING_DEPLOY.equals(history.getStatus())) {
-            throw new CustomException(ErrorCode.MODEL_VALIDATION_FAILED,
-                    "검증을 통과하여 배포 대기(awaiting_deploy) 중인 모델만 승인할 수 있습니다. (현재 상태: " + history.getStatus() + ")");
+            throw new CustomException(
+                    ErrorCode.MODEL_VALIDATION_FAILED,
+                    "검증을 통과하여 배포 대기(awaiting_deploy) 중인 모델만 승인할 수 있습니다. (현재 상태: "
+                            + history.getStatus()
+                            + ")");
         }
 
         history.approveDeploy(adminId);
@@ -153,7 +169,8 @@ public class AdminAiMonitoringService {
 
     // 재학습 이력 조회 (없으면 MLOPS-001)
     private AiRetrainHistory findHistory(String jobId) {
-        return aiRetrainHistoryRepository.findById(jobId)
+        return aiRetrainHistoryRepository
+                .findById(jobId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RETRAIN_HISTORY_NOT_FOUND));
     }
 }

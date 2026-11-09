@@ -7,12 +7,13 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { Badge, Modal, Progress, RiskBadge } from './components'
+import { answerInquiry, updateDiagnosisStatus, updateUserStatus } from './services/adminApi'
 import {
-  saveReply,
   type Detail,
   type Inquiry,
   type OpenDetail,
   type Store,
+  saveReply,
 } from './data'
 
 type Props = {
@@ -39,8 +40,7 @@ export default function Details({
           <div>
             <h3>의료기관 데이터 연결을 준비 중입니다</h3>
             <p>
-              현재 목록은 와이어프레임 확인을 위한 가상 의료기관입니다. 동기화
-              요청은 실제 기관에 전송되지 않습니다.
+              의료기관 동기화 기능은 백엔드 동기화 API 연결 후 사용할 수 있습니다.
             </p>
           </div>
         </div>
@@ -111,16 +111,15 @@ export default function Details({
           <select
             aria-label="처리 상태"
             value={d.status}
-            onChange={(e) => {
-              update({
-                ...store,
-                diagnoses: store.diagnoses.map((row) =>
-                  row.id === d.id
-                    ? { ...row, status: e.target.value as typeof d.status }
-                    : row,
-                ),
-              })
-              notify('샘플 진단의 처리 상태를 저장했습니다.')
+            onChange={async (e) => {
+              const status = e.target.value
+              try {
+                await updateDiagnosisStatus(d.id, status)
+                update({ ...store, diagnoses: store.diagnoses.map((row) => row.id === d.id ? { ...row, status } : row) })
+                notify('진단 처리 상태를 저장했습니다')
+              } catch (cause) {
+                notify(cause instanceof Error ? cause.message : '상태 저장에 실패했습니다')
+              }
             }}
           >
             <option>진행중</option>
@@ -132,8 +131,7 @@ export default function Details({
         <div className="info-note">
           <ShieldCheck size={17} />
           <p>
-            가상 진단 기록입니다. 상태 변경은 브라우저에만 저장되며 실제
-            알림이나 의료기관 연결을 실행하지 않습니다.
+            처리 상태는 관리자 API를 통해 저장됩니다
           </p>
         </div>
         <div className="modal-actions">
@@ -184,7 +182,7 @@ export default function Details({
             </dd>
           </div>
         </dl>
-        <h4 className="section-label">관련 샘플 진단</h4>
+        <h4 className="section-label">관련 진단</h4>
         {related.length ? (
           <div className="related-list">
             {related.map((d) => (
@@ -204,7 +202,7 @@ export default function Details({
             ))}
           </div>
         ) : (
-          <p className="muted detail-empty">연결된 샘플 진단이 없습니다.</p>
+          <p className="muted detail-empty">연결된 진단이 없습니다.</p>
         )}
         <p className="detail-footnote">
           상태 변경은 이 브라우저의 데모에만 반영됩니다.
@@ -212,16 +210,14 @@ export default function Details({
         <div className="modal-actions">
           <button
             className="button secondary"
-            onClick={() => {
-              update({
-                ...store,
-                users: store.users.map((row) =>
-                  row.id === u.id ? { ...row, active: !row.active } : row,
-                ),
-              })
-              notify(
-                `사용자를 ${u.active ? '비활성' : '활성'}으로 변경했습니다.`,
-              )
+            onClick={async () => {
+              try {
+                await updateUserStatus(u.id, !u.active)
+                update({ ...store, users: store.users.map((row) => row.id === u.id ? { ...row, active: !row.active } : row) })
+                notify(`사용자를 ${u.active ? '비활성' : '활성'}으로 변경했습니다`)
+              } catch (cause) {
+                notify(cause instanceof Error ? cause.message : '사용자 상태 저장에 실패했습니다')
+              }
             }}
           >
             {u.active ? '비활성으로 변경' : '활성으로 변경'}
@@ -280,8 +276,7 @@ export default function Details({
         <div className="info-note">
           <AlertCircle size={17} />
           <p>
-            기관명과 운영 정보는 가상의 샘플입니다. 실제 진료·약국 이용을 위한
-            정보로 사용할 수 없습니다.
+            기관명과 운영 정보는 백엔드 의료기관 데이터입니다
           </p>
         </div>
         <div className="modal-actions">
@@ -300,14 +295,16 @@ export default function Details({
       inquiry={inquiry}
       close={close}
       open={open}
-      save={(reply) => {
+      save={async (reply) => {
         try {
-          update(saveReply(store, inquiry.id, reply))
-          notify(
-            '답변을 브라우저에 저장했습니다. 실제 메시지는 발송되지 않습니다.',
-          )
+          const value = reply.trim()
+          if (!value) throw new Error('답변을 입력해 주세요')
+          await answerInquiry(inquiry.id, value)
+          update(saveReply(store, inquiry.id, value))
+          notify('답변을 저장했습니다')
           return true
-        } catch {
+        } catch (cause) {
+          notify(cause instanceof Error ? cause.message : '답변 저장에 실패했습니다')
           return false
         }
       }}
@@ -324,17 +321,17 @@ function InquiryDetails({
   inquiry: Inquiry
   close: () => void
   open: OpenDetail
-  save: (text: string) => boolean
+  save: (text: string) => Promise<boolean>
 }) {
   const [draft, setDraft] = useState(q.reply)
   const [error, setError] = useState('')
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault()
     if (!draft.trim()) {
       setError('답변을 입력해 주세요.')
       return
     }
-    if (save(draft)) setError('')
+    if (await save(draft)) setError('')
     else setError('답변을 저장할 수 없습니다. 내용을 확인해 주세요.')
   }
   return (

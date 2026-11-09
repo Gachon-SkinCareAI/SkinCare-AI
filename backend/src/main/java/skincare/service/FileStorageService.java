@@ -1,7 +1,9 @@
 package skincare.service;
 
 import jakarta.annotation.PostConstruct;
+
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -9,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
 import skincare.exception.CustomException;
 import skincare.exception.ErrorCode;
 
@@ -29,10 +32,12 @@ import java.util.UUID;
 // 상처 사진은 민감정보이므로 정적 경로로 공개하지 않고, 소유자/관리자 권한을 확인하는 API를 통해서만 제공
 @Slf4j
 @Service
+// FileStorageService 비즈니스 로직 처리
 public class FileStorageService {
 
     // 허용 이미지 확장자 (스마트폰 기본 촬영 포맷 HEIC 포함)
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "heic", "heif");
+    private static final Set<String> ALLOWED_EXTENSIONS =
+            Set.of("jpg", "jpeg", "png", "heic", "heif");
 
     // 업로드 파일 저장 루트 경로
     @Value("${file.upload-dir:./uploads}")
@@ -108,13 +113,20 @@ public class FileStorageService {
 
         String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
         int dotIndex = filename.lastIndexOf('.');
-        String extension = dotIndex >= 0 ? filename.substring(dotIndex + 1).toLowerCase(Locale.ROOT) : "";
+        String extension =
+                dotIndex >= 0 ? filename.substring(dotIndex + 1).toLowerCase(Locale.ROOT) : "";
 
-        String contentType = file.getContentType() != null ? file.getContentType().toLowerCase(Locale.ROOT) : "";
-        boolean imageContentType = contentType.startsWith("image/") || contentType.equals(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        String contentType =
+                file.getContentType() != null ? file.getContentType().toLowerCase(Locale.ROOT) : "";
+        boolean imageContentType =
+                contentType.startsWith("image/")
+                        || contentType.equals(MediaType.APPLICATION_OCTET_STREAM_VALUE);
 
         if (!ALLOWED_EXTENSIONS.contains(extension) || !imageContentType) {
-            log.warn("[FileStorage] 지원하지 않는 이미지 형식 (filename: {}, contentType: {})", filename, contentType);
+            log.warn(
+                    "[FileStorage] 지원하지 않는 이미지 형식 (filename: {}, contentType: {})",
+                    filename,
+                    contentType);
             throw new CustomException(ErrorCode.UNSUPPORTED_IMAGE_FORMAT);
         }
         return extension.equals("jpeg") ? "jpg" : extension;

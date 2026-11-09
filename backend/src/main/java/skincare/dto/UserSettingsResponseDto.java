@@ -3,11 +3,13 @@ package skincare.dto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+
 import skincare.domain.user.entity.UserSettings;
 
 @Data
 @Builder
 @AllArgsConstructor
+// UserSettingsResponseDto 요청과 응답 데이터
 public class UserSettingsResponseDto {
     private String userId;
     private boolean pushDiagnosisAlert;

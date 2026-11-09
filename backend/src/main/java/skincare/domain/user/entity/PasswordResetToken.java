@@ -1,7 +1,9 @@
 package skincare.domain.user.entity;
 
 import jakarta.persistence.*;
+
 import lombok.*;
+
 import skincare.domain.global.BaseTimeEntity;
 
 import java.time.LocalDateTime;
@@ -12,6 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// PasswordResetToken 도메인 상태 관리
 public class PasswordResetToken extends BaseTimeEntity {
 
     @Id

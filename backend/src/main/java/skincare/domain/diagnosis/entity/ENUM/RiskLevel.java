@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 // OBSERVATION: 관찰, WARNING: 경고, EMERGENCY: 응급, UNKNOWN: 판단 불가 (AI Gate 미통과)
 @Getter
 @RequiredArgsConstructor
+// RiskLevel 도메인 상태 관리
 public enum RiskLevel {
     NORMAL("정상"), // Legacy stored value retained.
     OBSERVATION("관찰"),

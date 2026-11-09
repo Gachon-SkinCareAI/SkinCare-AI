@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 // 관리자 분석 결과 검수 상태
 @Getter
 @RequiredArgsConstructor
+// ReviewStatus 도메인 상태 관리
 public enum ReviewStatus {
     UNREVIEWED("미검수"),
     NORMAL("정상"),

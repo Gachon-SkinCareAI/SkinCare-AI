@@ -1,6 +1,7 @@
 package skincare.domain.global;
 
 import jakarta.persistence.*;
+
 import lombok.*;
 
 @Entity
@@ -9,6 +10,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// RefreshToken 도메인 상태 관리
 public class RefreshToken extends BaseTimeEntity {
 
     @Id

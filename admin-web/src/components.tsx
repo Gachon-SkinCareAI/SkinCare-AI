@@ -143,7 +143,7 @@ export function Pagination({
   return (
     <div className="pagination">
       <span>
-        샘플 {count}
+        전체 {count}
         {unit} · {page} / {total} 페이지
       </span>
       <nav aria-label="표 페이지 이동">

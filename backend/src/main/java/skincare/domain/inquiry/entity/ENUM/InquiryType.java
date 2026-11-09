@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 // 문의 유형 (AI_RESULT: AI 분석 결과, ACCURACY: 분석 정확도, SYSTEM_ERROR: 시스템 오류, OTHER: 기타)
 @Getter
 @RequiredArgsConstructor
+// InquiryType 도메인 상태 관리
 public enum InquiryType {
     AI_RESULT("AI 분석 결과 문의"),
     ACCURACY("AI 분석 정확도 문의"),

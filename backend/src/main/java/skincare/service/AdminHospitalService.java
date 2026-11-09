@@ -2,10 +2,12 @@ package skincare.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import skincare.domain.hospital.entity.ENUM.HospitalType;
 import skincare.domain.hospital.entity.Hospital;
 import skincare.dto.HospitalResponseDto;
@@ -23,13 +25,17 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+// AdminHospitalService 비즈니스 로직 처리
 public class AdminHospitalService {
 
     private final HospitalRepository hospitalRepository; // 의료기관 데이터 베이스 접근용 Repository
 
     // 등록 기관 목록 조회 (검색어, 기관 유형, 운영 상태 필터 / 운영 중지·숨김 기관 포함)
-    public Page<HospitalResponseDto> getHospitals(String keyword, HospitalType type, String status, int page, int size) {
-        return hospitalRepository.findAll(HospitalRepository.adminSearch(keyword, type, status),
+    public Page<HospitalResponseDto> getHospitals(
+            String keyword, HospitalType type, String status, int page, int size) {
+        return hospitalRepository
+                .findAll(
+                        HospitalRepository.adminSearch(keyword, type, status),
                         Paging.of(page, size, Sort.by("name")))
                 .map(hospital -> HospitalResponseDto.summary(hospital, null));
     }
@@ -38,11 +44,17 @@ public class AdminHospitalService {
     public Map<String, Object> getHospitalStats() {
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("total_registered", hospitalRepository.countByStatus(Hospital.STATUS_ACTIVE));
-        stats.put("night_care_available", hospitalRepository.countByStatusAndNightCareTrueAndHospitalTypeNot(
-                Hospital.STATUS_ACTIVE, HospitalType.PHARMACY));
-        stats.put("night_pharmacies", hospitalRepository.countByStatusAndNightCareTrueAndHospitalType(
-                Hospital.STATUS_ACTIVE, HospitalType.PHARMACY));
-        stats.put("emergency_available", hospitalRepository.countByStatusAndEmergencyTrue(Hospital.STATUS_ACTIVE));
+        stats.put(
+                "night_care_available",
+                hospitalRepository.countByStatusAndNightCareTrueAndHospitalTypeNot(
+                        Hospital.STATUS_ACTIVE, HospitalType.PHARMACY));
+        stats.put(
+                "night_pharmacies",
+                hospitalRepository.countByStatusAndNightCareTrueAndHospitalType(
+                        Hospital.STATUS_ACTIVE, HospitalType.PHARMACY));
+        stats.put(
+                "emergency_available",
+                hospitalRepository.countByStatusAndEmergencyTrue(Hospital.STATUS_ACTIVE));
         stats.put("inactive_count", hospitalRepository.countByStatus(Hospital.STATUS_INACTIVE));
         stats.put("hidden_count", hospitalRepository.countByStatus(Hospital.STATUS_HIDDEN));
         return stats;
@@ -59,14 +71,19 @@ public class AdminHospitalService {
         Hospital hospital = findHospital(hospitalId);
         String previous = hospital.getStatus();
         hospital.changeStatusByAdmin(status);
-        log.info("[Sync] 정상 처리, 의료기관 운영 상태 변경 (hospital_id: {}, {} → {}, admin_id: {})",
-                hospitalId, previous, status, adminId);
+        log.info(
+                "[Sync] 정상 처리, 의료기관 운영 상태 변경 (hospital_id: {}, {} → {}, admin_id: {})",
+                hospitalId,
+                previous,
+                status,
+                adminId);
         return HospitalResponseDto.detail(hospital);
     }
 
     // 기관 조회 (없으면 HOSPITAL-001)
     private Hospital findHospital(String hospitalId) {
-        return hospitalRepository.findByHospitalId(hospitalId)
+        return hospitalRepository
+                .findByHospitalId(hospitalId)
                 .orElseThrow(() -> new CustomException(ErrorCode.HOSPITAL_NOT_FOUND));
     }
 }

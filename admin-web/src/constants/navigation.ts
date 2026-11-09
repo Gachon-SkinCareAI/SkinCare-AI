@@ -8,9 +8,15 @@ export const pages: { id: Page; title: string; icon: string }[] = [
   { id: 'users', title: '사용자 관리', icon: '👤' },
   { id: 'inquiries', title: '문의 관리', icon: '✉' },
 ]
+
+// 관리자 웹의 기준 경로
+export const ADMIN_BASE_PATH = '/admin'
+
+// 현재 브라우저 경로에서 화면 정보를 읽기
 export function getRoute() {
-  const [hash, query] = location.hash.slice(1).split('?')
-  const id = hash === 'analyses' ? 'diagnoses' : hash
+  const path = location.pathname.replace(new RegExp(`^${ADMIN_BASE_PATH}`), '')
+  const [segment, query] = `${path}${location.search}`.replace(/^\/+/, '').split('?')
+  const id = segment === 'analyses' ? 'diagnoses' : segment
   const page: Page = pages.find((p) => p.id === id)?.id || 'dashboard'
   const risk = new URLSearchParams(query).get('risk')
   return {
@@ -18,4 +24,3 @@ export function getRoute() {
     risk: risks.includes(risk as Risk) ? (risk as Risk) : undefined,
   }
 }
-

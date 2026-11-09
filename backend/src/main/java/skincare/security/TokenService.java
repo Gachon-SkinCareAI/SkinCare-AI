@@ -2,10 +2,12 @@ package skincare.security;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
 import skincare.domain.global.RotatingRefreshToken;
 import skincare.domain.user.entity.User;
 import skincare.dto.AuthTokenDto;
@@ -29,14 +31,15 @@ import java.util.HexFormat;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// TokenService 인증과 권한 처리
 public class TokenService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom(); // Refresh Token 난수 생성기
 
-    private final JwtTokenProvider jwtTokenProvider;             // Access Token(JWT) 생성
+    private final JwtTokenProvider jwtTokenProvider; // Access Token(JWT) 생성
     private final RotatingRefreshTokenRepository refreshTokenRepository; // Refresh Token 해시 저장소
-    private final UserRepository userRepository;                 // 사용자 계정 상태 확인
-    private final AdminRepository adminRepository;               // 관리자 계정 존재 확인
+    private final UserRepository userRepository; // 사용자 계정 상태 확인
+    private final AdminRepository adminRepository; // 관리자 계정 존재 확인
 
     // Refresh Token 유효기간 (일, 기본 14일)
     @Value("${jwt.refresh-token-validity-days:14}")
@@ -49,15 +52,18 @@ public class TokenService {
         refreshTokenRepository.deleteExpired(LocalDateTime.now());
 
         String rawRefreshToken = generateRawToken();
-        refreshTokenRepository.save(RotatingRefreshToken.builder()
-                .tokenHash(hash(rawRefreshToken))
-                .subjectId(subjectId)
-                .role(role)
-                .expiresAt(LocalDateTime.now().plusDays(refreshTokenValidityDays))
-                .build());
+        refreshTokenRepository.save(
+                RotatingRefreshToken.builder()
+                        .tokenHash(hash(rawRefreshToken))
+                        .subjectId(subjectId)
+                        .role(role)
+                        .expiresAt(LocalDateTime.now().plusDays(refreshTokenValidityDays))
+                        .build());
 
         return AuthTokenDto.builder()
-                .accessToken(jwtTokenProvider.createToken(subjectId, role, tokenVersion(subjectId, role)))
+                .accessToken(
+                        jwtTokenProvider.createToken(
+                                subjectId, role, tokenVersion(subjectId, role)))
                 .expiresIn(jwtTokenProvider.getTokenValiditySeconds())
                 .refreshToken(rawRefreshToken)
                 .refreshExpiresIn(refreshTokenValidityDays * 24 * 60 * 60)
@@ -72,9 +78,15 @@ public class TokenService {
             throw new CustomException(ErrorCode.INVALID_TOKEN, "refresh_token이 필요합니다.");
         }
 
-        RotatingRefreshToken stored = refreshTokenRepository.findById(hash(rawRefreshToken))
-                .filter(token -> token.getRole().equals(expectedRole))
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_TOKEN, "유효하지 않은 리프레시 토큰입니다. 다시 로그인해 주세요."));
+        RotatingRefreshToken stored =
+                refreshTokenRepository
+                        .findById(hash(rawRefreshToken))
+                        .filter(token -> token.getRole().equals(expectedRole))
+                        .orElseThrow(
+                                () ->
+                                        new CustomException(
+                                                ErrorCode.INVALID_TOKEN,
+                                                "유효하지 않은 리프레시 토큰입니다. 다시 로그인해 주세요."));
 
         // 사용한 토큰 즉시 폐기 (만료 여부와 관계없이)
         refreshTokenRepository.delete(stored);
@@ -85,8 +97,10 @@ public class TokenService {
 
         // 계정 상태 재확인 (탈퇴/정지 회원, 삭제된 관리자는 재발급 불가)
         if ("USER".equals(expectedRole)) {
-            User user = userRepository.findById(stored.getSubjectId())
-                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+            User user =
+                    userRepository
+                            .findById(stored.getSubjectId())
+                            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
             ErrorCode blockedReason = AccountStatusChecker.resolveBlockedReason(user.getStatus());
             if (blockedReason != null) {
                 throw new CustomException(blockedReason);
@@ -95,7 +109,8 @@ public class TokenService {
             throw new CustomException(ErrorCode.ADMIN_NOT_FOUND);
         }
 
-        log.info("[Auth] 토큰 재발급 완료 (subject_id: {}, role: {})", stored.getSubjectId(), expectedRole);
+        log.info(
+                "[Auth] 토큰 재발급 완료 (subject_id: {}, role: {})", stored.getSubjectId(), expectedRole);
         return issue(stored.getSubjectId(), expectedRole);
     }
 
@@ -103,8 +118,12 @@ public class TokenService {
     @Transactional
     public void revoke(String subjectId, String role, String rawRefreshToken) {
         if (StringUtils.hasText(rawRefreshToken)) {
-            refreshTokenRepository.findById(hash(rawRefreshToken))
-                    .filter(token -> token.getSubjectId().equals(subjectId) && token.getRole().equals(role))
+            refreshTokenRepository
+                    .findById(hash(rawRefreshToken))
+                    .filter(
+                            token ->
+                                    token.getSubjectId().equals(subjectId)
+                                            && token.getRole().equals(role))
                     .ifPresent(refreshTokenRepository::delete);
         } else {
             revokeAll(subjectId, role);
@@ -128,19 +147,30 @@ public class TokenService {
     private String hash(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(rawToken.getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of()
+                    .formatHex(digest.digest(rawToken.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", e);
         }
     }
-private String tokenVersion(String id,String role) {
- if("USER".equals(role)) {
- var user=userRepository.findById(id).orElseThrow(()->new CustomException(ErrorCode.USER_NOT_FOUND));
- if(user.getProvider()==skincare.domain.user.entity.ENUM.Provider.GUEST || user.getProvider()==skincare.domain.user.entity.ENUM.Provider.LOCAL || !user.hasRequiredConsents()) throw new CustomException(ErrorCode.INVALID_TOKEN);
- return user.currentTokenVersion();
- }
- if("ADMIN".equals(role)) return adminRepository.findById(id).orElseThrow(()->new CustomException(ErrorCode.ADMIN_NOT_FOUND)).currentTokenVersion();
- throw new CustomException(ErrorCode.INVALID_TOKEN);
-}
 
+    private String tokenVersion(String id, String role) {
+        if ("USER".equals(role)) {
+            var user =
+                    userRepository
+                            .findById(id)
+                            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+            if (user.getProvider() == skincare.domain.user.entity.ENUM.Provider.GUEST
+                    || user.getProvider() == skincare.domain.user.entity.ENUM.Provider.LOCAL
+                    || !user.hasRequiredConsents())
+                throw new CustomException(ErrorCode.INVALID_TOKEN);
+            return user.currentTokenVersion();
+        }
+        if ("ADMIN".equals(role))
+            return adminRepository
+                    .findById(id)
+                    .orElseThrow(() -> new CustomException(ErrorCode.ADMIN_NOT_FOUND))
+                    .currentTokenVersion();
+        throw new CustomException(ErrorCode.INVALID_TOKEN);
+    }
 }

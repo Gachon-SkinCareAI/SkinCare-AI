@@ -7,10 +7,10 @@ import java.util.Locale;
 
 // 목록 조회 API의 Enum 필터 파라미터 변환 유틸리티
 // 필터 값 "ALL"(또는 미입력)은 전체 조회(null)로 처리
+// FilterParam 요청과 응답 데이터
 public final class FilterParam {
 
-    private FilterParam() {
-    }
+    private FilterParam() {}
 
     // 문자열 필터 값을 Enum으로 변환 (ALL/공백이면 null, 정의되지 않은 값이면 COMMON-005)
     public static <E extends Enum<E>> E toEnum(Class<E> enumType, String value) {

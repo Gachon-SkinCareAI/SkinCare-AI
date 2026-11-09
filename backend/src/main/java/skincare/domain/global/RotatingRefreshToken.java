@@ -1,6 +1,7 @@
 package skincare.domain.global;
 
 import jakarta.persistence.*;
+
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -10,11 +11,14 @@ import java.time.LocalDateTime;
 // - 기기별 로그인을 위해 사용자 1명이 여러 토큰을 가질 수 있음
 // - 재발급 시 기존 토큰을 삭제하고 새 토큰을 발급 (Refresh Token Rotation)
 @Entity
-@Table(name = "refresh_tokens", indexes = @Index(name = "idx_refresh_token_subject", columnList = "subject_id, role"))
+@Table(
+        name = "refresh_tokens",
+        indexes = @Index(name = "idx_refresh_token_subject", columnList = "subject_id, role"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// RotatingRefreshToken 도메인 상태 관리
 public class RotatingRefreshToken extends BaseTimeEntity {
 
     // Refresh Token SHA-256 해시 (16진수 64자)

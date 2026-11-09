@@ -1,9 +1,11 @@
 package skincare.controller;
 
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
 import skincare.dto.*;
 import skincare.service.UserService;
 
@@ -11,6 +13,7 @@ import skincare.service.UserService;
 @RestController
 @RequestMapping("/api/wc")
 @RequiredArgsConstructor
+// UserController API 요청 처리
 public class UserController {
 
     private final skincare.service.AccountConsentService consents;
@@ -18,14 +21,16 @@ public class UserController {
 
     // 이메일 인증 번호 발송 요청
     @PostMapping("/auth/email/send")
-    public ResponseEntity<ApiResponseDto<Void>> sendEmailVerificationCode(@RequestBody EmailVerificationRequestDto requestDto) {
+    public ResponseEntity<ApiResponseDto<Void>> sendEmailVerificationCode(
+            @RequestBody EmailVerificationRequestDto requestDto) {
         userService.sendEmailVerificationCode(requestDto);
         return ResponseEntity.ok(ApiResponseDto.success("인증 번호가 이메일로 발송되었습니다."));
     }
 
     // 이메일 인증 번호 검증 요청
     @PostMapping("/auth/email/verify")
-    public ResponseEntity<ApiResponseDto<Void>> confirmEmailVerification(@RequestBody EmailVerificationConfirmRequestDto requestDto) {
+    public ResponseEntity<ApiResponseDto<Void>> confirmEmailVerification(
+            @RequestBody EmailVerificationConfirmRequestDto requestDto) {
         userService.confirmEmailVerification(requestDto);
         return ResponseEntity.ok(ApiResponseDto.success("이메일 인증이 성공적으로 완료되었습니다."));
     }
@@ -45,43 +50,56 @@ public class UserController {
     // 사용자 로그아웃
     @PostMapping("/auth/logout")
     public ResponseEntity<ApiResponseDto<Void>> logout(
-            @AuthenticationPrincipal String userId,
-            @RequestBody LogoutRequestDto requestDto) {
+            @AuthenticationPrincipal String userId, @RequestBody LogoutRequestDto requestDto) {
         userService.logout(userId, requestDto);
         return ResponseEntity.ok(ApiResponseDto.success("성공적으로 로그아웃되었습니다."));
     }
 
     // 사용자 비밀번호 재설정
     @PostMapping("/auth/password/reset")
-    public ResponseEntity<ApiResponseDto<Void>> resetPasswordRequest(@RequestBody PasswordResetRequestDto requestDto) {
+    public ResponseEntity<ApiResponseDto<Void>> resetPasswordRequest(
+            @RequestBody PasswordResetRequestDto requestDto) {
         userService.resetPasswordRequest(requestDto);
         return ResponseEntity.ok(ApiResponseDto.success("비밀번호 재설정 이메일이 발송되었습니다."));
     }
 
     // 비밀번호 변경
     @PostMapping("/auth/password/confirm")
-    public ResponseEntity<ApiResponseDto<Void>> confirmPasswordReset(@RequestBody PasswordResetConfirmRequestDto requestDto) {
+    public ResponseEntity<ApiResponseDto<Void>> confirmPasswordReset(
+            @RequestBody PasswordResetConfirmRequestDto requestDto) {
         userService.confirmPasswordReset(requestDto);
         return ResponseEntity.ok(ApiResponseDto.success("비밀번호가 성공적으로 변경되었습니다."));
     }
 
     @GetMapping("/users/me")
     public ResponseEntity<AccountProfile> profile(@AuthenticationPrincipal String id) {
-        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(userService.profile(id));
-    }
-    @GetMapping("/users/me/settings")
-    public ResponseEntity<UserSettingsResponseDto> settings(@AuthenticationPrincipal String id) {
-        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(userService.settings(id));
-    }
-    @PutMapping("/users/me/password")
-    public ResponseEntity<Void> password(@AuthenticationPrincipal String id,@RequestBody ChangePasswordRequest body) {
-        userService.changePassword(id,body);return ResponseEntity.noContent().build();
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(userService.profile(id));
     }
 
-    @PutMapping("/users/me/consents/location") public ResponseEntity<Void> location(@AuthenticationPrincipal String id,
-            @RequestBody skincare.service.AccountConsentService.LocationRequest body) {
-        consents.location(id,body);return ResponseEntity.noContent().build();
+    @GetMapping("/users/me/settings")
+    public ResponseEntity<UserSettingsResponseDto> settings(@AuthenticationPrincipal String id) {
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(userService.settings(id));
     }
+
+    @PutMapping("/users/me/password")
+    public ResponseEntity<Void> password(
+            @AuthenticationPrincipal String id, @RequestBody ChangePasswordRequest body) {
+        userService.changePassword(id, body);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/users/me/consents/location")
+    public ResponseEntity<Void> location(
+            @AuthenticationPrincipal String id,
+            @RequestBody skincare.service.AccountConsentService.LocationRequest body) {
+        consents.location(id, body);
+        return ResponseEntity.noContent().build();
+    }
+
     // 사용자 프로필 변경
     @PutMapping("/users/me")
     public ResponseEntity<ApiResponseDto<UserResponseDto>> updateProfile(
@@ -99,13 +117,21 @@ public class UserController {
     }
 
     @GetMapping("/users/me/consents")
-    public ResponseEntity<java.util.Map<String,Object>> consentState(@AuthenticationPrincipal String id,
-        @RequestParam(defaultValue="0")int page,@RequestParam(defaultValue="20")int size) {
-        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(consents.state(id,page,size));
+    public ResponseEntity<java.util.Map<String, Object>> consentState(
+            @AuthenticationPrincipal String id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(consents.state(id, page, size));
     }
+
     @PutMapping("/users/me/consents/training")
-    public ResponseEntity<Void> training(@AuthenticationPrincipal String id,@RequestBody skincare.service.AccountConsentService.TrainingRequest body) {
-        consents.training(id,body);return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> training(
+            @AuthenticationPrincipal String id,
+            @RequestBody skincare.service.AccountConsentService.TrainingRequest body) {
+        consents.training(id, body);
+        return ResponseEntity.noContent().build();
     }
 
     // 사용자 환경설정 변경

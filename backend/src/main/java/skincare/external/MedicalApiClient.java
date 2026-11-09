@@ -2,8 +2,10 @@ package skincare.external;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -16,6 +18,7 @@ import java.util.Set;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+// MedicalApiClient 외부 서비스 연동
 public class MedicalApiClient {
 
     // 공공데이터포털 OpenAPI 서비스 인증키
@@ -23,15 +26,14 @@ public class MedicalApiClient {
     private String emergencyServiceKey;
 
     // 최신 E-Gen 응급의료기관 목록 조회 URL로 변경
-    @Value("${emergency.openapi.url:http://apis.data.go.kr/B552657/ErmctInfoInqireService/getEgytListInfoInqire}")
+    @Value(
+            "${emergency.openapi.url:http://apis.data.go.kr/B552657/ErmctInfoInqireService/getEgytListInfoInqire}")
     private String emergencyUrl;
 
     private final RestTemplate restTemplate; // OpenAPI 호출용 RestTemplate (AppConfig의 타임아웃 설정 공유)
     private final ObjectMapper objectMapper = new ObjectMapper(); // JSON 응답 파싱용 ObjectMapper
 
-    /**
-     * 국립중앙의료원 OpenAPI를 호출하여 전국의 응급실 보유 병원 명칭 목록(Set)을 수집
-     */
+    /** 국립중앙의료원 OpenAPI를 호출하여 전국의 응급실 보유 병원 명칭 목록(Set)을 수집 */
     public Set<String> fetchEmergencyHospitalNames() {
         Set<String> emergencyHospitals = new HashSet<>();
 

@@ -1,11 +1,14 @@
 package skincare.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+
 import skincare.domain.global.RefreshToken;
 
 import java.util.Optional;
 
+// RefreshTokenRepository 데이터 접근 처리
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, String> {
     Optional<RefreshToken> findByUserId(String userId);
+
     void deleteByUserId(String userId);
 }

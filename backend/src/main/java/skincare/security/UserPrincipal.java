@@ -2,9 +2,11 @@ package skincare.security;
 
 import lombok.Builder;
 import lombok.Getter;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+
 import skincare.domain.user.entity.User;
 
 import java.util.Collection;
@@ -13,6 +15,7 @@ import java.util.List;
 
 // Spring Security 인증 사용자 정보를 담는 UserDetails 구현 클래스
 @Getter
+// UserPrincipal 인증과 권한 처리
 public class UserPrincipal implements UserDetails {
 
     // User 엔티티의 userId 타입인 String에 맞춰 수정
@@ -23,7 +26,11 @@ public class UserPrincipal implements UserDetails {
 
     // UserPrincipal 생성자 (Builder 패턴)
     @Builder
-    public UserPrincipal(String userId, String email, String password, Collection<? extends GrantedAuthority> authorities) {
+    public UserPrincipal(
+            String userId,
+            String email,
+            String password,
+            Collection<? extends GrantedAuthority> authorities) {
         this.userId = userId;
         this.email = email;
         this.password = password;
@@ -33,9 +40,8 @@ public class UserPrincipal implements UserDetails {
     // User 엔티티로부터 UserPrincipal 객체를 생성하는 정적 팩토리 메서드
     public static UserPrincipal create(User user) {
         // 기본값 "ROLE_USER" 권한 부여
-        List<GrantedAuthority> authorities = Collections.singletonList(
-                new SimpleGrantedAuthority("ROLE_USER")
-        );
+        List<GrantedAuthority> authorities =
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
 
         return UserPrincipal.builder()
                 .userId(user.getUserId())

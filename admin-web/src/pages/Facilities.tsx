@@ -8,7 +8,7 @@ import {
   SearchInput,
   usePagination,
 } from '../components'
-import { demoMetrics as m, type OpenDetail, type Store } from '../data'
+import type { OpenDetail, Store } from '../data'
 
 export default function Facilities({
   store,
@@ -17,6 +17,7 @@ export default function Facilities({
   store: Store
   open: OpenDetail
 }) {
+  const m = store.dashboard
   const [query, setQuery] = useState('')
   const [type, setType] = useState('전체')
   const filtered = store.facilities.filter(
@@ -32,20 +33,20 @@ export default function Facilities({
       <section className="metrics-grid three" aria-label="의료기관 지표">
         <Metric
           icon="🏥"
-          value={m.facilities.toLocaleString()}
+          value={String(m.activeHospitals ?? store.facilities.length)}
           label="등록 의료기관"
           hint="피부과 · 병원 · 약국 포함"
         />
         <Metric
           icon="🌙"
-          value={String(m.night)}
+          value={String(store.facilities.filter((f) => f.night).length)}
           label="야간진료 가능"
           hint="22시 이후 운영"
           color="purple"
         />
         <Metric
           icon="💊"
-          value={String(m.pharmacies)}
+          value={String(store.facilities.filter((f) => f.type.includes('PHARMACY') || f.type.includes('약국')).length)}
           label="공공심야약국"
           hint="전국 기준"
           color="green"
@@ -56,8 +57,7 @@ export default function Facilities({
           <div>
             <h2>의료기관 목록</h2>
             <p>
-              건강보험심사평가원 · 공공데이터포털 OpenAPI 연동 예정 · 현재 샘플
-              데이터
+              백엔드 의료기관 데이터
             </p>
           </div>
           <button

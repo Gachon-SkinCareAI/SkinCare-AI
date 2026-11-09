@@ -1,9 +1,11 @@
 package skincare.service;
 
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import skincare.domain.ai.entity.AiModelMetrics;
 import skincare.domain.diagnosis.entity.Diagnosis;
 import skincare.domain.diagnosis.entity.ENUM.DiagnosisStatus;
@@ -27,16 +29,17 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+// AdminDashboardService 비즈니스 로직 처리
 public class AdminDashboardService {
 
-    private static final int MAX_CHART_DAYS = 31;      // 일별 차트 최대 조회 기간
+    private static final int MAX_CHART_DAYS = 31; // 일별 차트 최대 조회 기간
     private static final int MAX_EMERGENCY_LIMIT = 20; // 응급 케이스 최대 조회 건수
 
-    private final UserRepository userRepository;                   // 회원 통계
-    private final DiagnosisRepository diagnosisRepository;         // 분석/위험도 통계
-    private final InquiryRepository inquiryRepository;             // 문의 현황
+    private final UserRepository userRepository; // 회원 통계
+    private final DiagnosisRepository diagnosisRepository; // 분석/위험도 통계
+    private final InquiryRepository inquiryRepository; // 문의 현황
     private final AiModelMetricsRepository aiModelMetricsRepository; // AI 모델 성능 지표
-    private final AiServiceClient aiServiceClient;                 // AI 서버 상태 조회
+    private final AiServiceClient aiServiceClient; // AI 서버 상태 조회
 
     // 대시보드 요약 통계 (총 사용자, 오늘 분석, 응급 케이스, AI 성능, AI 서버 상태, 문의 현황)
     public Map<String, Object> getStats() {
@@ -51,31 +54,51 @@ public class AdminDashboardService {
         long usersBeforeMonth = userRepository.countByCreatedAtBefore(monthStart);
 
         // 분석: 오늘/어제 건수
-        long todayDiagnoses = diagnosisRepository.countByCreatedAtBetween(todayStart, tomorrowStart);
-        long yesterdayDiagnoses = diagnosisRepository.countByCreatedAtBetween(yesterdayStart, todayStart);
+        long todayDiagnoses =
+                diagnosisRepository.countByCreatedAtBetween(todayStart, tomorrowStart);
+        long yesterdayDiagnoses =
+                diagnosisRepository.countByCreatedAtBetween(yesterdayStart, todayStart);
 
         // 응급: 오늘/어제 응급 위험도 건수
-        long todayEmergency = diagnosisRepository.countByRiskLevelAndCreatedAtBetween(RiskLevel.EMERGENCY, todayStart, tomorrowStart);
-        long yesterdayEmergency = diagnosisRepository.countByRiskLevelAndCreatedAtBetween(RiskLevel.EMERGENCY, yesterdayStart, todayStart);
+        long todayEmergency =
+                diagnosisRepository.countByRiskLevelAndCreatedAtBetween(
+                        RiskLevel.EMERGENCY, todayStart, tomorrowStart);
+        long yesterdayEmergency =
+                diagnosisRepository.countByRiskLevelAndCreatedAtBetween(
+                        RiskLevel.EMERGENCY, yesterdayStart, todayStart);
 
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("total_users", Map.of(
-                "count", totalUsers,
-                "growth_rate", growthRate(monthlyIncrease, usersBeforeMonth),
-                "monthly_increase", monthlyIncrease));
-        stats.put("today_diagnoses", Map.of(
-                "count", todayDiagnoses,
-                "growth_rate", growthRate(todayDiagnoses - yesterdayDiagnoses, yesterdayDiagnoses),
-                "daily_increase", todayDiagnoses - yesterdayDiagnoses));
-        stats.put("emergency_cases", Map.of(
-                "count", todayEmergency,
-                "increase", todayEmergency - yesterdayEmergency,
-                "notice", todayEmergency > 0 ? "즉시 처리 필요" : "응급 케이스 없음"));
+        stats.put(
+                "total_users",
+                Map.of(
+                        "count", totalUsers,
+                        "growth_rate", growthRate(monthlyIncrease, usersBeforeMonth),
+                        "monthly_increase", monthlyIncrease));
+        stats.put(
+                "today_diagnoses",
+                Map.of(
+                        "count",
+                        todayDiagnoses,
+                        "growth_rate",
+                        growthRate(todayDiagnoses - yesterdayDiagnoses, yesterdayDiagnoses),
+                        "daily_increase",
+                        todayDiagnoses - yesterdayDiagnoses));
+        stats.put(
+                "emergency_cases",
+                Map.of(
+                        "count",
+                        todayEmergency,
+                        "increase",
+                        todayEmergency - yesterdayEmergency,
+                        "notice",
+                        todayEmergency > 0 ? "즉시 처리 필요" : "응급 케이스 없음"));
         stats.put("ai_accuracy", aiPerformanceSummary());
         stats.put("ai_server", aiServerSummary());
-        stats.put("inquiries", Map.of(
-                "waiting_count", inquiryRepository.countByStatus(InquiryStatus.WAITING),
-                "total_count", inquiryRepository.count()));
+        stats.put(
+                "inquiries",
+                Map.of(
+                        "waiting_count", inquiryRepository.countByStatus(InquiryStatus.WAITING),
+                        "total_count", inquiryRepository.count()));
         return stats;
     }
 
@@ -88,11 +111,15 @@ public class AdminDashboardService {
         long total = 0;
         for (int i = period - 1; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
-            long count = diagnosisRepository.countByCreatedAtBetween(date.atStartOfDay(), date.plusDays(1).atStartOfDay());
+            long count =
+                    diagnosisRepository.countByCreatedAtBetween(
+                            date.atStartOfDay(), date.plusDays(1).atStartOfDay());
             total += count;
 
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("day_of_week", date.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.KOREAN));
+            item.put(
+                    "day_of_week",
+                    date.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.KOREAN));
             item.put("date", date.toString());
             item.put("count", count);
             chart.add(item);
@@ -121,7 +148,13 @@ public class AdminDashboardService {
         for (RiskLevel level : RiskLevel.values()) {
             long count = counts.get(level);
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("level_name", level.getLabel() + " (" + level.name().charAt(0) + level.name().substring(1).toLowerCase() + ")");
+            item.put(
+                    "level_name",
+                    level.getLabel()
+                            + " ("
+                            + level.name().charAt(0)
+                            + level.name().substring(1).toLowerCase()
+                            + ")");
             item.put("count", count);
             item.put("percentage", total == 0 ? 0.0 : Math.round(count * 1000.0 / total) / 10.0);
             distribution.put(level.name().toLowerCase(), item);
@@ -140,16 +173,25 @@ public class AdminDashboardService {
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("MM.dd HH:mm");
 
         List<Map<String, Object>> cases = new ArrayList<>();
-        for (Diagnosis d : diagnosisRepository.findRecentByRiskLevel(RiskLevel.EMERGENCY, PageRequest.of(0, size))) {
+        for (Diagnosis d :
+                diagnosisRepository.findRecentByRiskLevel(
+                        RiskLevel.EMERGENCY, PageRequest.of(0, size))) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("diagnosis_id", d.getDiagnosisId());
             item.put("user_id", d.getUser().getUserId());
             item.put("nickname", d.getUser().getNickname());
-            item.put("time", d.getCreatedAt() != null ? d.getCreatedAt().format(timeFormatter) : null);
-            item.put("diagnosis_summary", d.getSuspectedDisease() + " · " + d.getBodyPart().getLabel());
+            item.put(
+                    "time",
+                    d.getCreatedAt() != null ? d.getCreatedAt().format(timeFormatter) : null);
+            item.put(
+                    "diagnosis_summary",
+                    d.getSuspectedDisease() + " · " + d.getBodyPart().getLabel());
             item.put("status", d.getStatus());
             item.put("action_status", d.getStatus().getLabel());
-            item.put("needs_action", d.getStatus() == DiagnosisStatus.PENDING || d.getStatus() == DiagnosisStatus.IN_PROGRESS);
+            item.put(
+                    "needs_action",
+                    d.getStatus() == DiagnosisStatus.PENDING
+                            || d.getStatus() == DiagnosisStatus.IN_PROGRESS);
             cases.add(item);
         }
         return cases;
@@ -157,9 +199,15 @@ public class AdminDashboardService {
 
     // AI 모델 성능 요약 (macro_f1 우선, 없으면 classification_accuracy / 주요 위험 유형 burn_recall)
     private Map<String, Object> aiPerformanceSummary() {
-        Optional<AiModelMetrics> main = aiModelMetricsRepository.findFirstByMetricKeyOrderByIdDesc("macro_f1")
-                .or(() -> aiModelMetricsRepository.findFirstByMetricKeyOrderByIdDesc("classification_accuracy"));
-        Optional<AiModelMetrics> recall = aiModelMetricsRepository.findFirstByMetricKeyOrderByIdDesc("burn_recall");
+        Optional<AiModelMetrics> main =
+                aiModelMetricsRepository
+                        .findFirstByMetricKeyOrderByIdDesc("macro_f1")
+                        .or(
+                                () ->
+                                        aiModelMetricsRepository.findFirstByMetricKeyOrderByIdDesc(
+                                                "classification_accuracy"));
+        Optional<AiModelMetrics> recall =
+                aiModelMetricsRepository.findFirstByMetricKeyOrderByIdDesc("burn_recall");
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("metric_key", main.map(AiModelMetrics::getMetricKey).orElse(null));

@@ -2,10 +2,12 @@ package skincare.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import skincare.domain.diagnosis.entity.ENUM.RiskLevel;
 import skincare.domain.user.entity.ENUM.PlanType;
 import skincare.domain.user.entity.ENUM.UserStatus;
@@ -30,20 +32,25 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+// AdminUserService 비즈니스 로직 처리
 public class AdminUserService {
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm");
+    private static final DateTimeFormatter FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm");
 
-    private final UserRepository userRepository;                           // 회원 데이터 베이스 접근용 Repository
-    private final DiagnosisRepository diagnosisRepository;                 // 분석 통계 조회
+    private final UserRepository userRepository; // 회원 데이터 베이스 접근용 Repository
+    private final DiagnosisRepository diagnosisRepository; // 분석 통계 조회
     private final UserChangeHistoryRepository userChangeHistoryRepository; // 회원 변경 이력
-    private final UserActivityService userActivityService;                 // 회원 활동 요약 집계
-    private final TokenService tokenService;                               // 정지/비활성 시 토큰 폐기
+    private final UserActivityService userActivityService; // 회원 활동 요약 집계
+    private final TokenService tokenService; // 정지/비활성 시 토큰 폐기
 
     // 회원 목록 조회 (검색어, 이용 플랜, 계정 상태 필터 / 분석 건수와 최근 위험도 포함)
-    public Page<AdminUserResponseDto> getUsers(String keyword, PlanType plan, UserStatus status, int page, int size) {
-        Page<User> users = userRepository.findAll(UserRepository.adminSearch(keyword, plan, status),
-                Paging.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+    public Page<AdminUserResponseDto> getUsers(
+            String keyword, PlanType plan, UserStatus status, int page, int size) {
+        Page<User> users =
+                userRepository.findAll(
+                        UserRepository.adminSearch(keyword, plan, status),
+                        Paging.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
 
         // 현재 페이지 회원들의 분석 건수/최근 위험도를 한 번에 조회 (회원별 반복 조회 방지)
         List<String> userIds = users.getContent().stream().map(User::getUserId).toList();
@@ -58,8 +65,12 @@ public class AdminUserService {
             }
         }
 
-        return users.map(user -> AdminUserResponseDto.of(user,
-                diagnosisCounts.getOrDefault(user.getUserId(), 0L), latestRisks.get(user.getUserId())));
+        return users.map(
+                user ->
+                        AdminUserResponseDto.of(
+                                user,
+                                diagnosisCounts.getOrDefault(user.getUserId(), 0L),
+                                latestRisks.get(user.getUserId())));
     }
 
     // 회원 현황 통계 (전체/Premium 전환율/일간·주간 활성 사용자/정지 회원 수)
@@ -69,11 +80,24 @@ public class AdminUserService {
 
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("total_users", total);
-        stats.put("premium_users", Map.of(
-                "count", premium,
-                "conversion_rate", total == 0 ? "0.0%" : Math.round(premium * 1000.0 / total) / 10.0 + "%"));
-        stats.put("dau", Map.of("count", userRepository.countByLastAccessAtAfter(LocalDate.now().atStartOfDay())));
-        stats.put("wau", Map.of("count", userRepository.countByLastAccessAtAfter(LocalDate.now().minusDays(6).atStartOfDay())));
+        stats.put(
+                "premium_users",
+                Map.of(
+                        "count",
+                        premium,
+                        "conversion_rate",
+                        total == 0 ? "0.0%" : Math.round(premium * 1000.0 / total) / 10.0 + "%"));
+        stats.put(
+                "dau",
+                Map.of(
+                        "count",
+                        userRepository.countByLastAccessAtAfter(LocalDate.now().atStartOfDay())));
+        stats.put(
+                "wau",
+                Map.of(
+                        "count",
+                        userRepository.countByLastAccessAtAfter(
+                                LocalDate.now().minusDays(6).atStartOfDay())));
         stats.put("suspended_users", userRepository.countByStatus(UserStatus.SUSPENDED));
         return stats;
     }
@@ -100,18 +124,26 @@ public class AdminUserService {
         detail.put("stats", stats);
         detail.put("account_info", accountInfo);
         detail.put("recent_activities", activity.get("recent_activities"));
-        detail.put("diagnosis_history", diagnosisRepository.findTop10ByUserUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(AdminDiagnosisResponseDto::summary).toList());
-        detail.put("change_history", userChangeHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(this::toHistory).toList());
+        detail.put(
+                "diagnosis_history",
+                diagnosisRepository.findTop10ByUserUserIdOrderByCreatedAtDesc(userId).stream()
+                        .map(AdminDiagnosisResponseDto::summary)
+                        .toList());
+        detail.put(
+                "change_history",
+                userChangeHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                        .map(this::toHistory)
+                        .toList());
         return detail;
     }
 
     // 회원 계정 상태 변경 (정지/비활성 시 발급된 Refresh Token 폐기 → 재로그인 불가)
     @Transactional
-    public Map<String, Object> changeStatus(String adminId, String userId, AdminUserStatusUpdateRequestDto dto) {
+    public Map<String, Object> changeStatus(
+            String adminId, String userId, AdminUserStatusUpdateRequestDto dto) {
         if (dto.getStatus() == UserStatus.DELETED) {
-            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE, "탈퇴(DELETED) 상태는 회원 탈퇴로만 변경할 수 있습니다.");
+            throw new CustomException(
+                    ErrorCode.INVALID_INPUT_VALUE, "탈퇴(DELETED) 상태는 회원 탈퇴로만 변경할 수 있습니다.");
         }
         User user = findUser(userId);
         if (user.getStatus() == UserStatus.DELETED) {
@@ -124,14 +156,27 @@ public class AdminUserService {
             tokenService.revokeAll(userId, "USER");
         }
 
-        UserChangeHistory history = saveHistory(userId, "STATUS", previous.name(), dto.getStatus().name(), dto.getReason(), adminId);
-        log.info("[Auth] 정상 처리, 회원 계정 상태 변경 (user_id: {}, {} → {}, admin_id: {})", userId, previous, dto.getStatus(), adminId);
+        UserChangeHistory history =
+                saveHistory(
+                        userId,
+                        "STATUS",
+                        previous.name(),
+                        dto.getStatus().name(),
+                        dto.getReason(),
+                        adminId);
+        log.info(
+                "[Auth] 정상 처리, 회원 계정 상태 변경 (user_id: {}, {} → {}, admin_id: {})",
+                userId,
+                previous,
+                dto.getStatus(),
+                adminId);
         return toHistory(history);
     }
 
     // 회원 이용 플랜 변경
     @Transactional
-    public Map<String, Object> changePlan(String adminId, String userId, AdminUserPlanUpdateRequestDto dto) {
+    public Map<String, Object> changePlan(
+            String adminId, String userId, AdminUserPlanUpdateRequestDto dto) {
         User user = findUser(userId);
         if (user.getStatus() == UserStatus.DELETED) {
             throw new CustomException(ErrorCode.USER_WITHDRAWN, "탈퇴한 회원의 이용 플랜은 변경할 수 없습니다.");
@@ -140,21 +185,40 @@ public class AdminUserService {
         PlanType previous = user.getPlan();
         user.changePlan(dto.getPlan());
 
-        UserChangeHistory history = saveHistory(userId, "PLAN", previous.name(), dto.getPlan().name(), dto.getReason(), adminId);
-        log.info("[Auth] 정상 처리, 회원 이용 플랜 변경 (user_id: {}, {} → {}, admin_id: {})", userId, previous, dto.getPlan(), adminId);
+        UserChangeHistory history =
+                saveHistory(
+                        userId,
+                        "PLAN",
+                        previous.name(),
+                        dto.getPlan().name(),
+                        dto.getReason(),
+                        adminId);
+        log.info(
+                "[Auth] 정상 처리, 회원 이용 플랜 변경 (user_id: {}, {} → {}, admin_id: {})",
+                userId,
+                previous,
+                dto.getPlan(),
+                adminId);
         return toHistory(history);
     }
 
     // 변경 이력 저장
-    private UserChangeHistory saveHistory(String userId, String type, String previous, String next, String reason, String adminId) {
-        return userChangeHistoryRepository.saveAndFlush(UserChangeHistory.builder()
-                .userId(userId)
-                .changeType(type)
-                .previousValue(previous)
-                .newValue(next)
-                .reason(reason)
-                .changedBy(adminId)
-                .build());
+    private UserChangeHistory saveHistory(
+            String userId,
+            String type,
+            String previous,
+            String next,
+            String reason,
+            String adminId) {
+        return userChangeHistoryRepository.saveAndFlush(
+                UserChangeHistory.builder()
+                        .userId(userId)
+                        .changeType(type)
+                        .previousValue(previous)
+                        .newValue(next)
+                        .reason(reason)
+                        .changedBy(adminId)
+                        .build());
     }
 
     // 변경 이력 응답 변환
@@ -172,10 +236,12 @@ public class AdminUserService {
 
     // 회원 조회 (없으면 USER-001)
     private User findUser(String userId) {
-        return userRepository.findById(userId).orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        return userRepository
+                .findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
-    // 일시 표시 형식 변환
+    // 관리자 활동 일시 표시 변환
     private String format(LocalDateTime dateTime) {
         return dateTime != null ? dateTime.format(FORMATTER) : null;
     }

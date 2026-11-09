@@ -1,6 +1,7 @@
 package skincare.domain.diagnosis.entity;
 
 import jakarta.persistence.*;
+
 import lombok.*;
 
 // AI모델이 추출한 상처 영역 분석 원본 분석 데이터 엔티티
@@ -10,6 +11,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// DiagnosisMetrics 도메인 상태 관리
 public class DiagnosisMetrics {
 
     // 진단 고유 ID (Diagnosis PK와 공유)
@@ -37,6 +39,10 @@ public class DiagnosisMetrics {
     // AI 추론 소요 시간 (ex. 120ms)
     @Column(name = "inference_time", length = 20)
     private String inferenceTime;
-    @Column(name="detect_confidence") private Double detectConfidence;
-    @Column(name="energy_score") private Double energyScore;
+
+    @Column(name = "detect_confidence")
+    private Double detectConfidence;
+
+    @Column(name = "energy_score")
+    private Double energyScore;
 }

@@ -11,7 +11,14 @@ const fonts = {
 };
 export default function App() {
   const [loaded, error] = useFonts(fonts);
-  if (error) return <View style={{flex:1,justifyContent:'center',padding:24}}><Text>리소스를 불러오지 못했습니다. 앱을 다시 실행해 주세요.</Text></View>;
-  if (!loaded) return <View style={{flex:1,justifyContent:'center'}}><ActivityIndicator color="#2563EB"/></View>;
+  if (error) return 
+  <View style={{flex:1,justifyContent:'center',padding:24}}>
+    <Text>리소스를 불러오지 못했습니다. 앱을 다시 실행해 주세요.</Text>
+  </View>;
+
+  if (!loaded) return 
+  <View style={{flex:1,justifyContent:'center'}}>
+    <ActivityIndicator color="#2563EB"/>
+  </View>;
   return <SafeAreaProvider><AppShell /></SafeAreaProvider>;
 }

@@ -8,6 +8,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+// HospitalSyncRequestDto 요청과 응답 데이터
 public class HospitalSyncRequestDto {
     // 동기화 대상 스코프 (ALL: 병원+약국(기본), HOSPITAL: 병원만, PHARMACY: 약국만)
     private String targetScope;

@@ -1,8 +1,10 @@
 package skincare.domain.admin.entity;
 
-import skincare.domain.global.BaseTimeEntity;
 import jakarta.persistence.*;
+
 import lombok.*;
+
+import skincare.domain.global.BaseTimeEntity;
 
 // [관리자 계정] 웹 관리자 대시보드 접근을 위한 단일 관리자 계정 엔티티
 @Entity
@@ -11,6 +13,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// Admin 도메인 상태 관리
 public class Admin extends BaseTimeEntity {
 
     // 관리자 고유 ID
@@ -38,10 +41,15 @@ public class Admin extends BaseTimeEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
-    // 비밀번호 업데이트 메서드
+    // 관리자 비밀번호 변경
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
-    @Column(length=254) private String email;
-    @Builder.Default @Column(length=30) private String role="ROLE_ADMIN";
+
+    @Column(length = 254)
+    private String email;
+
+    @Builder.Default
+    @Column(length = 30)
+    private String role = "ROLE_ADMIN";
 }

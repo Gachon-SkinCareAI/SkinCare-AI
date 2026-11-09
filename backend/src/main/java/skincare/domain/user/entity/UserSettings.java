@@ -1,8 +1,10 @@
 package skincare.domain.user.entity;
 
-import skincare.domain.global.BaseTimeEntity;
 import jakarta.persistence.*;
+
 import lombok.*;
+
+import skincare.domain.global.BaseTimeEntity;
 
 // 사용자 설정 엔티티
 // 푸시알림, 환경설정 관련
@@ -12,6 +14,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// UserSettings 도메인 상태 관리
 public class UserSettings extends BaseTimeEntity {
 
     // 사용자 고유 ID(User PK와 공유)

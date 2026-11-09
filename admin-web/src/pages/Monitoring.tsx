@@ -1,7 +1,11 @@
 import { Metric, Progress } from '../components'
-import { recalls } from '../data'
+import type { Store } from '../data'
 
-export default function Monitoring() {
+export default function Monitoring({ store }: { store: Store }) {
+  const values = Object.values(store.monitoring.metrics)
+    .filter((value) => typeof value === 'number')
+    .slice(0, 7)
+  const recalls = values.length ? values : [0]
   const coords = recalls.map((value, i) => [
     64 + (i * 970) / 6,
     168 - (value - 94) * 27,
@@ -138,7 +142,7 @@ export default function Monitoring() {
       <section className="panel pipeline-panel">
         <div className="panel-heading">
           <h2>AI 파이프라인 상태</h2>
-          <span className="sample-chip">샘플 상태</span>
+          <span className="sample-chip">API 상태</span>
         </div>
         <div className="pipeline-list">
           {[
@@ -161,8 +165,7 @@ export default function Monitoring() {
         </div>
       </section>
       <p className="aggregate-note">
-        성능 수치와 파이프라인은 화면 확인용 샘플입니다. 실제 모델이나 서버를
-        측정하지 않습니다.
+        백엔드 AI 모니터링 API에서 조회한 운영 데이터입니다
       </p>
     </>
   )

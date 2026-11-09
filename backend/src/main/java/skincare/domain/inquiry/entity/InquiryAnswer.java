@@ -1,8 +1,10 @@
 package skincare.domain.inquiry.entity;
 
-import skincare.domain.global.BaseTimeEntity;
 import jakarta.persistence.*;
+
 import lombok.*;
+
+import skincare.domain.global.BaseTimeEntity;
 
 // [1:1 문의 답변] 사용자 문의에 대해 관리자가 작성한 답변 엔티티
 @Entity
@@ -11,6 +13,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+// InquiryAnswer 도메인 상태 관리
 public class InquiryAnswer extends BaseTimeEntity {
 
     // 답변 고유 ID
@@ -23,13 +26,19 @@ public class InquiryAnswer extends BaseTimeEntity {
     @JoinColumn(name = "inquiry_id", nullable = false, unique = true)
     private Inquiry inquiry;
 
-    @Column(name="admin_id",length=36)
+    @Column(name = "admin_id", length = 36)
     private String adminId;
 
     // 관리자 답변 본문 내용
     @Column(nullable = false, columnDefinition = "TEXT")
     private String answerContent;
-public String getAnsweredBy(){return adminId;}
- public void updateAnswerContent(String content,String admin){answerContent=content;adminId=admin;}
 
+    public String getAnsweredBy() {
+        return adminId;
+    }
+
+    public void updateAnswerContent(String content, String admin) {
+        answerContent = content;
+        adminId = admin;
+    }
 }
