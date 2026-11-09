@@ -28,7 +28,17 @@ export default function App() {
   const [notifications, setNotifications] = useState(false)
   const [detail, setDetail] = useState<Detail | null>(null)
   const [toast, setToast] = useState('')
+  const [loggingOut, setLoggingOut] = useState(false)
   const active = pages.find((p) => p.id === route.page)!
+  useEffect(() => {
+    const expire = () => {
+      setAuthenticated(false)
+      setSearchOpen(false)
+      setDetail(null)
+    }
+    window.addEventListener('skincare-session-expired', expire)
+    return () => window.removeEventListener('skincare-session-expired', expire)
+  }, [])
   useEffect(() => {
     const sync = () => {
       setRoute(getRoute())
@@ -69,6 +79,20 @@ export default function App() {
       setMobileMenu((v) => !v)
     else setCollapsed((v) => !v)
   }
+  async function handleLogout() {
+    if (loggingOut) return
+    setLoggingOut(true)
+    try {
+      await logout()
+    } catch {
+      // 연결이 끊겨도 로컬 인증 정보는 logout()에서 정리됩니다.
+    } finally {
+      setAuthenticated(false)
+      setSearchOpen(false)
+      setDetail(null)
+      setLoggingOut(false)
+    }
+  }
   if (!authenticated) return <Login onSuccess={() => setAuthenticated(true)} />
   if (error) return <main className="loading-state"><p role="alert">{error}</p><button className="button primary" onClick={() => void reload()}>다시 시도</button></main>
   if (loading || !store) return <main className="loading-state">관리자 데이터를 불러오는 중입니다</main>
@@ -92,7 +116,16 @@ export default function App() {
           onClick={() => setMobileMenu(false)}
         />
       )}
-      <Sidebar mobileMenu={mobileMenu} collapsed={collapsed} toggleSidebar={toggleSidebar} navigate={navigate} pageId={route.page} />
+      <Sidebar
+        mobileMenu={mobileMenu}
+        collapsed={collapsed}
+        toggleSidebar={toggleSidebar}
+        navigate={navigate}
+        pageId={route.page}
+        onLogout={() => void handleLogout()}
+        loggingOut={loggingOut}
+        adminName={localStorage.getItem('skincare-admin-name') || '관리자'}
+      />
       <div className="main-shell">
         <header className="topbar">
           <div className="header-title">
@@ -111,7 +144,6 @@ export default function App() {
             </div>
           </div>
           <div className="header-actions">
-            <button className="demo-chip" onClick={() => { void logout(); setAuthenticated(false) }}>로그아웃</button>
             <button
               className="global-search-trigger"
               onClick={() => setSearchOpen(true)}
