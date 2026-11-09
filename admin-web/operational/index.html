@@ -2,7 +2,33 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>SkinCare AI 운영 관리</title><link rel="stylesheet" href="./style.css"><script type="module" src="./app.js"></script></head>
 <body><header><div><span class="eyebrow">SKINCARE AI · ADMIN</span><h1>서비스 운영 관리</h1><p>사용자 문의에 답변하고 기관 정보를 관리합니다.</p></div><button id="logout" class="secondary" hidden>로그아웃</button></header>
 <main><div id="message" role="status" aria-live="polite" hidden></div><p id="progress" hidden>처리 중입니다.</p>
-<section id="login-panel" class="card narrow"><h2>관리자 로그인</h2><form id="login-form"><label>관리자 아이디<input name="adminId" autocomplete="username" required maxlength="36"></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label><button>로그인</button></form><p class="muted">관리자 계정은 운영 담당자가 발급합니다. 새로고침하면 다시 로그인해야 합니다.</p></section>
+<section id="login-panel" class="auth-layout" aria-labelledby="operational-login-title">
+  <div class="auth-intro">
+    <div class="auth-brand"><span class="auth-brand-mark" aria-hidden="true">✚</span><span>SkinCare AI</span></div>
+    <div class="auth-intro-content">
+      <span class="auth-overline">ADMIN CONSOLE</span>
+      <h2>더 안전한 진료 연결을 위한<br>관리자 시스템</h2>
+      <p>사용자 문의부터 의료기관 정보, AI 서비스 운영 현황까지 한곳에서 관리하세요.</p>
+    </div>
+    <p class="auth-security"><span aria-hidden="true">✓</span> 승인된 관리자만 접근할 수 있습니다.</p>
+  </div>
+  <div class="auth-form-panel">
+    <div class="auth-form-heading">
+      <span class="auth-lock" aria-hidden="true"></span>
+      <span class="auth-overline">SECURE ACCESS</span>
+      <h2 id="operational-login-title">관리자 로그인</h2>
+      <p>등록된 관리자 계정으로 로그인해 주세요.</p>
+    </div>
+    <form id="login-form">
+      <label for="operational-admin-id">관리자 아이디</label>
+      <input id="operational-admin-id" name="adminId" autocomplete="username" required maxlength="36" placeholder="아이디를 입력해 주세요">
+      <label for="operational-admin-password">비밀번호</label>
+      <input id="operational-admin-password" name="password" type="password" autocomplete="current-password" required placeholder="비밀번호를 입력해 주세요">
+      <button type="submit">로그인 <span aria-hidden="true">→</span></button>
+    </form>
+    <p class="auth-help">관리자 계정은 운영 담당자가 발급합니다.<br>보안을 위해 새로고침 시 다시 로그인해야 합니다.</p>
+  </div>
+</section>
 <div id="workspace" hidden><nav aria-label="관리 메뉴"><button data-tab="inquiries">문의 관리</button><button data-tab="hospitals" class="secondary">기관 정보</button><button data-tab="operations" class="secondary">분석·AI 상태</button><button data-tab="reviews" class="secondary">자료 검수</button><button data-tab="audit" class="secondary">감사 이력</button><button data-tab="account" class="secondary">계정 보안</button></nav>
 <div id="dashboard" class="stats"></div>
 <section id="inquiries-panel"><div class="toolbar"><h2>문의 관리</h2><label>상태<select id="inquiry-status" aria-label="문의 상태"><option value="WAITING">답변 대기</option><option value="COMPLETED">답변 완료</option><option value="">전체</option></select></label><button id="inquiry-search" class="secondary">문의 새로고침</button></div><div class="columns"><div><div id="inquiry-list" class="stack"></div><div id="inquiry-pages" class="toolbar"></div></div><section id="inquiry-detail" class="card" hidden></section></div></section>
