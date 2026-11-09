@@ -52,6 +52,7 @@ export async function request<T>(
   }
   if (response.status === 401 || response.status === 403) {
     clearSession()
+    window.dispatchEvent(new Event('skincare-session-expired'))
     throw new Error('로그인이 만료되었거나 관리자 권한이 없습니다')
   }
   if (!response.ok) {
