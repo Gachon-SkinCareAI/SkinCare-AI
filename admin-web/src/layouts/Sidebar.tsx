@@ -1,9 +1,10 @@
-import { Menu } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 import { ADMIN_BASE_PATH, pages } from '../constants/navigation'
 import type { Navigate, Page } from '../data'
 
-export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate, pageId }: {
+export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate, pageId, onLogout, loggingOut, adminName }: {
   mobileMenu: boolean; collapsed: boolean; toggleSidebar: () => void; navigate: Navigate; pageId: Page
+  onLogout: () => void; loggingOut: boolean; adminName: string
 }) {
   return (
       <aside className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
@@ -19,13 +20,13 @@ export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate
           >
             <img
               className="brand-mark"
-              src="public/123.png"
+              src={`${import.meta.env.BASE_URL}123.png`}
               alt=""
               width="45"
               height="45"
             />
             <span className="brand-text">
-              <a>SkinCare AI</a>
+              <strong>SkinCare AI</strong>
               <small>관리자 대시보드</small>
             </span>
           </a>
@@ -57,12 +58,24 @@ export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate
             </a>
           ))}
         </nav>
-        <div className="admin-profile">
-          <span className="admin-avatar">관</span>
-          <div>
-            <strong>관리자</strong>
-            <small>admin@skincare.ai</small>
+        <div className="admin-sidebar-footer">
+          <div className="admin-profile">
+            <span className="admin-avatar">관</span>
+            <div>
+              <strong>{adminName}</strong>
+              <small>관리자 계정</small>
+            </div>
           </div>
+          <button
+            type="button"
+            className="sidebar-logout"
+            onClick={onLogout}
+            disabled={loggingOut}
+            title="로그아웃"
+          >
+            <LogOut size={17} />
+            <span>{loggingOut ? '로그아웃 중...' : '로그아웃'}</span>
+          </button>
         </div>
       </aside>
   )
