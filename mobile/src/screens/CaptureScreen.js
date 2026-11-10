@@ -1,18 +1,409 @@
-import React,{useRef,useState} from 'react';
-import {View,Pressable,Image,ScrollView,Linking,Platform,StatusBar} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {CameraView,useCameraPermissions} from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
-import {T,Button,Header} from '../components/Common';
-import {validatePhoto} from '../utils/draft';
-export default function CaptureScreen({initialMode='camera',photo,onSelect,onBack,onContinue}){
- const [mode,setMode]=useState(initialMode),[permission,requestPermission]=useCameraPermissions();const [facing,setFacing]=useState('back'),[torch,setTorch]=useState(false),[zoom,setZoom]=useState(0),[ready,setReady]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');const camera=useRef(null),lock=useRef(false);
- function switchMode(next){setMode(next);setReady(false);setError('');}
- async function pick(){if(lock.current)return;lock.current=true;setBusy(true);setError('');try{const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:['images'],allowsMultipleSelection:false,quality:1});if(!result.canceled){const item=result.assets[0],message=validatePhoto(item);if(message)setError(message);else onSelect(item);}}catch(e){setError('사진을 불러오지 못했어요. 다시 선택해주세요.');}finally{lock.current=false;setBusy(false)}}
- async function shoot(){if(!ready||lock.current)return;lock.current=true;setBusy(true);setError('');try{const result=await camera.current.takePictureAsync({quality:.9});onSelect({...result,mimeType:'image/jpeg'});switchMode('gallery');}catch(e){setError('촬영하지 못했어요. 카메라를 확인하고 다시 시도해주세요.');}finally{lock.current=false;setBusy(false)}}
- async function allow(){try{await requestPermission();}catch(e){setError('카메라 권한을 확인해주세요.');}}
- return <SafeAreaView style={{flex:1,backgroundColor:'#000'}}><StatusBar barStyle="light-content"/><View style={{flex:1,width:'100%',maxWidth:520,alignSelf:'center'}}><Header dark title="피부 이미지 촬영" onBack={onBack}/><View style={{flexDirection:'row',alignSelf:'center',backgroundColor:'#242424',padding:4,borderRadius:25,marginVertical:12}}>{[['camera','카메라'],['gallery','갤러리']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:mode===id}} onPress={()=>switchMode(id)} style={{backgroundColor:mode===id?'#FFF':'transparent',paddingHorizontal:28,paddingVertical:8,borderRadius:22}}><T style={{color:mode===id?'#0D2B6B':'#A5A5A5',fontFamily:'NotoSansKR_700Bold'}}>{label}</T></Pressable>)}</View>
- {mode==='camera'?<><View style={{flex:1,minHeight:230,backgroundColor:'#111827',overflow:'hidden',justifyContent:'center'}}>{permission?.granted?<CameraView ref={camera} style={{position:'absolute',inset:0}} facing={facing} enableTorch={torch&&facing==='back'} zoom={zoom} onCameraReady={()=>setReady(true)} onMountError={()=>{setReady(false);setError('카메라를 사용할 수 없어요. 갤러리에서 사진을 선택해주세요.');}}/>:<View style={{padding:32,gap:16,zIndex:2}}><T style={{color:'white',textAlign:'center'}}>상처를 촬영하려면 카메라 접근을 허용해주세요.</T>{permission?.canAskAgain!==false?<Button onPress={allow}>카메라 권한 허용</Button>:<><T style={{color:'#CBD5E1',textAlign:'center'}}>설정에서 카메라 권한을 켜거나 갤러리를 이용해주세요.</T>{Platform.OS!=='web'&&<Button onPress={()=>Linking.openSettings().catch(()=>setError('기기 설정에서 권한을 변경해주세요.'))}>설정 열기</Button>}</>}</View>}
- {permission?.granted&&<View pointerEvents="none" style={{position:'absolute',inset:0,justifyContent:'center',alignItems:'center'}}>{[1,2].map(i=><React.Fragment key={i}><View style={{position:'absolute',left:`${i*33.33}%`,height:'100%',width:1,backgroundColor:'#FFFFFF25'}}/><View style={{position:'absolute',top:`${i*33.33}%`,width:'100%',height:1,backgroundColor:'#FFFFFF25'}}/></React.Fragment>)}<View style={{width:'70%',aspectRatio:1,borderWidth:2,borderColor:'#FFFFFFBB',borderRadius:22,justifyContent:'center',alignItems:'center'}}><T style={{fontSize:28,color:'#FFFFFFAA'}}>＋</T></View><T style={{position:'absolute',bottom:20,color:'white',fontSize:12}}>가이드에 맞춰 환부를 촬영해주세요</T></View>}
- <View style={{position:'absolute',top:16,left:16,right:16,flexDirection:'row',justifyContent:'space-between'}}><Pressable accessibilityRole="button" accessibilityLabel="플래시" accessibilityState={{selected:torch}} onPress={()=>setTorch(!torch)} style={{padding:10,backgroundColor:'#0008',borderRadius:30}}><T style={{color:torch?'#FCD34D':'white'}}>ϟ</T></Pressable><Pressable accessibilityRole="button" accessibilityLabel="줌 변경" onPress={()=>setZoom(zoom===0?.2:0)} style={{padding:10,backgroundColor:'#0008',borderRadius:30}}><T style={{color:'white'}}>{zoom===0?'1.0x':'확대'}</T></Pressable></View></View><View style={{padding:20,gap:5}}>{['☀️  밝은 곳에서 촬영해주세요','🎯  초점을 맞추고 선명하게 촬영해주세요','📏  한 번에 한 부위만 촬영해주세요'].map(t=><T key={t} style={{fontSize:12,color:'#C1C5CE'}}>{t}</T>)}</View><View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-around',paddingBottom:20}}><Pressable accessibilityRole="button" accessibilityLabel="갤러리 열기" onPress={()=>switchMode('gallery')}><T style={{color:'white',fontSize:28}}>▧</T></Pressable><Pressable accessibilityRole="button" accessibilityLabel="사진 촬영" accessibilityState={{disabled:!ready||busy}} disabled={!ready||busy} onPress={shoot} style={{height:72,width:72,borderRadius:40,borderWidth:5,borderColor:'#BBB',backgroundColor:'white',opacity:ready&&!busy?1:.4}}/><Pressable accessibilityRole="button" accessibilityLabel="카메라 전환" onPress={()=>{setReady(false);setFacing(facing==='back'?'front':'back');setTorch(false)}}><T style={{color:'white',fontSize:28}}>↻</T><T style={{color:'#AAA',fontSize:11}}>전환</T></Pressable></View></>:<><ScrollView contentContainerStyle={{padding:20,gap:22}} style={{flex:1,backgroundColor:'#111'}}><Pressable accessibilityRole="button" accessibilityLabel="파일에서 직접 업로드" disabled={busy} onPress={pick} style={{borderWidth:1,borderStyle:'dashed',borderColor:'#454B59',borderRadius:18,padding:24,alignItems:'center',gap:10}}><T style={{fontSize:32,color:'#9EAAC0'}}>↥</T><T style={{color:'white',fontFamily:'NotoSansKR_700Bold'}}>{busy?'사진 불러오는 중…':'파일에서 직접 업로드'}</T><T style={{fontSize:11,color:'#8893A6'}}>JPG, PNG, HEIC 지원 · 최대 10MB</T></Pressable><T style={{color:'white',fontFamily:'NotoSansKR_700Bold'}}>선택한 사진</T>{photo?<View style={{gap:10}}><Image source={{uri:photo.uri}} style={{width:'100%',aspectRatio:1,borderRadius:18}} resizeMode="contain"/><T style={{color:'#9EAAC0',fontSize:12}}>{photo.fileName||'촬영한 상처 사진'}</T><Button secondary onPress={pick}>사진 다시 선택</Button></View>:<View style={{paddingVertical:42,alignItems:'center',gap:12}}><T style={{fontSize:40,color:'#555'}}>▧</T><T style={{color:'#9EAAC0'}}>기기 앨범에서 상처 사진을 선택해주세요.</T></View>}</ScrollView><View style={{padding:20}}><Button disabled={!photo||busy} onPress={onContinue}>{photo?'이 사진으로 계속':'사진을 선택해주세요'}</Button></View></>}{!!error&&<T accessibilityRole="alert" style={{color:'#FCA5A5',padding:16}}>{error}</T>}</View></SafeAreaView>
+import React, { useRef, useState } from "react";
+import {
+  View,
+  Pressable,
+  Image,
+  ScrollView,
+  Linking,
+  Platform,
+  StatusBar,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import { T, Button, Header } from "../components/Common";
+import { validatePhoto } from "../utils/draft";
+export default function CaptureScreen({
+  initialMode = "camera",
+  photo,
+  onSelect,
+  onBack,
+  onContinue,
+}) {
+  const [mode, setMode] = useState(initialMode),
+    [permission, requestPermission] = useCameraPermissions();
+  const [facing, setFacing] = useState("back"),
+    [torch, setTorch] = useState(false),
+    [zoom, setZoom] = useState(0),
+    [ready, setReady] = useState(false),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const camera = useRef(null),
+    lock = useRef(false);
+  function switchMode(next) {
+    setMode(next);
+    setReady(false);
+    setError("");
+  }
+  async function pick() {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: false,
+        quality: 1,
+      });
+      if (!result.canceled) {
+        const item = result.assets[0],
+          message = validatePhoto(item);
+        if (message) setError(message);
+        else onSelect(item);
+      }
+    } catch (e) {
+      setError("사진을 불러오지 못했어요. 다시 선택해주세요.");
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function shoot() {
+    if (!ready || lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await camera.current.takePictureAsync({ quality: 0.9 });
+      onSelect({ ...result, mimeType: "image/jpeg" });
+      switchMode("gallery");
+    } catch (e) {
+      setError("촬영하지 못했어요. 카메라를 확인하고 다시 시도해주세요.");
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function allow() {
+    try {
+      await requestPermission();
+    } catch (e) {
+      setError("카메라 권한을 확인해주세요.");
+    }
+  }
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+      <StatusBar barStyle="light-content" />
+      <View
+        style={{ flex: 1, width: "100%", maxWidth: 520, alignSelf: "center" }}
+      >
+        <Header dark title="피부 이미지 촬영" onBack={onBack} />
+        <View
+          style={{
+            flexDirection: "row",
+            alignSelf: "center",
+            backgroundColor: "#242424",
+            padding: 4,
+            borderRadius: 25,
+            marginVertical: 12,
+          }}
+        >
+          {[
+            ["camera", "카메라"],
+            ["gallery", "갤러리"],
+          ].map(([id, label]) => (
+            <Pressable
+              key={id}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: mode === id }}
+              onPress={() => switchMode(id)}
+              style={{
+                backgroundColor: mode === id ? "#FFF" : "transparent",
+                paddingHorizontal: 28,
+                paddingVertical: 8,
+                borderRadius: 22,
+              }}
+            >
+              <T
+                style={{
+                  color: mode === id ? "#0D2B6B" : "#A5A5A5",
+                  fontFamily: "NotoSansKR_700Bold",
+                }}
+              >
+                {label}
+              </T>
+            </Pressable>
+          ))}
+        </View>
+        {mode === "camera" ? (
+          <>
+            <View
+              style={{
+                flex: 1,
+                minHeight: 230,
+                backgroundColor: "#111827",
+                overflow: "hidden",
+                justifyContent: "center",
+              }}
+            >
+              {permission?.granted ? (
+                <CameraView
+                  ref={camera}
+                  style={{ position: "absolute", inset: 0 }}
+                  facing={facing}
+                  enableTorch={torch && facing === "back"}
+                  zoom={zoom}
+                  onCameraReady={() => setReady(true)}
+                  onMountError={() => {
+                    setReady(false);
+                    setError(
+                      "카메라를 사용할 수 없어요. 갤러리에서 사진을 선택해주세요.",
+                    );
+                  }}
+                />
+              ) : (
+                <View style={{ padding: 32, gap: 16, zIndex: 2 }}>
+                  <T style={{ color: "white", textAlign: "center" }}>
+                    상처를 촬영하려면 카메라 접근을 허용해주세요.
+                  </T>
+                  {permission?.canAskAgain !== false ? (
+                    <Button onPress={allow}>카메라 권한 허용</Button>
+                  ) : (
+                    <>
+                      <T style={{ color: "#CBD5E1", textAlign: "center" }}>
+                        설정에서 카메라 권한을 켜거나 갤러리를 이용해주세요.
+                      </T>
+                      {Platform.OS !== "web" && (
+                        <Button
+                          onPress={() =>
+                            Linking.openSettings().catch(() =>
+                              setError("기기 설정에서 권한을 변경해주세요."),
+                            )
+                          }
+                        >
+                          설정 열기
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </View>
+              )}
+              {permission?.granted && (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  {[1, 2].map((i) => (
+                    <React.Fragment key={i}>
+                      <View
+                        style={{
+                          position: "absolute",
+                          left: `${i * 33.33}%`,
+                          height: "100%",
+                          width: 1,
+                          backgroundColor: "#FFFFFF25",
+                        }}
+                      />
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: `${i * 33.33}%`,
+                          width: "100%",
+                          height: 1,
+                          backgroundColor: "#FFFFFF25",
+                        }}
+                      />
+                    </React.Fragment>
+                  ))}
+                  <View
+                    style={{
+                      width: "70%",
+                      aspectRatio: 1,
+                      borderWidth: 2,
+                      borderColor: "#FFFFFFBB",
+                      borderRadius: 22,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <T style={{ fontSize: 28, color: "#FFFFFFAA" }}>＋</T>
+                  </View>
+                  <T
+                    style={{
+                      position: "absolute",
+                      bottom: 20,
+                      color: "white",
+                      fontSize: 12,
+                    }}
+                  >
+                    가이드에 맞춰 환부를 촬영해주세요
+                  </T>
+                </View>
+              )}
+              <View
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="플래시"
+                  accessibilityState={{ selected: torch }}
+                  onPress={() => setTorch(!torch)}
+                  style={{
+                    padding: 10,
+                    backgroundColor: "#0008",
+                    borderRadius: 30,
+                  }}
+                >
+                  <T style={{ color: torch ? "#FCD34D" : "white" }}>ϟ</T>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="줌 변경"
+                  onPress={() => setZoom(zoom === 0 ? 0.2 : 0)}
+                  style={{
+                    padding: 10,
+                    backgroundColor: "#0008",
+                    borderRadius: 30,
+                  }}
+                >
+                  <T style={{ color: "white" }}>
+                    {zoom === 0 ? "1.0x" : "확대"}
+                  </T>
+                </Pressable>
+              </View>
+            </View>
+            <View style={{ padding: 20, gap: 5 }}>
+              {[
+                "☀️  밝은 곳에서 촬영해주세요",
+                "🎯  초점을 맞추고 선명하게 촬영해주세요",
+                "📏  한 번에 한 부위만 촬영해주세요",
+              ].map((t) => (
+                <T key={t} style={{ fontSize: 12, color: "#C1C5CE" }}>
+                  {t}
+                </T>
+              ))}
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-around",
+                paddingBottom: 20,
+              }}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="갤러리 열기"
+                onPress={() => switchMode("gallery")}
+              >
+                <T style={{ color: "white", fontSize: 28 }}>▧</T>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="사진 촬영"
+                accessibilityState={{ disabled: !ready || busy }}
+                disabled={!ready || busy}
+                onPress={shoot}
+                style={{
+                  height: 72,
+                  width: 72,
+                  borderRadius: 40,
+                  borderWidth: 5,
+                  borderColor: "#BBB",
+                  backgroundColor: "white",
+                  opacity: ready && !busy ? 1 : 0.4,
+                }}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="카메라 전환"
+                onPress={() => {
+                  setReady(false);
+                  setFacing(facing === "back" ? "front" : "back");
+                  setTorch(false);
+                }}
+              >
+                <T style={{ color: "white", fontSize: 28 }}>↻</T>
+                <T style={{ color: "#AAA", fontSize: 11 }}>전환</T>
+              </Pressable>
+            </View>
+          </>
+        ) : (
+          <>
+            <ScrollView
+              contentContainerStyle={{ padding: 20, gap: 22 }}
+              style={{ flex: 1, backgroundColor: "#111" }}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="파일에서 직접 업로드"
+                disabled={busy}
+                onPress={pick}
+                style={{
+                  borderWidth: 1,
+                  borderStyle: "dashed",
+                  borderColor: "#454B59",
+                  borderRadius: 18,
+                  padding: 24,
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <T style={{ fontSize: 32, color: "#9EAAC0" }}>↥</T>
+                <T style={{ color: "white", fontFamily: "NotoSansKR_700Bold" }}>
+                  {busy ? "사진 불러오는 중…" : "파일에서 직접 업로드"}
+                </T>
+                <T style={{ fontSize: 11, color: "#8893A6" }}>
+                  JPG, PNG, HEIC 지원 · 최대 10MB
+                </T>
+              </Pressable>
+              <T style={{ color: "white", fontFamily: "NotoSansKR_700Bold" }}>
+                선택한 사진
+              </T>
+              {photo ? (
+                <View style={{ gap: 10 }}>
+                  <Image
+                    source={{ uri: photo.uri }}
+                    style={{ width: "100%", aspectRatio: 1, borderRadius: 18 }}
+                    resizeMode="contain"
+                  />
+                  <T style={{ color: "#9EAAC0", fontSize: 12 }}>
+                    {photo.fileName || "촬영한 상처 사진"}
+                  </T>
+                  <Button secondary onPress={pick}>
+                    사진 다시 선택
+                  </Button>
+                </View>
+              ) : (
+                <View
+                  style={{ paddingVertical: 42, alignItems: "center", gap: 12 }}
+                >
+                  <T style={{ fontSize: 40, color: "#555" }}>▧</T>
+                  <T style={{ color: "#9EAAC0" }}>
+                    기기 앨범에서 상처 사진을 선택해주세요.
+                  </T>
+                </View>
+              )}
+            </ScrollView>
+            <View style={{ padding: 20 }}>
+              <Button disabled={!photo || busy} onPress={onContinue}>
+                {photo ? "이 사진으로 계속" : "사진을 선택해주세요"}
+              </Button>
+            </View>
+          </>
+        )}
+        {!!error && (
+          <T
+            accessibilityRole="alert"
+            style={{ color: "#FCA5A5", padding: 16 }}
+          >
+            {error}
+          </T>
+        )}
+      </View>
+    </SafeAreaView>
+  );
 }

@@ -1,1 +1,1 @@
-export { RecordList, NewWound, RecordDetail } from './RecordViews';
+export { RecordList, NewWound, RecordDetail } from "./RecordViews";

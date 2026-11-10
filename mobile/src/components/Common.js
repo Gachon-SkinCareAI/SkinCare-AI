@@ -1,17 +1,266 @@
-import React from 'react';
-import {Text,View,Pressable,StyleSheet,ScrollView} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {useAssets} from 'expo-asset';
-import {SvgUri} from 'react-native-svg';
-export const C={navy:'#0D2B6B',text:'#0D1B3E',muted:'#6B7A99',bg:'#F4F6F9',line:'#E8EDF5'};
-export function T({style,...props}){return <Text {...props} style={[{fontFamily:'NotoSansKR_400Regular',fontSize:14,lineHeight:22,color:C.text},style]}/>}
-export function Button({children,onPress,disabled,secondary,style,...props}){return <Pressable accessibilityRole="button" accessibilityState={{disabled:!!disabled}} disabled={disabled} onPress={onPress} {...props} style={({pressed})=>[{minHeight:50,borderRadius:14,backgroundColor:secondary?'#EDF2FA':C.navy,alignItems:'center',justifyContent:'center',padding:12,opacity:disabled?.4:pressed?.7:1},style]}><T style={{fontFamily:'NotoSansKR_700Bold',color:secondary?C.navy:'#FFF'}}>{children}</T></Pressable>}
-const modules=[require('../../assets/home/home.svg'),require('../../assets/home/history.svg'),require('../../assets/home/book.svg'),require('../../assets/home/pin.svg'),require('../../assets/home/user.svg')];
-export const tabs=[['home','홈'],['history','기록'],['book','백과'],['pin','병원'],['user','마이']];
-export function BottomTabs({active,onNavigate}){const [assets]=useAssets(modules);return <View style={s.tabs}>{tabs.map(([key,label],i)=><Pressable key={key} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{selected:key===active}} onPress={()=>onNavigate(key)} style={s.tab}><View style={[s.icon,key===active&&{backgroundColor:'#E8EFFB'}]}>{assets&&<SvgUri uri={assets[i].localUri||assets[i].uri} width={22} height={22}/>}</View><T style={{fontSize:10,lineHeight:15,color:key===active?C.navy:C.muted,fontFamily:'NotoSansKR_700Bold'}}>{label}</T></Pressable>)}</View>}
-export function Header({title,onBack,right,dark}){return <View style={[s.header,dark&&{backgroundColor:'#000',borderBottomWidth:0}]}>{onBack?<Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={onBack} style={s.back}><T style={{fontSize:30,color:dark?'white':C.navy}}>‹</T></Pressable>:<View style={{width:36}}/>}<T style={{flex:1,fontSize:18,fontFamily:'NotoSansKR_700Bold',color:dark?'white':C.text}}>{title}</T>{right}</View>}
-export function Layout({title,onBack,right,children,footer,active='history',onNavigate}){return <SafeAreaView style={{flex:1,backgroundColor:'white'}}><View style={s.shell}><Header title={title} onBack={onBack} right={right}/><ScrollView style={{flex:1,backgroundColor:C.bg}} contentContainerStyle={{padding:20,gap:20,paddingBottom:28}} keyboardShouldPersistTaps="handled">{children}</ScrollView>{footer&&<View style={{padding:20,borderTopWidth:1,borderColor:C.line}}>{footer}</View>}<BottomTabs active={active} onNavigate={onNavigate}/></View></SafeAreaView>}
-export function Card({children,style}){return <View style={[{backgroundColor:'white',borderRadius:18,padding:18,gap:14,borderWidth:1,borderColor:C.line},style]}>{children}</View>}
-export function Title({children}){return <T style={{fontSize:17,fontFamily:'NotoSansKR_700Bold'}}>{children}</T>}
-export function Badge({children,warning}){return <View style={{backgroundColor:warning?'#FFF3D6':'#E8F7EF',paddingHorizontal:10,paddingVertical:3,borderRadius:20}}><T style={{fontSize:11,color:warning?'#B77910':'#25805B'}}>{children}</T></View>}
-const s=StyleSheet.create({shell:{flex:1,width:'100%',maxWidth:520,alignSelf:'center'},header:{height:64,flexDirection:'row',alignItems:'center',paddingHorizontal:16,gap:5,backgroundColor:'white',borderBottomWidth:1,borderColor:C.line},back:{width:36,height:44,justifyContent:'center'},tabs:{flexDirection:'row',borderTopWidth:1,borderColor:C.line,backgroundColor:'white',paddingHorizontal:16,paddingVertical:7},tab:{flex:1,alignItems:'center',gap:2},icon:{width:32,height:26,borderRadius:8,alignItems:'center',justifyContent:'center'}});
+import React from "react";
+import { Text, View, Pressable, StyleSheet, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAssets } from "expo-asset";
+import { SvgUri } from "react-native-svg";
+
+export const C = {
+  navy: "#0D2B6B",
+  text: "#0D1B3E",
+  muted: "#6B7A99",
+  bg: "#F4F6F9",
+  line: "#E8EDF5",
+};
+
+export function T({ style, ...props }) {
+  return (
+    <Text
+      {...props}
+      style={[
+        {
+          fontFamily: "NotoSansKR_400Regular",
+          fontSize: 14,
+          lineHeight: 22,
+          color: C.text,
+        },
+        style,
+      ]}
+    />
+  );
+}
+
+export function Button({
+  children,
+  onPress,
+  disabled,
+  secondary,
+  style,
+  ...props
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      {...props}
+      style={({ pressed }) => [
+        {
+          minHeight: 50,
+          borderRadius: 14,
+          backgroundColor: secondary ? "#EDF2FA" : C.navy,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 12,
+          opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
+        },
+        style,
+      ]}
+    >
+      <T
+        style={{
+          fontFamily: "NotoSansKR_700Bold",
+          color: secondary ? C.navy : "#FFF",
+        }}
+      >
+        {children}
+      </T>
+    </Pressable>
+  );
+}
+
+const modules = [
+  require("../../assets/home/home.svg"),
+  require("../../assets/home/history.svg"),
+  require("../../assets/home/book.svg"),
+  require("../../assets/home/pin.svg"),
+  require("../../assets/home/user.svg"),
+];
+
+export const tabs = [
+  ["home", "홈"],
+  ["history", "기록"],
+  ["book", "백과"],
+  ["pin", "병원"],
+  ["user", "마이"],
+];
+
+export function BottomTabs({ active, onNavigate }) {
+  const [assets] = useAssets(modules);
+  return (
+    <View style={s.tabs}>
+      {tabs.map(([key, label], i) => (
+        <Pressable
+          key={key}
+          accessibilityRole="tab"
+          accessibilityLabel={label}
+          accessibilityState={{ selected: key === active }}
+          onPress={() => onNavigate(key)}
+          style={s.tab}
+        >
+          <View
+            style={[s.icon, key === active && { backgroundColor: "#E8EFFB" }]}
+          >
+            {assets && (
+              <SvgUri
+                uri={assets[i].localUri || assets[i].uri}
+                width={22}
+                height={22}
+              />
+            )}
+          </View>
+          <T
+            style={{
+              fontSize: 10,
+              lineHeight: 15,
+              color: key === active ? C.navy : C.muted,
+              fontFamily: "NotoSansKR_700Bold",
+            }}
+          >
+            {label}
+          </T>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+export function Header({ title, onBack, right, dark }) {
+  return (
+    <View
+      style={[
+        s.header,
+        dark && { backgroundColor: "#000", borderBottomWidth: 0 },
+      ]}
+    >
+      {onBack ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="뒤로"
+          onPress={onBack}
+          style={s.back}
+        >
+          <T style={{ fontSize: 30, color: dark ? "white" : C.navy }}>‹</T>
+        </Pressable>
+      ) : (
+        <View style={{ width: 36 }} />
+      )}
+      <T
+        style={{
+          flex: 1,
+          fontSize: 18,
+          fontFamily: "NotoSansKR_700Bold",
+          color: dark ? "white" : C.text,
+        }}
+      >
+        {title}
+      </T>
+      {right}
+    </View>
+  );
+}
+
+export function Layout({
+  title,
+  onBack,
+  right,
+  children,
+  footer,
+  active = "history",
+  onNavigate,
+}) {
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+      <View style={s.shell}>
+        <Header title={title} onBack={onBack} right={right} />
+        <ScrollView
+          style={{ flex: 1, backgroundColor: C.bg }}
+          contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 28 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </ScrollView>
+        {footer && (
+          <View style={{ padding: 20, borderTopWidth: 1, borderColor: C.line }}>
+            {footer}
+          </View>
+        )}
+        <BottomTabs active={active} onNavigate={onNavigate} />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+export function Card({ children, style }) {
+  return (
+    <View
+      style={[
+        {
+          backgroundColor: "white",
+          borderRadius: 18,
+          padding: 18,
+          gap: 14,
+          borderWidth: 1,
+          borderColor: C.line,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
+export function Title({ children }) {
+  return (
+    <T style={{ fontSize: 17, fontFamily: "NotoSansKR_700Bold" }}>{children}</T>
+  );
+}
+
+export function Badge({ children, warning }) {
+  return (
+    <View
+      style={{
+        backgroundColor: warning ? "#FFF3D6" : "#E8F7EF",
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: 20,
+      }}
+    >
+      <T style={{ fontSize: 11, color: warning ? "#B77910" : "#25805B" }}>
+        {children}
+      </T>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  shell: { flex: 1, width: "100%", maxWidth: 520, alignSelf: "center" },
+  header: {
+    height: 64,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    gap: 5,
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderColor: C.line,
+  },
+  back: { width: 36, height: 44, justifyContent: "center" },
+  tabs: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderColor: C.line,
+    backgroundColor: "white",
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  tab: { flex: 1, alignItems: "center", gap: 2 },
+  icon: {
+    width: 32,
+    height: 26,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

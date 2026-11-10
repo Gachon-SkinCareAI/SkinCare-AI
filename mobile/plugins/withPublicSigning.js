@@ -1,10 +1,17 @@
-const { withAppBuildGradle } = require('@expo/config-plugins');
-const START = '// SkinCare public signing start';
-const END = '// SkinCare public signing end';
-module.exports = config => withAppBuildGradle(config, mod => {
-  if (mod.modResults.language !== 'groovy') throw new Error('Expected the generated Groovy Android build file');
-  const contents = mod.modResults.contents.replace(new RegExp('\\n?' + START + '[\\s\\S]*?' + END + '\\n?', 'g'), '');
-  mod.modResults.contents = contents + `
+const { withAppBuildGradle } = require("@expo/config-plugins");
+const START = "// SkinCare public signing start";
+const END = "// SkinCare public signing end";
+module.exports = (config) =>
+  withAppBuildGradle(config, (mod) => {
+    if (mod.modResults.language !== "groovy")
+      throw new Error("Expected the generated Groovy Android build file");
+    const contents = mod.modResults.contents.replace(
+      new RegExp("\\n?" + START + "[\\s\\S]*?" + END + "\\n?", "g"),
+      "",
+    );
+    mod.modResults.contents =
+      contents +
+      `
 ${START}
 def signingKeys = ['SKINCARE_ANDROID_KEYSTORE', 'SKINCARE_ANDROID_STORE_PASSWORD', 'SKINCARE_ANDROID_KEY_ALIAS', 'SKINCARE_ANDROID_KEY_PASSWORD']
 if (signingKeys.any { !System.getenv(it) }) throw new GradleException('Public build signing configuration is missing')
@@ -30,5 +37,5 @@ tasks.configureEach { task ->
 }
 ${END}
 `;
-  return mod;
-});
+    return mod;
+  });
