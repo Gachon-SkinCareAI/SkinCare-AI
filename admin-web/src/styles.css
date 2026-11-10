@@ -1,6 +1,6 @@
 :root {
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', Arial,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", Arial,
     sans-serif;
   color: #102f6c;
   background: #f3f5f9;
@@ -31,8 +31,7 @@ body {
 .login-page {
   background:
     radial-gradient(circle at 0% 0%, #dce7fb 0, transparent 45%),
-    radial-gradient(circle at 100% 100%, #e2eef9 0, transparent 38%),
-    #f5f7fb;
+    radial-gradient(circle at 100% 100%, #e2eef9 0, transparent 38%), #f5f7fb;
 }
 .login-layout {
   display: grid;
@@ -43,7 +42,9 @@ body {
   border: 1px solid #dce5f3;
   border-radius: 22px;
   background: white;
-  box-shadow: 0 28px 80px #172f5c1b, 0 5px 22px #172f5c0b;
+  box-shadow:
+    0 28px 80px #172f5c1b,
+    0 5px 22px #172f5c0b;
 }
 .login-intro {
   display: flex;
@@ -56,7 +57,7 @@ body {
   background: linear-gradient(150deg, #193d80 0%, #102d63 54%, #0b2049 100%);
 }
 .login-intro::after {
-  content: '';
+  content: "";
   position: absolute;
   width: 340px;
   height: 340px;
@@ -167,17 +168,27 @@ body {
   color: #1d3457;
   background: #fff;
   font-size: 13px;
-  transition: border-color .15s, box-shadow .15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
-.login-field input::placeholder { color: #a5b0c0; }
+.login-field input::placeholder {
+  color: #a5b0c0;
+}
 .login-field input:focus {
   border-color: #4d82de;
   outline: none;
   box-shadow: 0 0 0 3px #2e6dc61c;
 }
-.login-field input[aria-invalid="true"] { border-color: #d75b63; }
-.login-password-wrap { position: relative; }
-.login-password-wrap input { padding-right: 50px; }
+.login-field input[aria-invalid="true"] {
+  border-color: #d75b63;
+}
+.login-password-wrap {
+  position: relative;
+}
+.login-password-wrap input {
+  padding-right: 50px;
+}
 .login-password-toggle {
   position: absolute;
   top: 5px;
@@ -190,7 +201,10 @@ body {
   color: #7c8ea7;
   background: transparent;
 }
-.login-password-toggle:hover { color: #2252a0; background: #f2f6fc; }
+.login-password-toggle:hover {
+  color: #2252a0;
+  background: #f2f6fc;
+}
 .login-remember {
   display: flex;
   align-items: center;
@@ -200,8 +214,15 @@ body {
   font-size: 12px;
   cursor: pointer;
 }
-.login-remember input { width: 15px; height: 15px; accent-color: #1d4fa0; }
-.login-field-error { color: #c63943; font-size: 11px; }
+.login-remember input {
+  width: 15px;
+  height: 15px;
+  accent-color: #1d4fa0;
+}
+.login-field-error {
+  color: #c63943;
+  font-size: 11px;
+}
 .login-request-error {
   padding: 11px 12px;
   border: 1px solid #f4c9cd;
@@ -223,9 +244,14 @@ body {
   color: white;
   font-size: 14px;
   font-weight: 700;
-  transition: background .15s, transform .15s;
+  transition:
+    background 0.15s,
+    transform 0.15s;
 }
-.login-submit:not(:disabled):hover { background: #103b83; transform: translateY(-1px); }
+.login-submit:not(:disabled):hover {
+  background: #103b83;
+  transform: translateY(-1px);
+}
 .login-footnote {
   margin-top: 24px;
   color: #95a2b5;
@@ -234,18 +260,50 @@ body {
   text-align: center;
 }
 @media (max-width: 700px) {
-  .login-page { padding: 18px; }
-  .login-layout { grid-template-columns: 1fr; min-height: 0; max-width: 480px; }
-  .login-intro { min-height: 145px; padding: 22px 28px; }
-  .login-brand { font-size: 19px; }
-  .login-brand img { width: 32px; height: 32px; }
-  .login-intro-copy { margin-top: 22px; }
-  .login-eyebrow, .login-intro-copy p, .login-intro-footer { display: none; }
-  .login-intro-copy h1 { font-size: 16px; line-height: 1.4; letter-spacing: -.3px; }
-  .login-intro-copy br { display: none; }
-  .login-form-area { padding: 30px 28px 32px; }
-  .login-form-heading h2 { font-size: 24px; }
-  .login-form { margin-top: 25px; }
+  .login-page {
+    padding: 18px;
+  }
+  .login-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    max-width: 480px;
+  }
+  .login-intro {
+    min-height: 145px;
+    padding: 22px 28px;
+  }
+  .login-brand {
+    font-size: 19px;
+  }
+  .login-brand img {
+    width: 32px;
+    height: 32px;
+  }
+  .login-intro-copy {
+    margin-top: 22px;
+  }
+  .login-eyebrow,
+  .login-intro-copy p,
+  .login-intro-footer {
+    display: none;
+  }
+  .login-intro-copy h1 {
+    font-size: 16px;
+    line-height: 1.4;
+    letter-spacing: -0.3px;
+  }
+  .login-intro-copy br {
+    display: none;
+  }
+  .login-form-area {
+    padding: 30px 28px 32px;
+  }
+  .login-form-heading h2 {
+    font-size: 24px;
+  }
+  .login-form {
+    margin-top: 25px;
+  }
 }
 button,
 input,
@@ -440,8 +498,13 @@ svg {
   font-size: 12px;
   text-align: left;
 }
-.sidebar-logout:hover { background: #ffffff1d; color: white; }
-.sidebar-logout:disabled { opacity: .6; }
+.sidebar-logout:hover {
+  background: #ffffff1d;
+  color: white;
+}
+.sidebar-logout:disabled {
+  opacity: 0.6;
+}
 .admin-avatar {
   display: grid;
   place-items: center;
@@ -1126,6 +1189,7 @@ tbody tr:hover {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 .pagination > span {
   font-size: 11px;
@@ -1152,14 +1216,31 @@ tbody tr:hover {
   background: var(--navy);
   color: white;
 }
-.pagination button:first-child,
-.pagination button:last-child {
+.pagination button.step {
   border: 1px solid #e2e9f7;
   border-radius: 20px;
   gap: 1px;
 }
 .pagination button:hover:not(:disabled):not(.current) {
   background: #f0f4fb;
+}
+/* 좁은 화면: 처음·이전·번호 5개·다음·끝이 한 줄에 들어가도록 이전/다음 글자를 숨기고 줄바꿈을 허용 */
+@media (max-width: 520px) {
+  .pagination {
+    justify-content: center;
+  }
+  .pagination nav {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+  .pagination button {
+    min-width: 32px;
+    padding: 0 6px;
+  }
+  .pagination button.step span {
+    display: none;
+  }
 }
 .empty {
   min-height: 270px;
@@ -1789,7 +1870,9 @@ textarea::placeholder {
   margin: 0 10px 14px;
   padding: 12px;
 }
-.sidebar-collapsed .sidebar-logout span { display: none; }
+.sidebar-collapsed .sidebar-logout span {
+  display: none;
+}
 @media (min-width: 1600px) {
   main {
     padding: 25px 28px;
