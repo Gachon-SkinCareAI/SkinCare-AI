@@ -23,7 +23,8 @@ public class NmcMedicalClient implements PublicMedicalClient {
     private final java.util.concurrent.Semaphore slots = new java.util.concurrent.Semaphore(4);
 
     public NmcMedicalClient(@Value("${skincare.medical.service-key:}") String key) {
-        this.key = key.strip();
+        // 인코딩/디코딩 어느 형태로 설정되어도 디코딩된 키로 통일
+        this.key = ServiceKeys.decoded(key);
     }
 
     @Override
