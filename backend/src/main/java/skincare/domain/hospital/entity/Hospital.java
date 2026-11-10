@@ -46,7 +46,7 @@ public class Hospital extends BaseTimeEntity {
     // 기관 고유 ID
     @Id
     @Column(name = "hospital_id", length = 50)
-    private String hospitalId; // ex. HIRA-110001
+    private String hospitalId; // 동기화 기관: HIRA-<요양기관 기호의 SHA-1>, 직접 등록 기관: UUID
 
     // 병원/약국 명칭
     @Column(nullable = false, length = 100)
@@ -102,8 +102,31 @@ public class Hospital extends BaseTimeEntity {
     @Column(name = "sunday_holiday_hours", length = 50)
     private String sundayHolidayHours;
 
-    public boolean updateFrom(Hospital source) {
-        boolean hidden = STATUS_HIDDEN.equals(status);
+    // 병원ID
+    public static final String SYNC_ID_PREFIX = "HIRA-";
+
+    // 약국ID
+    public static final String NMC_ID_PREFIX = "NMC-";
+
+    // 동기화가 관리하는 기관인지 확인
+    public static boolean isSyncManaged(String hospitalId) {
+        return hospitalId != null
+                && (hospitalId.startsWith(SYNC_ID_PREFIX) || hospitalId.startsWith(NMC_ID_PREFIX));
+    }
+
+    // 공공데이터 동기화가 채우는 출처명과 출처 URL
+    public static final String SOURCE_PUBLIC_DATA = "공공데이터 포털";
+
+    public static final String SOURCE_PUBLIC_DATA_URL = "https://www.data.go.kr/";
+
+    // 이번 공공데이터에서 사라져 동기화가 자동으로 중지한 기관의 출처 표시
+    public static final String SOURCE_EXCLUDED = "공공데이터 제외(자동 중지)";
+
+    // 공공데이터 원본 기준으로 갱신
+     public boolean updateFrom(Hospital source) {
+        boolean excludedBySync = STATUS_INACTIVE.equals(status) && SOURCE_EXCLUDED.equals(dataSource);
+        boolean keepHidden =
+                STATUS_HIDDEN.equals(status) || (STATUS_INACTIVE.equals(status) && !excludedBySync);
         boolean changed =
                 !Objects.equals(name, source.name)
                         || hospitalType != source.hospitalType
@@ -117,7 +140,9 @@ public class Hospital extends BaseTimeEntity {
                         || !Objects.equals(sundayHolidayHours, source.sundayHolidayHours)
                         || nightCare != source.nightCare
                         || emergency != source.emergency
-                        || (!hidden && !STATUS_ACTIVE.equals(status));
+                        || !Objects.equals(sourceUrl, source.sourceUrl)
+                        || verifiedOn == null
+                        || excludedBySync;
 
         if (changed) {
             this.name = source.name;
@@ -133,7 +158,9 @@ public class Hospital extends BaseTimeEntity {
             this.nightCare = source.nightCare;
             this.emergency = source.emergency;
             this.dataSource = source.dataSource;
-            if (!hidden) {
+            this.sourceUrl = source.sourceUrl;
+            this.verifiedOn = source.verifiedOn;
+            if (!keepHidden) {
                 this.status = STATUS_ACTIVE;
             }
         }
@@ -143,6 +170,7 @@ public class Hospital extends BaseTimeEntity {
     // 공공데이터에서 제외된 기관 운영 중지 처리
     public void deactivate() {
         this.status = STATUS_INACTIVE;
+        this.dataSource = SOURCE_EXCLUDED;
     }
 
     // 관리자 운영 상태 변경 (ACTIVE: 노출, HIDDEN: 숨김 - 다음 동기화에서도 숨김 유지)

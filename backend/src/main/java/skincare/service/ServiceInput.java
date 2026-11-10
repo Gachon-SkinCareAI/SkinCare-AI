@@ -35,9 +35,14 @@ public final class ServiceInput {
     }
 
     public static PageRequest page(int page, int size, String... fields) {
+        return page(page, size, Sort.Direction.DESC, fields);
+    }
+
+    // 정렬 방향을 지정하는 페이지 요청
+    public static PageRequest page(int page, int size, Sort.Direction direction, String... fields) {
         if (page < 0 || page > 10000 || size < 1 || size > 50)
             throw new ResponseStatusException(BAD_REQUEST, "페이지 범위를 확인해 주세요.");
-        return PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, fields));
+        return PageRequest.of(page, size, Sort.by(direction, fields));
     }
 
     public static String https(String value, int max) {

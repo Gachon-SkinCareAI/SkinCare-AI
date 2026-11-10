@@ -36,6 +36,12 @@ public interface HospitalRepository
     // 운영 중인 응급실 운영 기관 수
     long countByStatusAndEmergencyTrue(String status);
 
+    // 운영 중인 야간진료 기관 수 (병원·약국 모두)
+    long countByStatusAndNightCareTrue(String status);
+
+    // 운영 중인 기관 수 (유형별)
+    long countByStatusAndHospitalType(String status, HospitalType hospitalType);
+
     // 관리자용 의료기관 검색 조건 (검색어: 기관명/주소/기관 ID, 기관 유형, 운영 상태 - 운영 중지/숨김 기관 포함)
     static Specification<Hospital> adminSearch(
             String keyword, HospitalType hospitalType, String status) {

@@ -93,7 +93,6 @@
     <logger name="skincare.service.AdminInquiryAnswerService" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
     <logger name="skincare.service.HospitalSyncService" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
     <logger name="skincare.service.HospitalQueryService" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
-    <logger name="skincare.external.MedicalApiClient" additivity="true"><appender-ref ref="OPERATION_FILE"/></logger>
 
     <!-- 8.3.3 MLOps 파이프라인 및 시스템 로그 -->
     <logger name="skincare.service.AdminAiMonitoringService" additivity="true"><appender-ref ref="MLOPS_FILE"/></logger>

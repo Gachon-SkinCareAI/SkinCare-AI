@@ -25,11 +25,27 @@ public class HospitalService {
     private final AdminAuditService audit;
     private final jakarta.persistence.EntityManager entityManager;
 
-    @Transactional(readOnly = true)
     public ServicePage<HospitalView> search(
             String query, HospitalType type, Boolean emergency, int page, int size, boolean admin) {
+        return search(query, type, emergency, null, page, size, admin);
+    }
+
+    // 의료기관 검색
+    // 사용자용(admin=false)은 운영 중이고 출처·확인일이 있는 기관만 최근 확인순으로 출력
+    @Transactional(readOnly = true)
+    public ServicePage<HospitalView> search(
+            String query,
+            HospitalType type,
+            Boolean emergency,
+            String status,
+            int page,
+            int size,
+            boolean admin) {
 
         String q = ServiceInput.optional(query, 100, "검색어");
+        String state = status == null || status.isBlank() ? null : status.strip().toUpperCase(Locale.ROOT);
+        if (state != null && !Set.of("ACTIVE", "INACTIVE").contains(state))
+            throw new ResponseStatusException(BAD_REQUEST, "운영 상태는 ACTIVE 또는 INACTIVE여야 합니다.");
         Specification<Hospital> spec =
                 (root, cq, cb) -> {
                     var conditions = new ArrayList<jakarta.persistence.criteria.Predicate>();
@@ -37,6 +53,8 @@ public class HospitalService {
                         conditions.add(cb.equal(root.get("status"), "ACTIVE"));
                         conditions.add(cb.isNotNull(root.get("sourceUrl")));
                         conditions.add(cb.isNotNull(root.get("verifiedOn")));
+                    } else if (state != null) {
+                        conditions.add(cb.equal(root.get("status"), state));
                     }
                     if (type != null) conditions.add(cb.equal(root.get("hospitalType"), type));
                     if (emergency != null)
@@ -58,10 +76,11 @@ public class HospitalService {
                     return cb.and(
                             conditions.toArray(jakarta.persistence.criteria.Predicate[]::new));
                 };
-        return ServicePage.from(
-                hospitals
-                        .findAll(spec, ServiceInput.page(page, size, "verifiedOn", "hospitalId"))
-                        .map(HospitalView::from));
+        var paging =
+                admin
+                        ? ServiceInput.page(page, size, org.springframework.data.domain.Sort.Direction.ASC, "name", "hospitalId")
+                        : ServiceInput.page(page, size, "verifiedOn", "hospitalId");
+        return ServicePage.from(hospitals.findAll(spec, paging).map(HospitalView::from));
     }
 
     @Transactional
