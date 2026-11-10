@@ -1,110 +1,121 @@
-import Sidebar from './layouts/Sidebar'
-import { useEffect, useState } from 'react'
-import { Bell, Check, ChevronRight, Menu, Search, X } from 'lucide-react'
-import GlobalSearch from './components/GlobalSearch'
-import { ADMIN_BASE_PATH, pages, getRoute } from './constants/navigation'
-import { usePreviewStore } from './hooks/usePreviewStore'
-import {
-  type Detail,
-  type Navigate,
-} from './data'
-import { hasSession, logout } from './services/api'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Diagnoses from './pages/Diagnoses'
-import Monitoring from './pages/Monitoring'
-import Facilities from './pages/Facilities'
-import Users from './pages/Users'
-import Inquiries from './pages/Inquiries'
-import Details from './Details'
+import Sidebar from "./layouts/Sidebar";
+import { useEffect, useState } from "react";
+import { Bell, Check, ChevronRight, Menu, Search, X } from "lucide-react";
+import GlobalSearch from "./components/GlobalSearch";
+import { ADMIN_BASE_PATH, pages, getRoute } from "./constants/navigation";
+import { usePreviewStore } from "./hooks/usePreviewStore";
+import { type Detail, type Navigate } from "./data";
+import { hasSession, logout } from "./services/api";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Diagnoses from "./pages/Diagnoses";
+import Monitoring from "./pages/Monitoring";
+import Facilities from "./pages/Facilities";
+import Users from "./pages/Users";
+import Inquiries from "./pages/Inquiries";
+import Details from "./Details";
 
 export default function App() {
-  const [authenticated, setAuthenticated] = useState(hasSession)
-  const { store, setStore, storageError, loading, error, reload } = usePreviewStore(authenticated)
-  const [route, setRoute] = useState(getRoute)
-  const [collapsed, setCollapsed] = useState(false)
-  const [mobileMenu, setMobileMenu] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [notifications, setNotifications] = useState(false)
-  const [detail, setDetail] = useState<Detail | null>(null)
-  const [toast, setToast] = useState('')
-  const [loggingOut, setLoggingOut] = useState(false)
-  const active = pages.find((p) => p.id === route.page)!
+  const [authenticated, setAuthenticated] = useState(hasSession);
+  const { store, setStore, storageError, loading, error, reload } =
+    usePreviewStore(authenticated);
+  const [route, setRoute] = useState(getRoute);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [notifications, setNotifications] = useState(false);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [toast, setToast] = useState("");
+  // 동기화처럼 의료기관 목록이 바뀌면 올려서 의료기관 화면이 서버에서 다시 불러오게 한다
+  const [facilityRefresh, setFacilityRefresh] = useState(0);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const active = pages.find((p) => p.id === route.page)!;
   useEffect(() => {
     const expire = () => {
-      setAuthenticated(false)
-      setSearchOpen(false)
-      setDetail(null)
-    }
-    window.addEventListener('skincare-session-expired', expire)
-    return () => window.removeEventListener('skincare-session-expired', expire)
-  }, [])
+      setAuthenticated(false);
+      setSearchOpen(false);
+      setDetail(null);
+    };
+    window.addEventListener("skincare-session-expired", expire);
+    return () => window.removeEventListener("skincare-session-expired", expire);
+  }, []);
   useEffect(() => {
     const sync = () => {
-      setRoute(getRoute())
-      setMobileMenu(false)
-      setNotifications(false)
-      setDetail(null)
-    }
-    window.addEventListener('popstate', sync)
-    return () => window.removeEventListener('popstate', sync)
-  }, [])
+      setRoute(getRoute());
+      setMobileMenu(false);
+      setNotifications(false);
+      setDetail(null);
+    };
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
 
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(''), 4500)
-      return () => clearTimeout(timer)
+      const timer = setTimeout(() => setToast(""), 4500);
+      return () => clearTimeout(timer);
     }
-  }, [toast])
+  }, [toast]);
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setMobileMenu(false)
-        setNotifications(false)
+      if (e.key === "Escape") {
+        setMobileMenu(false);
+        setNotifications(false);
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const navigate: Navigate = (page, risk) => {
-    const query = risk ? `?risk=${encodeURIComponent(risk)}` : ''
-    window.history.pushState({}, '', `${ADMIN_BASE_PATH}/${page}${query}`)
-    setRoute({ page, risk })
-    setMobileMenu(false)
-    setNotifications(false)
-    setDetail(null)
-  }
+    const query = risk ? `?risk=${encodeURIComponent(risk)}` : "";
+    window.history.pushState({}, "", `${ADMIN_BASE_PATH}/${page}${query}`);
+    setRoute({ page, risk });
+    setMobileMenu(false);
+    setNotifications(false);
+    setDetail(null);
+  };
   function toggleSidebar() {
-    if (window.matchMedia('(max-width: 760px)').matches)
-      setMobileMenu((v) => !v)
-    else setCollapsed((v) => !v)
+    if (window.matchMedia("(max-width: 760px)").matches)
+      setMobileMenu((v) => !v);
+    else setCollapsed((v) => !v);
   }
   async function handleLogout() {
-    if (loggingOut) return
-    setLoggingOut(true)
+    if (loggingOut) return;
+    setLoggingOut(true);
     try {
-      await logout()
+      await logout();
     } catch {
       // 연결이 끊겨도 로컬 인증 정보는 logout()에서 정리됩니다.
     } finally {
-      setAuthenticated(false)
-      setSearchOpen(false)
-      setDetail(null)
-      setLoggingOut(false)
+      setAuthenticated(false);
+      setSearchOpen(false);
+      setDetail(null);
+      setLoggingOut(false);
     }
   }
-  if (!authenticated) return <Login onSuccess={() => setAuthenticated(true)} />
-  if (error) return <main className="loading-state"><p role="alert">{error}</p><button className="button primary" onClick={() => void reload()}>다시 시도</button></main>
-  if (loading || !store) return <main className="loading-state">관리자 데이터를 불러오는 중입니다</main>
-  const pending = store.inquiries.filter((q) => !q.reply.trim())
+  if (!authenticated) return <Login onSuccess={() => setAuthenticated(true)} />;
+  if (error)
+    return (
+      <main className="loading-state">
+        <p role="alert">{error}</p>
+        <button className="button primary" onClick={() => void reload()}>
+          다시 시도
+        </button>
+      </main>
+    );
+  if (loading || !store)
+    return (
+      <main className="loading-state">관리자 데이터를 불러오는 중입니다</main>
+    );
+  const pending = store.inquiries.filter((q) => !q.reply.trim());
   return (
-    <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
       <a
         className="skip-link"
         href="#main-content"
         onClick={(e) => {
-          e.preventDefault()
-          document.getElementById('main-content')?.focus()
+          e.preventDefault();
+          document.getElementById("main-content")?.focus();
         }}
       >
         본문으로 이동
@@ -124,7 +135,7 @@ export default function App() {
         pageId={route.page}
         onLogout={() => void handleLogout()}
         loggingOut={loggingOut}
-        adminName={localStorage.getItem('skincare-admin-name') || '관리자'}
+        adminName={localStorage.getItem("skincare-admin-name") || "관리자"}
       />
       <div className="main-shell">
         <header className="topbar">
@@ -140,7 +151,14 @@ export default function App() {
               <h1>
                 <span aria-hidden="true">{active.icon}</span> {active.title}
               </h1>
-              <p>2026년 9월 29일 기준</p>
+              <p>
+                {new Date().toLocaleDateString("ko-KR", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}{" "}
+                기준
+              </p>
             </div>
           </div>
           <div className="header-actions">
@@ -174,16 +192,14 @@ export default function App() {
                       <X size={17} />
                     </button>
                   </div>
-                  <p>
-                    답변을 기다리는 문의가 {pending.length}건 있습니다.
-                  </p>
+                  <p>답변을 기다리는 문의가 {pending.length}건 있습니다.</p>
                   {pending.slice(0, 3).map((q) => (
                     <button
                       className="notification-item"
                       key={q.id}
                       onClick={() => {
-                        setDetail({ type: 'inquiry', id: q.id })
-                        setNotifications(false)
+                        setDetail({ type: "inquiry", id: q.id });
+                        setNotifications(false);
                       }}
                     >
                       <span>
@@ -194,9 +210,7 @@ export default function App() {
                     </button>
                   ))}
                   {!pending.length && (
-                    <span className="all-done">
-                      모든 문의에 답변했습니다.
-                    </span>
+                    <span className="all-done">모든 문의에 답변했습니다.</span>
                   )}
                 </div>
               )}
@@ -204,24 +218,32 @@ export default function App() {
           </div>
         </header>
         <main id="main-content" tabIndex={-1}>
-          {storageError && <div role="alert" className="storage-warning">API 데이터를 갱신하지 못했습니다</div>}
-          {route.page === 'dashboard' && (
+          {storageError && (
+            <div role="alert" className="storage-warning">
+              API 데이터를 갱신하지 못했습니다
+            </div>
+          )}
+          {route.page === "dashboard" && (
             <Dashboard store={store} navigate={navigate} open={setDetail} />
           )}
-          {route.page === 'diagnoses' && (
+          {route.page === "diagnoses" && (
             <Diagnoses
-              key={`diagnoses-${route.risk || 'all'}`}
+              key={`diagnoses-${route.risk || "all"}`}
               store={store}
               open={setDetail}
               initialRisk={route.risk}
             />
           )}
-          {route.page === 'monitoring' && <Monitoring store={store} />}
-          {route.page === 'facilities' && (
-            <Facilities store={store} open={setDetail} />
+          {route.page === "monitoring" && <Monitoring store={store} />}
+          {route.page === "facilities" && (
+            <Facilities
+              store={store}
+              open={setDetail}
+              refreshKey={facilityRefresh}
+            />
           )}
-          {route.page === 'users' && <Users store={store} open={setDetail} />}
-          {route.page === 'inquiries' && (
+          {route.page === "users" && <Users store={store} open={setDetail} />}
+          {route.page === "inquiries" && (
             <Inquiries store={store} open={setDetail} />
           )}
         </main>
@@ -232,13 +254,14 @@ export default function App() {
       </div>
       {detail && (
         <Details
-          key={`${detail.type}-${'id' in detail ? detail.id : ''}`}
+          key={`${detail.type}-${"id" in detail ? detail.id : ""}`}
           detail={detail}
           store={store}
           update={setStore}
           open={setDetail}
           close={() => setDetail(null)}
           notify={setToast}
+          onFacilitiesChanged={() => setFacilityRefresh((n) => n + 1)}
         />
       )}
       {searchOpen && (
@@ -246,8 +269,8 @@ export default function App() {
           store={store}
           close={() => setSearchOpen(false)}
           open={(d) => {
-            setSearchOpen(false)
-            setDetail(d)
+            setSearchOpen(false);
+            setDetail(d);
           }}
         />
       )}
@@ -257,11 +280,11 @@ export default function App() {
             <Check size={16} />
           </span>
           <p>{toast}</p>
-          <button aria-label="메시지 닫기" onClick={() => setToast('')}>
+          <button aria-label="메시지 닫기" onClick={() => setToast("")}>
             <X size={16} />
           </button>
         </div>
       )}
     </div>
-  )
+  );
 }

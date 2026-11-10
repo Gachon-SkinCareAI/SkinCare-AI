@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from "react";
 import {
   Badge,
   Empty,
@@ -7,27 +7,27 @@ import {
   RiskBadge,
   SearchInput,
   usePagination,
-} from '../components'
-import type { OpenDetail, Store } from '../data'
+} from "../components";
+import type { OpenDetail, Store } from "../data";
 
 export default function Users({
   store,
   open,
 }: {
-  store: Store
-  open: OpenDetail
+  store: Store;
+  open: OpenDetail;
 }) {
-  const m = store.dashboard
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('전체')
+  const m = store.dashboard;
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("전체");
   const filtered = store.users.filter(
     (u) =>
       `${u.id} ${u.name}`
         .toLocaleLowerCase()
         .includes(query.trim().toLocaleLowerCase()) &&
-      (status === '전체' || u.active === (status === '활성')),
-  )
-  const pagination = usePagination(filtered)
+      (status === "전체" || u.active === (status === "활성")),
+  );
+  const pagination = usePagination(filtered);
   return (
     <>
       <section className="metrics-grid four" aria-label="사용자 지표">
@@ -39,26 +39,25 @@ export default function Users({
         />
         <Metric
           icon="⭐"
-          value={String(m.premium ?? store.users.filter((u) => u.plan === 'Premium').length)}
+          value={String(
+            m.premium ?? store.users.filter((u) => u.plan === "Premium").length,
+          )}
           label="Premium 사용자"
-          hint="전환율 18.2%"
-          change="+3.1%"
+          hint={`전환율 ${m.premiumRate ?? 0}%`}
           color="orange"
         />
         <Metric
           icon="🗓️"
           value={String(m.dau ?? 0)}
           label="DAU"
-          hint="일간 활성 사용자"
-          change="+5.4%"
+          hint="오늘 접속한 사용자"
           color="blue"
         />
         <Metric
           icon="🔄"
-          value={`${m.retention ?? 0}%`}
-          label="7일 재방문율"
-          hint="목표: 70%"
-          change="+2.1%"
+          value={String(m.wau ?? 0)}
+          label="WAU"
+          hint="최근 7일 접속한 사용자"
           color="green"
         />
       </section>
@@ -71,8 +70,8 @@ export default function Users({
                 aria-label="사용자 상태"
                 value={status}
                 onChange={(e) => {
-                  setStatus(e.target.value)
-                  pagination.setPage(1)
+                  setStatus(e.target.value);
+                  pagination.setPage(1);
                 }}
               >
                 <option value="전체">모든 상태</option>
@@ -85,8 +84,8 @@ export default function Users({
               placeholder="사용자 검색"
               value={query}
               onChange={(v) => {
-                setQuery(v)
-                pagination.setPage(1)
+                setQuery(v);
+                pagination.setPage(1);
               }}
             />
           </div>
@@ -112,7 +111,7 @@ export default function Users({
                       <button
                         className="table-link"
                         aria-label={`${u.id} 사용자 상세`}
-                        onClick={() => open({ type: 'user', id: u.id })}
+                        onClick={() => open({ type: "user", id: u.id })}
                       >
                         {u.id}
                       </button>
@@ -123,19 +122,19 @@ export default function Users({
                         <span>{u.name}</span>
                       </div>
                     </td>
-                    <td className="muted">{u.joinedAt.replaceAll('-', '.')}</td>
+                    <td className="muted">{u.joinedAt.replaceAll("-", ".")}</td>
                     <td>{u.diagnoses}건</td>
                     <td>
                       <RiskBadge risk={u.risk} />
                     </td>
                     <td>
-                      <Badge tone={u.plan === 'Premium' ? 'orange' : 'gray'}>
+                      <Badge tone={u.plan === "Premium" ? "orange" : "gray"}>
                         {u.plan}
                       </Badge>
                     </td>
                     <td>
-                      <Badge tone={u.active ? 'green' : 'gray'}>
-                        {u.active ? '활성' : '비활성'}
+                      <Badge tone={u.active ? "green" : "gray"}>
+                        {u.active ? "활성" : "비활성"}
                       </Badge>
                     </td>
                   </tr>
@@ -154,5 +153,5 @@ export default function Users({
         />
       </section>
     </>
-  )
+  );
 }
