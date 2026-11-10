@@ -1,15 +1,15 @@
 // Figma list fixtures for UI development, not a reviewed medical knowledge base.
 export const diseases=[
- ['contact','접촉성 피부염','Contact Dermatitis','염증','외부 물질 접촉으로 유발되는 피부 염증 반응',['알레르기','염증'],'진료 권고','🔴'],
- ['atopic','아토피 피부염','Atopic Dermatitis','만성','만성 재발성 염증성 피부 질환으로 가려움이 특징',['만성','가려움'],'진료 권고','🟠'],
- ['burn1','1도 화상','1st Degree Burn','외상','표피층이 손상된 화상',['화상','외상'],'자가처치 가능','🟡'],
- ['burn2','2도 화상','2nd Degree Burn','외상','진피층까지 손상되며 수포가 나타날 수 있는 화상',['화상','응급'],'즉시 내원','🔴'],
- ['urticaria','두드러기','Urticaria','알레르기','피부에 팽진과 가려움이 발생하는 반응',['알레르기','급성'],'진료 권고','🟠'],
- ['psoriasis','건선','Psoriasis','만성','피부에 인설이 나타나는 만성 염증성 질환',['만성','인설'],'진료 권고','🟤'],
- ['abrasion','찰과상','Abrasion','외상','피부 표면이 마찰로 벗겨진 상처',['외상','마찰'],'자가처치 가능','🩹'],
- ['zoster','대상포진','Herpes Zoster','감염','띠 모양 발진과 통증이 나타날 수 있는 질환',['감염','신경통'],'즉시 내원','🔴'],
- ['acne','여드름','Acne Vulgaris','염증','모낭과 피지선에 발생하는 피부 질환',['만성','피지'],'자가처치 가능','🟡'],
- ['cellulitis','봉와직염','Cellulitis','감염','피부와 피하 조직에 발생하는 세균 감염',['감염','응급'],'즉시 내원','🔴'],
+ ['contact','접촉성 피부염','Contact Dermatitis','염증','외부 물질 접촉으로 유발되는 피부 염증 반응',['알레르기','염증'],'진료 권고','red'],
+ ['atopic','아토피 피부염','Atopic Dermatitis','만성','만성 재발성 염증성 피부 질환으로 가려움이 특징',['만성','가려움'],'진료 권고','orange'],
+ ['burn1','1도 화상','1st Degree Burn','외상','표피층이 손상된 화상',['화상','외상'],'자가처치 가능','yellow'],
+ ['burn2','2도 화상','2nd Degree Burn','외상','진피층까지 손상되며 수포가 나타날 수 있는 화상',['화상','응급'],'즉시 내원','red'],
+ ['urticaria','두드러기','Urticaria','알레르기','피부에 팽진과 가려움이 발생하는 반응',['알레르기','급성'],'진료 권고','orange'],
+ ['psoriasis','건선','Psoriasis','만성','피부에 인설이 나타나는 만성 염증성 질환',['만성','인설'],'진료 권고','orange'],
+ ['abrasion','찰과상','Abrasion','외상','피부 표면이 마찰로 벗겨진 상처',['외상','마찰'],'자가처치 가능','red'],
+ ['zoster','대상포진','Herpes Zoster','감염','띠 모양 발진과 통증이 나타날 수 있는 질환',['감염','신경통'],'즉시 내원','red'],
+ ['acne','여드름','Acne Vulgaris','염증','모낭과 피지선에 발생하는 피부 질환',['만성','피지'],'자가처치 가능','yellow'],
+ ['cellulitis','봉와직염','Cellulitis','감염','피부와 피하 조직에 발생하는 세균 감염',['감염','응급'],'즉시 내원','red'],
 ].map(([id,name,english,category,description,tags,label,icon])=>({id,name,english,category,description,tags,label,icon}));
 export const categories=['전체','염증','만성','외상','알레르기','감염'];
 // All facilities and distances/statuses below are design fixtures, not live places.

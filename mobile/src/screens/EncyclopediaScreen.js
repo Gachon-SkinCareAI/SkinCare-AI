@@ -4,7 +4,10 @@ import {T,Card,Button,C} from '../components/Common';
 import {Icon,Field,SmallTitle,styles as s} from '../components/ServiceUI';
 import {diseases,categories} from '../data/servicesDemo';
 import {searchDiseases} from '../utils/serviceState';
-const symbolImages={'🔴':require('../../assets/services/red.png'),'🟠':require('../../assets/services/orange.png'),'🟡':require('../../assets/services/yellow.png')};
+const symbolImages={
+    red:require('../../assets/services/red.png'),
+    orange:require('../../assets/services/orange.png'),
+    yellow:require('../../assets/services/yellow.png')};
 export default function EncyclopediaScreen(){
  const [query,setQuery]=useState(''),[category,setCategory]=useState('전체'),[selected,setSelected]=useState(null);
  const list=searchDiseases(diseases,query,category);

@@ -23,7 +23,7 @@ function Symbol({ large = false }) {
   const size = large ? 80 : 38;
   return <View style={{ width: size, height: size }}><SvgUri uri={brand.localUri || brand.uri} /></View>;
 }
-const featureImages = {'🔍':require('./assets/feature-search.png'), '⚠️':require('./assets/feature-warning.png'), '🏥':require('./assets/feature-hospital.png')};
+const featureImages = [require('./assets/feature-search.png'), require('./assets/feature-warning.png'), require('./assets/feature-hospital.png')];
 
 function Button({ children, onPress, secondary, icon }) { return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s.button, secondary && s.secondary, pressed && { opacity: 0.75 }]}>{icon && <Icon name={icon} />}<T style={[s.buttonText, secondary && { color: icon === 'google' ? '#374151' : MUTED }]}>{children}</T></Pressable>; }
 function Field({ label, value, onChangeText, password, hint, placeholder }) {
@@ -62,7 +62,7 @@ export function AuthScreen({ onContinue }) {
       <ScrollView contentContainerStyle={[s.scroll, screen === 'intro' && s.introScroll]} keyboardShouldPersistTaps="handled">
         {screen === 'intro' ? <>
           <View style={s.introTop}><Symbol large /><T style={s.introTitle}>SkinCare AI</T><T style={s.introDescription}>{'AI가 피부·상처를 분석하고\n위험도와 케어 가이드를 제공합니다'}</T>
-            <View style={s.features}>{[['🔍', 'AI 피부 이미지 분석', '사진 한 장으로 병변 유형 탐지'], ['⚠️', '3단계 위험도 평가', '관찰 · 경고 · 응급 즉시 판별'], ['🏥', '의료기관 즉시 연결', '야간·주말 진료 가능 병원 안내']].map(([emoji, title, desc]) => <View style={s.feature} key={title}><View style={s.featureIcon}><Image source={featureImages[emoji]} style={{width: emoji === "⚠️" ? 19 : 20, height: emoji === "⚠️" ? 17 : 20}} resizeMode="contain" /></View><View style={s.flex}><T style={s.featureTitle}>{title}</T><T style={s.featureDesc}>{desc}</T></View></View>)}</View>
+            <View style={s.features}>{[['AI 피부 이미지 분석', '사진 한 장으로 병변 유형 탐지'], ['3단계 위험도 평가', '관찰 · 경고 · 응급 즉시 판별'], ['의료기관 즉시 연결', '야간·주말 진료 가능 병원 안내']].map(([title, desc], index) => <View style={s.feature} key={title}><View style={s.featureIcon}><Image source={featureImages[index]} style={{width: index === 1 ? 19 : 20, height: index === 1 ? 17 : 20}} resizeMode="contain" /></View><View style={s.flex}><T style={s.featureTitle}>{title}</T><T style={s.featureDesc}>{desc}</T></View></View>)}</View>
           </View>
           <View style={s.introActions}><Button secondary icon="google" onPress={() => proceed('google-demo')}>Google로 계속하기</Button><View style={s.divider}><View style={s.line} /><T style={{ fontSize: 11, color: MUTED }}>또는</T><View style={s.line} /></View><Button secondary icon="mail" onPress={() => go('login')}>이메일로 로그인</Button><T style={s.legal}>계속 진행하면 <T style={s.legalLink} onPress={() => setDialog('이용약관')}>이용약관</T> 및 <T style={s.legalLink} onPress={() => setDialog('개인정보처리방침')}>개인정보처리방침</T>에 동의하는 것으로 간주합니다. 본 서비스는 의학적 진단을 제공하지 않습니다.</T></View>
         </> : screen === 'login' ? <View style={s.loginBody}>
