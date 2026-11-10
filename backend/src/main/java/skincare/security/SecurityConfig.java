@@ -25,7 +25,8 @@ public class SecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource(
             @org.springframework.beans.factory.annotation.Value(
-                            "${skincare.web.allowed-origins:http://localhost:8081,http://127.0.0.1:8081,http://localhost:5173}")
+                            // localhost와 127.0.0.1은 브라우저에서 서로 다른 출처이므로 둘 다 적는다
+                            "${skincare.web.allowed-origins:http://localhost:8081,http://127.0.0.1:8081,http://localhost:5173,http://127.0.0.1:5173}")
                     String origins) {
         var cors = new org.springframework.web.cors.CorsConfiguration();
         cors.setAllowedOrigins(
@@ -33,7 +34,8 @@ public class SecurityConfig {
                         .map(String::strip)
                         .filter(s -> !s.isEmpty())
                         .toList());
-        cors.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // 관리자 화면은 사용자·진단 상태 변경에 PATCH를 쓴다. 빠지면 브라우저에서만 403이 난다(서버 직접 호출은 정상).
+        cors.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type"));
         cors.setExposedHeaders(java.util.List.of("Location"));
         var source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();

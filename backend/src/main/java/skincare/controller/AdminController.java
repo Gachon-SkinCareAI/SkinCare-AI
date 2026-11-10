@@ -10,10 +10,10 @@ import skincare.dto.*;
 import skincare.service.AdminService;
 
 // 관리자(Admin) 관련 API 요청 처리 컨트롤러
+// 브라우저 접근(CORS) 허용 출처는 SecurityConfig의 전역 설정(skincare.web.allowed-origins)이 정한다.
 @RestController
 @RequestMapping("/api/wc/admin")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173") // 프론트엔드(React/Vite) CORS 허용
 public class AdminController {
 
     private final AdminService adminService; // 관리자 비즈니스 로직 서비스
