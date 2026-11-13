@@ -16,7 +16,7 @@ import Inquiries from "./pages/Inquiries";
 import Details from "./Details";
 
 export default function App() {
-  const [authenticated, setAuthenticated] = useState(hasSession);
+  const [authenticated, setAuthenticated] = useState(hasSession());
   const { store, setStore, storageError, loading, error, reload } =
     usePreviewStore(authenticated);
   const [route, setRoute] = useState(getRoute);
@@ -149,7 +149,7 @@ export default function App() {
             </button>
             <div>
               <h1>
-                <span aria-hidden="true">{active.icon}</span> {active.title}
+                <span aria-hidden="true">{active.title}</span>
               </h1>
               <p>
                 {new Date().toLocaleDateString("ko-KR", {

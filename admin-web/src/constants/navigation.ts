@@ -1,12 +1,12 @@
 import { risks, type Page, type Risk } from '../data'
 
-export const pages: { id: Page; title: string; icon: string }[] = [
-  { id: 'dashboard', title: '대시보드', icon: '📊' },
-  { id: 'diagnoses', title: '진단 로그', icon: '📋' },
-  { id: 'monitoring', title: 'AI 모니터링', icon: '🤖' },
-  { id: 'facilities', title: '의료기관 관리', icon: '🏥' },
-  { id: 'users', title: '사용자 관리', icon: '👤' },
-  { id: 'inquiries', title: '문의 관리', icon: '✉' },
+export const pages: { id: Page; title: string;}[] = [
+  { id: 'dashboard', title: '대시보드' },
+  { id: 'diagnoses', title: '진단 로그' },
+  { id: 'monitoring', title: 'AI 모니터링' },
+  { id: 'facilities', title: '의료기관 관리' },
+  { id: 'users', title: '사용자 관리' },
+  { id: 'inquiries', title: '문의 관리' },
 ]
 
 // 관리자 웹의 기준 경로

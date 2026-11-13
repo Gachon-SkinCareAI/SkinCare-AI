@@ -48,7 +48,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
       <div className="login-layout">
         <section className="login-intro" aria-label="관리자 시스템 소개">
           <div className="login-brand">
-            <img src={`${import.meta.env.BASE_URL}branding/skincare-ai-symbol-inverse.svg`} alt="" />
+            <img src={`${import.meta.env.BASE_URL}123.png`} alt="SkinCare AI" />
             <span>SkinCare AI</span>
           </div>
           <div className="login-intro-copy">

@@ -20,8 +20,8 @@ export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate
           >
             <img
               className="brand-mark"
-              src={`${import.meta.env.BASE_URL}123.png`}
-              alt=""
+              src={`${import.meta.env.BASE_URL}skincare_main_logo.png`}
+              alt="skincare AI"
               width="45"
               height="45"
             />
@@ -52,7 +52,6 @@ export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate
               }}
             >
               <span className="nav-icon" aria-hidden="true">
-                {page.icon}
               </span>
               <span className="nav-label">{page.title}</span>
             </a>
