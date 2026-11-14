@@ -111,9 +111,12 @@ export default function HomeScreen({
       <View style={s.shell}>
         <View style={s.header}>
           <View style={s.brandRow}>
-            <View style={s.brandCircle}>
-              <T style={s.brandInitial}>S</T>
-            </View>
+            <Image
+              accessibilityLabel="SkinCare AI 로고"
+              source={require("../../assets/main_logo.png")}
+              style={s.brandLogo}
+              resizeMode="contain"
+            />
             <View>
               <T style={s.brandTitle}>SkinCare AI</T>
               <T style={s.brandSubtitle}>AI가 함께하는 상처 케어</T>
@@ -349,20 +352,7 @@ const s = StyleSheet.create({
     backgroundColor: "#FFF",
   },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 20,
-    backgroundColor: NAVY,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandInitial: {
-    color: "#FFF",
-    fontFamily: "NotoSansKR_700Bold",
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  brandLogo: { width: 32, height: 32 },
   brandTitle: {
     fontSize: 14,
     lineHeight: 18,

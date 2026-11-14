@@ -5,6 +5,12 @@
     "version": "0.4.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/main_logo.png",
+    "splash": {
+      "image": "./assets/main_logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "web": {
       "bundler": "metro"
     },

@@ -44,7 +44,7 @@ export default function WelcomeScreen({
         <View style={s.introTop}>
           <View style={{ width: 80, height: 80 }}>
             <Image
-              source={require("../../assets/symbol-large.png")}
+              source={require("../../assets/main_logo.png")}
               style={{
                 position: "absolute",
                 width: 128,
@@ -54,7 +54,7 @@ export default function WelcomeScreen({
               }}
             />
           </View>
-          <T style={s.introTitle}>SkinCare AI</T>
+          <br></br>
           <T style={s.introDescription}>
             {
               "AI가 피부·상처 사진과 문진을 바탕으로\n위험 신호와 케어 정보를 안내합니다"
