@@ -87,6 +87,10 @@ services:
       SPRINGDOC_SWAGGER_UI_ENABLED: "false"
       SPRING_JPA_SHOW_SQL: "false"
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_SQL_INIT_MODE: never
+      JWT_ADMIN_ACCESS_MINUTES: ${JWT_ADMIN_ACCESS_MINUTES:-15}
+      JWT_USER_ACCESS_MINUTES: ${JWT_USER_ACCESS_MINUTES:-60}
+      SKINCARE_LEGACY_CONTROLLERS_ENABLED: "false"
       DB_CLASS_NAME: com.mysql.cj.jdbc.Driver
       DB_URL: jdbc:mysql://db:3306/skincare_dev?sslMode=REQUIRED&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       DB_USERNAME: skincare_app
@@ -116,7 +120,7 @@ services:
       backend: {condition: service_healthy}
     environment:
       PUBLIC_HOST: ${PUBLIC_HOST:?Set PUBLIC_HOST}
-      TLS_EMAIL: ${TLS_EMAIL:?Set TLS_EMAIL}
+      TLS_EMAIL: ${TLS_EMAIL:-}
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]
     networks: [service, outbound]

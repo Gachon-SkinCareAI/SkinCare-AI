@@ -11,6 +11,12 @@ def digest(path):
     with Path(path).open('rb') as stream:
         for chunk in iter(lambda:stream.read(1024*1024),b''):value.update(chunk)
     return value.hexdigest()
+def equivalent_digests(path):
+    # A migration applied from a Windows checkout (CRLF) and the same file from a
+    # Linux/GitHub checkout (LF) differ only in line endings. Accept either form;
+    # any change to the SQL text itself still produces a different checksum.
+    raw=Path(path).read_bytes();lf=raw.replace(b'\r\n',b'\n')
+    return {hashlib.sha256(v).hexdigest() for v in (raw,lf,lf.replace(b'\n',b'\r\n'))}
 def identifier(value):
     if not re.fullmatch(r'skincare_(?:dev|qa_[a-z0-9_]+|restore_[a-z0-9_]+|schema_[a-z0-9_]+)',value):
         raise RuntimeError('Use skincare_dev or a skincare_qa_/restore_/schema_ name.')
@@ -117,7 +123,7 @@ class Instance:
             for path in files:
                 checksum=digest(path)
                 if path.name in ledger:
-                    if ledger[path.name]!=checksum:raise RuntimeError('Migration checksum changed: '+path.name)
+                    if ledger[path.name] not in equivalent_digests(path):raise RuntimeError('Migration checksum changed: '+path.name)
                     continue
                 if not re.fullmatch(r'V\d+__[A-Za-z0-9_]+\.sql',path.name):raise RuntimeError('Invalid migration filename.')
                 self.sql("INSERT INTO schema_migrations(version,checksum,status) VALUES ('"+path.name+"','"+checksum+"','STARTED');",name)

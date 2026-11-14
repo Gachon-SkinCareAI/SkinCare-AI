@@ -1,0 +1,27 @@
+# Use with compose.yaml. The connector reaches Caddy on a dedicated Docker network.
+services:
+  edge:
+    ports: !reset []
+    volumes:
+      - ./Caddyfile.cloud:/etc/caddy/Caddyfile:ro
+      - ./distribution:/srv/distribution:ro
+    secrets: [gateway_caddy]
+    networks: !override [service, gateway]
+  connector:
+    image: ${CLOUDFLARED_IMAGE:?Set CLOUDFLARED_IMAGE}
+    profiles: [cloud-connector]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "--url", "http://edge:80"]
+    depends_on:
+      edge: {condition: service_started}
+    networks: [gateway, outbound]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: local
+      options: {max-size: "5m", max-file: "2"}
+secrets:
+  gateway_caddy: {file: ./private/cloud-gateway.caddy}
+networks:
+  gateway: {internal: true}

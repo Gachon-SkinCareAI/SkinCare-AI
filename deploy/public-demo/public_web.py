@@ -56,6 +56,7 @@ def public_overlay(folder, origin):
             {'type': 'bind', 'source': str(folder / 'llm_client.py'), 'target': '/app/qa/llm_client.py',
              'read_only': True, 'bind': {'create_host_path': False}}]},
         'backend': {'environment': {'SOCIAL_PUBLIC_BASE_URL': origin,
+                                    'SOCIAL_REDIRECT_URIS': origin + '/,skincareai://oauth/callback',
                                     'SKINCARE_WEB_ALLOWED_ORIGINS': origin}},
         'edge': {'environment': {'PUBLIC_HOST': origin[8:]}, 'volumes': [
             {'type': 'bind', 'source': str(folder / 'Caddyfile'), 'target': '/etc/caddy/Caddyfile',
