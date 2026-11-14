@@ -1,4 +1,4 @@
-import { LogOut, Menu } from 'lucide-react'
+import { LogOut, Menu, Wrench } from 'lucide-react'
 import { ADMIN_BASE_PATH, pages } from '../constants/navigation'
 import type { Navigate, Page } from '../data'
 
@@ -65,6 +65,15 @@ export default function Sidebar({ mobileMenu, collapsed, toggleSidebar, navigate
               <small>관리자 계정</small>
             </div>
           </div>
+          {/* Screens not ported to React yet live in the operations console. */}
+          <a
+            className="sidebar-logout sidebar-ops-link"
+            href={`${ADMIN_BASE_PATH}/ops/`}
+            title="운영 도구: 콘텐츠 검수 · 감사 이력 · 비밀번호 변경"
+          >
+            <Wrench size={17} />
+            <span>운영 도구</span>
+          </a>
           <button
             type="button"
             className="sidebar-logout"

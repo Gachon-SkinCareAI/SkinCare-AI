@@ -10,6 +10,8 @@ import {
   type User,
   type Diagnosis,
   type MonitoringData,
+  type AnalysisRecord,
+  type AnalysisSummary,
 } from "../data";
 
 type Wrapped<T> = { data?: T; [key: string]: unknown };
@@ -189,7 +191,43 @@ function mapUserStats(value: unknown) {
   };
 }
 
-// 관리자 진단 목록을 조회
+// 운영 API의 분석 기록 한 건을 화면 모델로 변환 (운영 정보만 들어 있다)
+function mapAnalysis(value: unknown): AnalysisRecord {
+  const row = value as RecordValue;
+  return {
+    id: String(row.id || ""),
+    status: String(row.status || ""),
+    turn: Number(row.turn || 0),
+    createdAt: String(row.createdAt || ""),
+    updatedAt: String(row.updatedAt || ""),
+    aiUnavailable: row.errorCode === "AI_UNAVAILABLE",
+  };
+}
+
+// 앱의 실제 분석 기록(최근 순)과 상태별·날짜별 건수를 조회
+// 운영 도구(/admin/ops/)와 같은 /api/wc/admin/operations를 사용하며 한 번에 최대 50건씩, 최대 500건까지 불러온다
+export async function getAnalyses(): Promise<{
+  items: AnalysisRecord[];
+  summary: AnalysisSummary;
+}> {
+  const items: AnalysisRecord[] = [];
+  let summary: AnalysisSummary = { counts: {}, daily: [] };
+  for (let pageNo = 0; pageNo < 10; pageNo++) {
+    const body = await request<RecordValue>(
+      `/api/wc/admin/operations?page=${pageNo}&size=50`,
+    );
+    if (pageNo === 0)
+      summary = {
+        counts: (body.counts as Record<string, number>) || {},
+        daily: (body.daily as AnalysisSummary["daily"]) || [],
+      };
+    items.push(...((body.items as unknown[]) || []).map(mapAnalysis));
+    if (!body.hasNext) break;
+  }
+  return { items, summary };
+}
+
+// 관리자 진단 목록을 조회 (예전 진단 테이블)
 export async function getDiagnoses(params: URLSearchParams) {
   const result = page<unknown>(
     await request(`/api/wc/admin/diagnoses?${params}`),
@@ -261,36 +299,31 @@ export async function getAdminStore() {
   // API별 페이지 시작 번호와 최대 크기가 달라 요청을 분리
   const legacyParams = new URLSearchParams({ page: "1", size: "50" });
   const serviceParams = new URLSearchParams({ page: "0", size: "50" });
-  // 응급 건수는 서버 집계(total)를 쓰기 위해 1건만 요청
-  const emergencyParams = new URLSearchParams({
-    page: "1",
-    size: "1",
-    risk_level: "EMERGENCY",
-  });
-  const [dashboard, users, diagnoses, emergencies, inquiries, monitoring] =
+  const [dashboard, users, diagnoses, analyses, inquiries, monitoring] =
     await Promise.all([
       getDashboard(),
       getUsers(legacyParams),
       getDiagnoses(legacyParams),
-      getDiagnoses(emergencyParams),
+      getAnalyses(),
       getInquiries(serviceParams),
       getMonitoring(),
     ]);
-  // /dashboard는 문의·기관 건수만 제공하므로 사용자·진단 지표는 각 목록 API의 집계로 채운다
-  // (오늘 진단 수는 불러온 최근 진단 목록 기준)
+  // /dashboard는 문의·기관 건수만 제공하므로 사용자·분석 지표는 각 목록 API의 집계로 채운다
+  // (분석 건수는 서버의 날짜별 집계 기준. 위험도 등 분석 결과는 집계하지 않는다)
   const today = dayKey(new Date());
+  const todayRow = analyses.summary.daily.find((d) => d.date === today);
   return {
     dashboard: {
       ...dashboard,
       ...users.stats,
       totalUsers: users.total,
-      emergencies: emergencies.total,
-      todayDiagnoses: diagnoses.items.filter(
-        (d) => d.time.slice(0, 10) === today,
-      ).length,
+      todayDiagnoses: todayRow ? Number(todayRow.count) : 0,
+      retryRequired: Number(analyses.summary.counts.RETRY_REQUIRED || 0),
     },
     users: users.items,
     diagnoses: diagnoses.items,
+    analyses: analyses.items,
+    analysisSummary: analyses.summary,
     inquiries: inquiries.items,
     monitoring,
   };
@@ -366,7 +399,8 @@ export function updateUserStatus(id: string, active: boolean) {
   return request(`/api/wc/admin/users/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({
-      status: active ? "ACTIVE" : "INACTIVE",
+      // DB(users.status)는 ACTIVE/DELETED/SUSPENDED만 허용한다. 비활성 = SUSPENDED(로그인 차단)
+      status: active ? "ACTIVE" : "SUSPENDED",
       reason: "관리자 화면 변경",
     }),
   });

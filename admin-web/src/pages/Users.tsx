@@ -4,7 +4,6 @@ import {
   Empty,
   Metric,
   Pagination,
-  RiskBadge,
   SearchInput,
   usePagination,
 } from "../components";
@@ -98,8 +97,6 @@ export default function Users({
                   <th>사용자 ID</th>
                   <th>닉네임</th>
                   <th>가입일</th>
-                  <th>총 진단</th>
-                  <th>최근 위험도</th>
                   <th>플랜</th>
                   <th>상태</th>
                 </tr>
@@ -123,10 +120,6 @@ export default function Users({
                       </div>
                     </td>
                     <td className="muted">{u.joinedAt.replaceAll("-", ".")}</td>
-                    <td>{u.diagnoses}건</td>
-                    <td>
-                      <RiskBadge risk={u.risk} />
-                    </td>
                     <td>
                       <Badge tone={u.plan === "Premium" ? "orange" : "gray"}>
                         {u.plan}

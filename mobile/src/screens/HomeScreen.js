@@ -1,7 +1,6 @@
 import { BottomTabs } from "../components/Common";
 import React, { useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -12,26 +11,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { useAssets } from "expo-asset";
-import { SvgUri } from "react-native-svg";
+import { SvgXml } from "react-native-svg";
 import { PrivateImage } from "../components/PrivateImage";
 import { EmergencyHelp, ErrorNote } from "../components/ConsentControls";
 import { RiskBadge } from "../components/RiskIndicator";
+import { svgIcons } from "../components/svgIcons";
 
 const NAVY = "#0D2B6B";
-const modules = [
-  require("../../assets/home/bell.svg"),
-  require("../../assets/home/camera.svg"),
-  require("../../assets/home/chevron.svg"),
-  require("../../assets/home/home.svg"),
-  require("../../assets/home/history.svg"),
-  require("../../assets/home/book.svg"),
-  require("../../assets/home/pin.svg"),
-  require("../../assets/home/user.svg"),
-  require("../../assets/home/arrow.svg"),
-  require("../../assets/home/tip.svg"),
-  require("../../assets/home/scanner.svg"),
-];
+// SVG는 svgIcons의 문자열을 SvgXml로 그린다. 릴리스 APK에서는 asset 파일 이름이 바뀌어
+// 파일 경로(URI)로 읽는 방식은 아이콘을 그리지 못한다.
 const names = [
   "bell",
   "camera",
@@ -71,7 +59,6 @@ export default function HomeScreen({
   busy,
   showHistory = false,
 }) {
-  const [assets, error] = useAssets(modules);
   const [dialog, setDialog] = useState(null);
   const [unread, setUnread] = useState(false);
   const scroll = useRef(null);
@@ -83,29 +70,13 @@ export default function HomeScreen({
     setDialog({ route, title });
   }
   function Icon({ name }) {
-    const i = names.indexOf(name),
-      a = assets[i];
+    const i = names.indexOf(name);
     return (
       <View style={{ width: dimensions[i], height: dimensions[i] }}>
-        <SvgUri uri={a.localUri || a.uri} />
+        <SvgXml xml={svgIcons[`home/${name}`]} width="100%" height="100%" />
       </View>
     );
   }
-  if (error)
-    return (
-      <SafeAreaView style={s.safe}>
-        <T>홈 리소스를 불러오지 못했습니다.</T>
-        <Pressable onPress={onLogout}>
-          <T>로그인으로 돌아가기</T>
-        </Pressable>
-      </SafeAreaView>
-    );
-  if (!assets)
-    return (
-      <View style={s.loading}>
-        <ActivityIndicator color={NAVY} />
-      </View>
-    );
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.shell}>

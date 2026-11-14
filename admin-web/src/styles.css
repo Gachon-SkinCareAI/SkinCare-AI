@@ -505,6 +505,10 @@ svg {
 .sidebar-logout:disabled {
   opacity: 0.6;
 }
+.sidebar-ops-link {
+  margin-bottom: 8px;
+  text-decoration: none;
+}
 .admin-avatar {
   display: grid;
   place-items: center;
@@ -1869,6 +1873,9 @@ textarea::placeholder {
   width: calc(100% - 20px);
   margin: 0 10px 14px;
   padding: 12px;
+}
+.sidebar-collapsed .sidebar-ops-link {
+  margin-bottom: 8px;
 }
 .sidebar-collapsed .sidebar-logout span {
   display: none;

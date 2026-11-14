@@ -64,7 +64,7 @@ public class TokenService {
                 .accessToken(
                         jwtTokenProvider.createToken(
                                 subjectId, role, tokenVersion(subjectId, role)))
-                .expiresIn(jwtTokenProvider.getTokenValiditySeconds())
+                .expiresIn(jwtTokenProvider.getTokenValiditySeconds(role))
                 .refreshToken(rawRefreshToken)
                 .refreshExpiresIn(refreshTokenValidityDays * 24 * 60 * 60)
                 .build();

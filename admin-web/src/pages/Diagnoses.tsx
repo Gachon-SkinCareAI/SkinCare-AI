@@ -4,49 +4,53 @@ import {
   Badge,
   Empty,
   Pagination,
-  Progress,
-  RiskBadge,
   SearchInput,
   Tabs,
   usePagination,
 } from '../components'
 import {
+  analysisStatusLabel,
   downloadCsv,
-  filterDiagnoses,
-  type OpenDetail,
-  type Risk,
+  filterAnalyses,
+  formatTime,
   type Store,
 } from '../data'
 
-export default function Diagnoses({
-  store,
-  open,
-  initialRisk,
-}: {
-  store: Store
-  open: OpenDetail
-  initialRisk?: Risk
-}) {
-  const [risk, setRisk] = useState(initialRisk || '전체')
+const STATUS_TABS = ['전체', '문진 진행 중', '결과 저장 완료', '재연결 필요', '생성됨']
+
+function statusTone(status: string) {
+  return status === 'COMPLETED'
+    ? 'green'
+    : status === 'RETRY_REQUIRED'
+      ? 'orange'
+      : status === 'QUESTIONNAIRE'
+        ? 'blue'
+        : 'gray'
+}
+
+// 앱의 실제 분석 기록을 운영 정보(기록 번호·처리 상태·문진 횟수·시각)만으로 보여 준다.
+// 분석 사진·문진 내용·분석 결과와 사용자 정보는 개인정보 처리방침에 따라 관리자 화면에 표시하지 않는다.
+export default function Diagnoses({ store }: { store: Store }) {
+  const [status, setStatus] = useState('전체')
   const [query, setQuery] = useState('')
-  const filtered = filterDiagnoses(store.diagnoses, query, risk)
-  const pagination = usePagination(filtered, 6)
+  const filtered = filterAnalyses(store.analyses, query, status)
+  const pagination = usePagination(filtered, 10)
   return (
     <>
       <div className="log-toolbar">
         <Tabs
-          label="진단 위험도 필터"
-          items={['전체', '응급', '경고', '관찰']}
-          value={risk}
+          label="분석 처리 상태 필터"
+          items={STATUS_TABS}
+          value={status}
           onChange={(v) => {
-            setRisk(v)
+            setStatus(v)
             pagination.setPage(1)
           }}
         />
         <div className="toolbar-actions">
           <SearchInput
-            label="진단 검색"
-            placeholder="진단 ID 검색"
+            label="분석 기록 검색"
+            placeholder="기록 번호 검색"
             value={query}
             onChange={(v) => {
               setQuery(v)
@@ -55,28 +59,16 @@ export default function Diagnoses({
           />
           <button
             className="icon-button"
-            aria-label="현재 진단 목록 CSV 다운로드"
+            aria-label="현재 분석 기록 목록 CSV 다운로드"
             onClick={() =>
-              downloadCsv('diagnoses.csv', [
-                [
-                  '진단 ID',
-                  '사용자',
-                  '시간',
-                  '의심 유형',
-                  '부위',
-                  '위험도',
-                  '신뢰도',
-                  '상태',
-                ],
-                ...filtered.map((d) => [
-                  d.id,
-                  d.userId,
-                  d.time,
-                  d.condition,
-                  d.area,
-                  d.risk,
-                  d.confidence,
-                  d.status,
+              downloadCsv('analyses.csv', [
+                ['기록 번호', '생성 시각', '처리 상태', '문진 횟수', '마지막 갱신'],
+                ...filtered.map((a) => [
+                  a.id,
+                  formatTime(a.createdAt),
+                  analysisStatusLabel[a.status] || a.status,
+                  a.turn,
+                  formatTime(a.updatedAt),
                 ]),
               ])
             }
@@ -85,67 +77,34 @@ export default function Diagnoses({
           </button>
         </div>
       </div>
-      <section className="panel table-panel" aria-label="진단 로그 목록">
+      <section className="panel table-panel" aria-label="분석 기록 목록">
         {filtered.length ? (
           <div className="table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>진단 ID</th>
-                  <th>사용자</th>
-                  <th>시간</th>
-                  <th>의심 유형</th>
-                  <th>부위</th>
-                  <th>위험도</th>
-                  <th>신뢰도</th>
-                  <th>상태</th>
+                  <th>기록 번호</th>
+                  <th>생성 시각</th>
+                  <th>처리 상태</th>
+                  <th>문진 횟수</th>
+                  <th>마지막 갱신</th>
                 </tr>
               </thead>
               <tbody>
-                {pagination.visible.map((d) => (
-                  <tr key={d.id}>
+                {pagination.visible.map((a) => (
+                  <tr key={a.id}>
+                    <td className="mono">{a.id}</td>
+                    <td className="muted">{formatTime(a.createdAt)}</td>
                     <td>
-                      <button
-                        className="table-link"
-                        aria-label={`${d.id} 진단 상세`}
-                        onClick={() => open({ type: 'diagnosis', id: d.id })}
-                      >
-                        {d.id}
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        className="subtle-link"
-                        onClick={() => open({ type: 'user', id: d.userId })}
-                      >
-                        {d.userId}
-                      </button>
-                    </td>
-                    <td className="muted">{d.time}</td>
-                    <td>{d.condition}</td>
-                    <td>{d.area}</td>
-                    <td>
-                      <RiskBadge risk={d.risk} />
-                    </td>
-                    <td>
-                      <span className="confidence">
-                        <Progress value={d.confidence} />
-                        {d.confidence}%
-                      </span>
-                    </td>
-                    <td>
-                      <Badge
-                        tone={
-                          d.status === '진행중'
-                            ? 'blue'
-                            : d.status === '알림발송'
-                              ? 'orange'
-                              : 'green'
-                        }
-                      >
-                        {d.status}
+                      <Badge tone={statusTone(a.status)}>
+                        {analysisStatusLabel[a.status] || a.status}
                       </Badge>
+                      {a.aiUnavailable && (
+                        <small className="muted"> · AI 연결 확인 필요</small>
+                      )}
                     </td>
+                    <td>{a.turn}회</td>
+                    <td className="muted">{formatTime(a.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -160,6 +119,10 @@ export default function Diagnoses({
           onChange={pagination.setPage}
         />
       </section>
+      <p className="aggregate-note">
+        운영 확인용 기록 번호와 처리 상태만 표시합니다. 분석 사진·문진 내용·분석 결과와
+        사용자 정보는 개인정보 처리방침에 따라 관리자 화면에 표시하지 않습니다.
+      </p>
     </>
   )
 }

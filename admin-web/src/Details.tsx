@@ -16,7 +16,14 @@ import {
   updateUserStatus,
   type HospitalSyncResult,
 } from "./services/adminApi";
-import { type Detail, type Inquiry, type OpenDetail, type Store } from "./data";
+import {
+  analysisStatusLabel,
+  formatTime,
+  type Detail,
+  type Inquiry,
+  type OpenDetail,
+  type Store,
+} from "./data";
 
 type Props = {
   detail: Detail;
@@ -47,6 +54,54 @@ export default function Details({
         onFacilitiesChanged={onFacilitiesChanged}
       />
     );
+  if (detail.type === "analysis") {
+    const a = store.analyses.find((row) => row.id === detail.id);
+    if (!a) return null;
+    // 운영 정보만 표시한다. 사진·문진·분석 결과·사용자 정보는 개인정보 처리방침상 표시하지 않는다.
+    return (
+      <Modal title="분석 기록" close={close}>
+        <dl className="details-grid">
+          <div>
+            <dt>기록 번호</dt>
+            <dd className="mono">{a.id}</dd>
+          </div>
+          <div>
+            <dt>처리 상태</dt>
+            <dd>
+              <Badge tone={a.status === "COMPLETED" ? "green" : a.status === "RETRY_REQUIRED" ? "orange" : "blue"}>
+                {analysisStatusLabel[a.status] || a.status}
+              </Badge>
+            </dd>
+          </div>
+          <div>
+            <dt>생성 시각</dt>
+            <dd>{formatTime(a.createdAt)}</dd>
+          </div>
+          <div>
+            <dt>마지막 갱신</dt>
+            <dd>{formatTime(a.updatedAt)}</dd>
+          </div>
+          <div>
+            <dt>문진 횟수</dt>
+            <dd>{a.turn}회</dd>
+          </div>
+          <div>
+            <dt>AI 연결</dt>
+            <dd>{a.aiUnavailable ? "확인 필요" : "-"}</dd>
+          </div>
+        </dl>
+        <p className="detail-footnote">
+          운영 확인용 정보만 표시합니다. 분석 사진·문진 내용·분석 결과와 사용자 정보는 표시하지
+          않습니다.
+        </p>
+        <div className="modal-actions">
+          <button className="button primary" onClick={close}>
+            확인
+          </button>
+        </div>
+      </Modal>
+    );
+  }
   if (detail.type === "diagnosis") {
     const d = store.diagnoses.find((row) => row.id === detail.id);
     if (!d) return null;
@@ -146,7 +201,7 @@ export default function Details({
   if (detail.type === "user") {
     const u = store.users.find((row) => row.id === detail.id);
     if (!u) return null;
-    const related = store.diagnoses.filter((d) => d.userId === u.id);
+    // 위험도·진단 내역은 건강정보라 관리자 화면에 표시하지 않는다 (개인정보 처리방침)
     return (
       <Modal title="사용자 상세" close={close}>
         <div className="detail-title">
@@ -165,16 +220,6 @@ export default function Details({
             <dd>{u.joinedAt.replaceAll("-", ".")}</dd>
           </div>
           <div>
-            <dt>누적 진단</dt>
-            <dd>{u.diagnoses}건</dd>
-          </div>
-          <div>
-            <dt>최근 위험도</dt>
-            <dd>
-              <RiskBadge risk={u.risk} />
-            </dd>
-          </div>
-          <div>
             <dt>플랜</dt>
             <dd>
               <Badge tone={u.plan === "Premium" ? "orange" : "gray"}>
@@ -183,35 +228,21 @@ export default function Details({
             </dd>
           </div>
         </dl>
-        <h4 className="section-label">관련 진단</h4>
-        {related.length ? (
-          <div className="related-list">
-            {related.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => open({ type: "diagnosis", id: d.id })}
-              >
-                <FileText size={15} />
-                <span>
-                  {d.id}
-                  <small>
-                    {d.condition} · {d.area}
-                  </small>
-                </span>
-                <ExternalLink size={14} />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="muted detail-empty">연결된 진단이 없습니다.</p>
-        )}
         <p className="detail-footnote">
-          상태 변경은 이 브라우저의 데모에만 반영됩니다.
+          상태를 바꾸면 서버의 실제 계정에 바로 반영됩니다. 비활성 계정은 앱에 로그인할 수
+          없습니다.
         </p>
         <div className="modal-actions">
           <button
             className="button secondary"
             onClick={async () => {
+              const next = u.active ? "비활성" : "활성";
+              if (
+                !window.confirm(
+                  `${u.name} 계정을 ${next}으로 변경할까요? 실제 서비스 계정에 바로 반영됩니다.`,
+                )
+              )
+                return;
               try {
                 await updateUserStatus(u.id, !u.active);
                 update({

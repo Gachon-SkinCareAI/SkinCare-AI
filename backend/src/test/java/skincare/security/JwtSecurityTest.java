@@ -8,6 +8,8 @@ import skincare.domain.user.entity.User;
 import skincare.repository.UserRepository;
 import skincare.repository.AdminRepository;
 import java.lang.reflect.Field;
+import java.time.Instant;
+import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,6 +29,27 @@ class JwtSecurityTest {
         var original = provider();
         var other = provider("abcdefghijklmnopqrstuvwxyz012345");
         assertFalse(original.validateToken(other.createToken("u", "USER", "0")));
+    }
+    @Test void accessLifetimeDependsOnRole() throws Exception {
+        var provider = provider();
+        for (var entry : java.util.Map.of("ADMIN", 900L, "USER", 3600L, "GUEST", 86400L).entrySet()) {
+            var claims = provider.verifiedClaims(provider.createToken("u", entry.getKey(), "0"));
+            assertEquals(entry.getValue().longValue() * 1000L,
+                    claims.getExpiration().getTime() - claims.getIssuedAt().getTime());
+        }
+    }
+    @Test void oldTwentyFourHourTokensAreLimitedByTheNewSessionLifetime() throws Exception {
+        var provider = provider();
+        var key = io.jsonwebtoken.security.Keys.hmacShaKeyFor(
+                "01234567890123456789012345678901".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var issuedAt = Instant.now().minusSeconds(20 * 60L);
+        for (String role : java.util.List.of("ADMIN", "USER")) {
+            String token = io.jsonwebtoken.Jwts.builder()
+                    .setSubject("u").claim("role", role).claim("ver", "0")
+                    .setIssuedAt(Date.from(issuedAt)).setExpiration(Date.from(issuedAt.plusSeconds(86400)))
+                    .signWith(key, io.jsonwebtoken.SignatureAlgorithm.HS256).compact();
+            assertEquals("USER".equals(role), provider.validateToken(token));
+        }
     }
     @Test void rotatedTokenIsRejectedAndNewTokenWorks() throws Exception {
         var provider = provider();

@@ -1,8 +1,8 @@
 import React from "react";
 import { Text, View, Pressable, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAssets } from "expo-asset";
-import { SvgUri } from "react-native-svg";
+import { SvgXml } from "react-native-svg";
+import { svgIcons } from "./svgIcons";
 
 export const C = {
   navy: "#0D2B6B",
@@ -69,14 +69,6 @@ export function Button({
   );
 }
 
-const modules = [
-  require("../../assets/home/home.svg"),
-  require("../../assets/home/history.svg"),
-  require("../../assets/home/book.svg"),
-  require("../../assets/home/pin.svg"),
-  require("../../assets/home/user.svg"),
-];
-
 export const tabs = [
   ["home", "홈"],
   ["history", "기록"],
@@ -86,10 +78,9 @@ export const tabs = [
 ];
 
 export function BottomTabs({ active, onNavigate }) {
-  const [assets] = useAssets(modules);
   return (
     <View style={s.tabs}>
-      {tabs.map(([key, label], i) => (
+      {tabs.map(([key, label]) => (
         <Pressable
           key={key}
           accessibilityRole="tab"
@@ -101,13 +92,7 @@ export function BottomTabs({ active, onNavigate }) {
           <View
             style={[s.icon, key === active && { backgroundColor: "#E8EFFB" }]}
           >
-            {assets && (
-              <SvgUri
-                uri={assets[i].localUri || assets[i].uri}
-                width={22}
-                height={22}
-              />
-            )}
+            <SvgXml xml={svgIcons[`home/${key}`]} width={22} height={22} />
           </View>
           <T
             style={{

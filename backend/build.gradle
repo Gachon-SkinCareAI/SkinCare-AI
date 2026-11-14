@@ -75,21 +75,46 @@ dependencies {
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 }
 
-tasks.register('buildAdminWeb', Exec) {
+def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+// -PprebuiltAdminWeb: package an existing admin-web/dist instead of running npm
+// (used where the JDK build container has no Node.js, e.g. deploy/oracle/update_server.sh).
+def prebuiltAdminWeb = project.hasProperty('prebuiltAdminWeb')
+
+tasks.register('installAdminWeb', Exec) {
     workingDir '../admin-web'
-    commandLine(System.getProperty('os.name').toLowerCase().contains('windows') ? ['cmd', '/c', 'npm', 'run', 'build'] : ['npm', 'run', 'build'])
+    commandLine(isWindows ? ['cmd', '/c', 'npm', 'ci', '--no-audit', '--no-fund'] : ['npm', 'ci', '--no-audit', '--no-fund'])
+    inputs.file('../admin-web/package-lock.json')
+    outputs.dir('../admin-web/node_modules')
+}
+
+tasks.register('buildAdminWeb', Exec) {
+    dependsOn 'installAdminWeb'
+    workingDir '../admin-web'
+    commandLine(isWindows ? ['cmd', '/c', 'npm', 'run', 'build'] : ['npm', 'run', 'build'])
     inputs.files(fileTree('../admin-web/src'), fileTree('../admin-web/public'), '../admin-web/index.html', '../admin-web/package-lock.json', '../admin-web/vite.config.ts', '../admin-web/tsconfig.json')
     outputs.dir('../admin-web/dist')
 }
 
+tasks.register('verifyAdminWebDist') {
+    doLast {
+        if (!file('../admin-web/dist/index.html').exists())
+            throw new GradleException('admin-web/dist is missing: run "npm ci && npm run build" in admin-web, or build without -PprebuiltAdminWeb')
+    }
+}
+
 tasks.named('processResources') {
+    dependsOn(prebuiltAdminWeb ? 'verifyAdminWebDist' : 'buildAdminWeb')
     from('../ai/guide') { include 'cards.yaml'; into 'review-catalog' }
     from('../ai/qa') { include 'bank.yaml','rules.yaml'; into 'review-catalog' }
-    // The React design preview uses sample data. Ship the authenticated API-backed
-    // operations UI until the preview has completed its real-service integration.
+    // /admin/      React console (dashboard, diagnoses, AI monitoring, facilities, users, inquiries)
+    from('../admin-web/dist') {
+        into 'static/admin'
+    }
+    // /admin/ops/  API-backed operations console, kept for the screens the React console
+    // does not have yet: content reviews, audit history and administrator password change.
     from('../admin-web/operational') {
         include 'index.html', 'app.js', 'style.css', 'src/**/*.js'
-        into 'static/admin'
+        into 'static/admin/ops'
     }
 }
 

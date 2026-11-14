@@ -9,13 +9,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAssets } from "expo-asset";
-import { SvgUri } from "react-native-svg";
+import { SvgXml } from "react-native-svg";
+import { svgIcons } from "../components/svgIcons";
 import { ErrorNote, PolicyLink } from "../components/ConsentControls";
 const BLUE = "#2563EB",
   NAVY = "#0D2B6B",
   MUTED = "#6B7A99";
-const modules = [require("../../assets/google.svg")];
 const featureImages = {
   search: require("../../assets/feature-search.png"),
   warning: require("../../assets/feature-warning.png"),
@@ -34,7 +33,6 @@ export default function WelcomeScreen({
   onGuest,
   onReload,
 }) {
-  const [assets] = useAssets(modules);
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView
@@ -54,7 +52,9 @@ export default function WelcomeScreen({
               }}
             />
           </View>
-          <br></br>
+          {/* 로고(128px)가 80px 칸 아래로 32px 넘치므로 설명과 겹치지 않게 띄운다.
+              <br>은 웹 전용 태그라 Android에서 렌더링 오류가 나므로 View를 쓴다. */}
+          <View style={s.introSpacer} />
           <T style={s.introDescription}>
             {
               "AI가 피부·상처 사진과 문진을 바탕으로\n위험 신호와 케어 정보를 안내합니다"
@@ -101,12 +101,8 @@ export default function WelcomeScreen({
                 },
               ]}
             >
-              {provider.id === "google" && assets && (
-                <SvgUri
-                  uri={assets[0].localUri || assets[0].uri}
-                  width={20}
-                  height={20}
-                />
+              {provider.id === "google" && (
+                <SvgXml xml={svgIcons.google} width={20} height={20} />
               )}
               <T style={[s.buttonText, { color: NAVY }]}>
                 {provider.label}로 계속하기
@@ -354,6 +350,7 @@ const s = StyleSheet.create({
     letterSpacing: -0.6,
     marginTop: 20,
   },
+  introSpacer: { height: 36 },
   introDescription: {
     color: MUTED,
     fontSize: 13,

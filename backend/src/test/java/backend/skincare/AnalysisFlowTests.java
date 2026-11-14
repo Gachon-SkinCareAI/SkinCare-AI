@@ -317,6 +317,12 @@ class AnalysisFlowTests extends BackendApplicationTests {
         assertEquals(1,((Map<?,?>)result.get("counts")).get("QUESTIONNAIRE"));
         var item=(Map<?,?>)((List<?>)result.get("items")).get(0);
         assertEquals(Set.of("id","status","turn","errorCode","createdAt","updatedAt"),item.keySet());
+        // Daily counts: 7 zero-filled days ending today, numbers only (no per-user or health fields).
+        var daily=(List<?>)result.get("daily");assertEquals(7,daily.size());
+        var todayRow=(Map<?,?>)daily.get(6);assertEquals(java.time.LocalDate.now().toString(),todayRow.get("date"));
+        assertEquals(Set.of("date","count"),todayRow.keySet());
+        assertEquals(1,((Number)todayRow.get("count")).intValue());
+        assertEquals(0,((Number)((Map<?,?>)daily.get(0)).get("count")).intValue());
         assertEquals(0, data(mvc.perform(get(url).param("status","COMPLETED").header("Authorization",admin)).andReturn()).get("total"));
         mvc.perform(get(url).param("status","UNKNOWN").header("Authorization",admin)).andExpect(status().isBadRequest());
         mvc.perform(get(url).param("size","5000").header("Authorization",admin)).andExpect(status().isBadRequest());

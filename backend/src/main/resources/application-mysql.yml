@@ -1,5 +1,8 @@
 # Apply versioned schema with deploy/mysql/manage.py before starting this profile.
 spring:
+  sql:
+    init:
+      mode: never
   jpa:
     hibernate:
       ddl-auto: validate

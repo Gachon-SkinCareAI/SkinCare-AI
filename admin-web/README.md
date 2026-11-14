@@ -1,8 +1,9 @@
 # Gachon SkinCare AI · Admin Web
 
-> 공개 서버의 실제 관리자 화면은 `operational/`이며 백엔드 빌드 시 `/admin/`에 포함됩니다.
-> 아래 React 실행 방법은 디자인 미리보기용입니다. 실제 문의·기관·AI 상태·검수 관리는
-> 공개 서버의 `/admin/`을 사용하세요. 모듈별 구조는 `operational/README.md`를 참고하세요.
+> 백엔드 빌드(`./gradlew bootJar`)가 이 React 앱을 빌드해 공개 서버의 `/admin/`에 넣습니다.
+> 아직 React로 옮기지 않은 콘텐츠 검수·감사 이력·관리자 비밀번호 변경은 `operational/`
+> 화면이 `/admin/ops/`에서 제공합니다(사이드바의 "운영 도구"). Node.js가 없는 빌드 환경에서는
+> `admin-web`에서 `npm ci && npm run build` 후 `./gradlew bootJar -PprebuiltAdminWeb`을 사용하세요.
 > React도 `constants/navigation.ts`, `hooks/usePreviewStore.ts`, `layouts/Sidebar.tsx`,
 > `components/GlobalSearch.tsx`로 라우팅·저장소·사이드바·전체 검색을 분리했습니다.
 

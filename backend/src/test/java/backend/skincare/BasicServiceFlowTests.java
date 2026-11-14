@@ -52,6 +52,20 @@ class BasicServiceFlowTests extends BackendApplicationTests {
     }
     Map<String,Object> inquiryInput(){return new LinkedHashMap<>(Map.of("clientRequestId",UUID.randomUUID().toString(),"type","SYSTEM_ERROR","title","검증 문의","content","저장한 기록을 확인하고 싶습니다."));}
     Map<String,Object> hospitalInput(){return new LinkedHashMap<>(Map.of("clientRequestId",UUID.randomUUID().toString(),"name","검증용기관 실제아님","type","DERMATOLOGY","region","검증지역","address","테스트 주소","nightCare",false,"emergency",true,"dataSource","자동화 테스트","sourceUrl","https://example.test/source","verifiedOn","2026-01-01"));}
+    @Test void adminDeactivatesWithSuspendedAndRejectsLegacyInactive()throws Exception{
+        String url="/api/wc/admin/users/svc-other/status";
+        // INACTIVE is not storable in users.status since V007: must be a 400, never a 500.
+        var bad=mvc.perform(patch(url).header("Authorization",admin).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("status","INACTIVE","reason","검증")))).andReturn();
+        assertEquals(400,bad.getResponse().getStatus());
+        assertEquals(skincare.domain.user.entity.ENUM.UserStatus.ACTIVE,users.findById("svc-other").orElseThrow().getStatus());
+        mvc.perform(patch(url).header("Authorization",admin).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("status","SUSPENDED","reason","검증")))).andExpect(status().isOk());
+        assertEquals(skincare.domain.user.entity.ENUM.UserStatus.SUSPENDED,users.findById("svc-other").orElseThrow().getStatus());
+        mvc.perform(patch(url).header("Authorization",admin).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("status","ACTIVE","reason","검증")))).andExpect(status().isOk());
+        assertEquals(skincare.domain.user.entity.ENUM.UserStatus.ACTIVE,users.findById("svc-other").orElseThrow().getStatus());
+    }
     @Test void profileSettingsPersistAndBlankNicknameIsRejected()throws Exception{
         mvc.perform(get("/api/wc/users/me").header("Authorization",owner)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"));
         putJson(owner,"/api/wc/users/me",Map.of("nickname","  저장 닉네임  "),200);
