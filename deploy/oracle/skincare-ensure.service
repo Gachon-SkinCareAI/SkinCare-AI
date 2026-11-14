@@ -1,0 +1,13 @@
+[Unit]
+Description=SkinCare AI: start containers and keep the fixed address connected
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/skincare
+# Exits immediately when https://skincare-ai.skincare-server.workers.dev is healthy;
+# otherwise rebuilds/starts the stack and registers the new tunnel with the Worker.
+ExecStart=/usr/bin/python3 /srv/skincare/connect_cloud.py --cpu --ensure
+TimeoutStartSec=1800

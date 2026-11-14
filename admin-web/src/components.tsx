@@ -240,6 +240,9 @@ export function Modal({
   useEffect(() => {
     const dialog = ref.current!;
     dialog.showModal();
+    // showModal()은 첫 번째 포커스 요소(닫기 버튼)로 커서를 옮긴다.
+    // 입력칸이 있는 창은 data-autofocus 요소로 커서를 돌려준다.
+    dialog.querySelector<HTMLElement>("[data-autofocus]")?.focus();
     return () => dialog.close();
   }, []);
   return (

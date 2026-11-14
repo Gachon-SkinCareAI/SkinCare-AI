@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { Search, ChevronRight } from "lucide-react";
 import { Modal, RiskBadge } from "../components";
-import type { Store, Detail, Facility, Risk } from "../data";
+import {
+  analysisStatusLabel,
+  formatTime,
+  type Store,
+  type Detail,
+  type Facility,
+  type Risk,
+} from "../data";
 import { searchFacilities } from "../services/adminApi";
 
 const SEARCH_DELAY = 300;
@@ -55,18 +62,14 @@ export default function GlobalSearch({
     risk?: Risk;
   }[] = q
     ? [
-        ...store.diagnoses
-          .filter((d) =>
-            `${d.id} ${d.userId} ${d.condition} ${d.area}`
-              .toLocaleLowerCase()
-              .includes(q),
-          )
+        // 앱의 실제 분석 기록: 기록 번호로만 찾고 운영 정보만 보여 준다
+        ...store.analyses
+          .filter((a) => a.id.toLocaleLowerCase().includes(q))
           .slice(0, 5)
-          .map((d) => ({
-            detail: { type: "diagnosis" as const, id: d.id },
-            title: d.id,
-            subtitle: `${d.userId} · ${d.condition} · ${d.area}`,
-            risk: d.risk,
+          .map((a) => ({
+            detail: { type: "analysis" as const, id: a.id },
+            title: a.id,
+            subtitle: `분석 기록 · ${analysisStatusLabel[a.status] || a.status} · ${formatTime(a.createdAt)}`,
           })),
         ...store.users
           .filter((u) => `${u.id} ${u.name}`.toLocaleLowerCase().includes(q))
@@ -99,8 +102,9 @@ export default function GlobalSearch({
         <Search size={19} />
         <input
           autoFocus
+          data-autofocus
           aria-label="전체 검색어"
-          placeholder="진단 ID, 사용자, 의료기관 또는 문의 검색"
+          placeholder="분석 기록 번호, 사용자, 의료기관 또는 문의 검색"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

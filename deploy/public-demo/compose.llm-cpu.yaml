@@ -1,0 +1,20 @@
+# CPU-only questionnaire model for hosts without an NVIDIA GPU (e.g. Oracle Cloud
+# Always Free Ampere A1, 2 OCPU / 12 GB since June 2026). Apply after compose.llm.yaml:
+#   -f compose.yaml -f compose.cloud.yaml -f compose.llm.yaml -f compose.llm-cpu.yaml
+# The model only selects a question_id from the bank, so qwen3:4b on CPU is enough;
+# if it is slow or fails, the orchestrator falls back to the first eligible question.
+#
+# Timeout chain (each layer must outlast the one below it):
+#   LLM call 40 s  <  backend -> AI 75 s  <  Caddy -> backend 90 s  <  Cloudflare 100 s
+services:
+  llm:
+    gpus: !reset null
+    # qwen3:4b (Q4) needs ~3.5 GB incl. KV cache; 12 GB hosts must leave room for the rest.
+    mem_limit: 5g
+  ai:
+    environment:
+      LLM_TIMEOUT_SECONDS: "40"
+  backend:
+    environment:
+      AI_SERVER_READ_TIMEOUT_MS: "75000"
+      SKINCARE_AI_READ_TIMEOUT_SECONDS: "75"

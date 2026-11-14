@@ -145,6 +145,12 @@ public class AdminUserService {
             throw new CustomException(
                     ErrorCode.INVALID_INPUT_VALUE, "탈퇴(DELETED) 상태는 회원 탈퇴로만 변경할 수 있습니다.");
         }
+        // users.status는 V007부터 ACTIVE/DELETED/SUSPENDED만 저장할 수 있다.
+        // INACTIVE를 그대로 쓰면 DB 오류(500)가 나므로 요청 단계에서 거부한다.
+        if (dto.getStatus() == UserStatus.INACTIVE) {
+            throw new CustomException(
+                    ErrorCode.INVALID_INPUT_VALUE, "계정 비활성화는 SUSPENDED(정지) 상태로 요청해 주세요.");
+        }
         User user = findUser(userId);
         if (user.getStatus() == UserStatus.DELETED) {
             throw new CustomException(ErrorCode.USER_WITHDRAWN, "탈퇴한 회원의 계정 상태는 변경할 수 없습니다.");

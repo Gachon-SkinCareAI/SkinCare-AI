@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up the SkinCare AI database every day at 04:00 KST
+
+[Timer]
+# Server clock is UTC: 19:00 UTC = 04:00 KST
+OnCalendar=*-*-* 19:00:00 UTC
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

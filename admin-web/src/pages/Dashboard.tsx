@@ -1,24 +1,37 @@
 import { ArrowRight } from "lucide-react";
 import { Badge, Metric, Progress } from "../components";
-import { dayKey, type Navigate, type OpenDetail, type Store } from "../data";
+import {
+  analysisStatusLabel,
+  analysisStatuses,
+  dayKey,
+  formatTime,
+  type Navigate,
+  type OpenDetail,
+  type Store,
+} from "../data";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+const STATUS_TONE: Record<string, string> = {
+  COMPLETED: "green",
+  QUESTIONNAIRE: "blue",
+  RETRY_REQUIRED: "orange",
+  CREATED: "gray",
+};
 
+// 분석 관련 지표는 앱의 실제 분석 기록을 운영 정보로만 집계한다
+// (건수·처리 상태·시각. 위험도·의심 유형 같은 분석 결과는 개인정보 처리방침에 따라 집계하지 않는다)
 export default function Dashboard({
   store,
   navigate,
-  open,
 }: {
   store: Store;
   navigate: Navigate;
   open: OpenDetail;
 }) {
   const m = store.dashboard;
-  const emergencies = store.diagnoses
-    .filter((d) => d.risk === "응급")
-    .slice(0, 3);
+  const summary = store.analysisSummary;
 
-  // 불러온 최근 진단 목록을 날짜별로 집계해 최근 7일(오늘 포함) 막대를 만든다
+  // 서버가 집계한 최근 7일(오늘 포함) 날짜별 분석 건수
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(
@@ -30,27 +43,28 @@ export default function Dashboard({
     return {
       key,
       label: WEEKDAYS[date.getDay()],
-      count: store.diagnoses.filter((d) => d.time.slice(0, 10) === key).length,
+      count: Number(summary.daily.find((d) => d.date === key)?.count || 0),
     };
   });
   const maxCount = Math.max(1, ...days.map((d) => d.count));
 
-  // 위험도 분포는 제목("오늘")과 같이 오늘 진단만 집계한다
-  const todays = store.diagnoses.filter(
-    (d) => d.time.slice(0, 10) === dayKey(today),
+  // 전체 분석 기록의 처리 상태 분포
+  const total = analysisStatuses.reduce(
+    (sum, s) => sum + Number(summary.counts[s] || 0),
+    0,
   );
-  const distribution = [
-    { name: "관찰 (Observation)", risk: "관찰", tone: "green" },
-    { name: "경고 (Warning)", risk: "경고", tone: "orange" },
-    { name: "응급 (Emergency)", risk: "응급", tone: "red" },
-  ].map((item) => {
-    const count = todays.filter((d) => d.risk === item.risk).length;
+  const distribution = analysisStatuses.map((status) => {
+    const count = Number(summary.counts[status] || 0);
     return {
-      ...item,
+      status,
+      name: analysisStatusLabel[status],
+      tone: STATUS_TONE[status],
       count,
-      percent: todays.length ? Math.round((count / todays.length) * 100) : 0,
+      percent: total ? Math.round((count / total) * 100) : 0,
     };
   });
+
+  const recent = store.analyses.slice(0, 5);
 
   return (
     <>
@@ -64,16 +78,16 @@ export default function Dashboard({
         <Metric
           icon="📋"
           value={String(m.todayDiagnoses ?? 0)}
-          label="오늘 진단 수"
-          hint="오늘 접수된 분석"
+          label="오늘 분석 수"
+          hint="오늘 시작된 분석"
           color="blue"
         />
         <Metric
-          icon="🚨"
-          value={String(m.emergencies ?? 0)}
-          label="응급 케이스"
-          hint="즉시 처리 필요"
-          color="red"
+          icon="🔌"
+          value={String(m.retryRequired ?? 0)}
+          label="재연결 필요"
+          hint="AI 연결 확인이 필요한 분석"
+          color="orange"
         />
         <Metric
           icon="✉"
@@ -86,13 +100,13 @@ export default function Dashboard({
       <div className="dashboard-charts">
         <section className="panel daily-panel">
           <div className="panel-heading">
-            <h2>일별 진단 건수 (최근 7일)</h2>
+            <h2>일별 분석 건수 (최근 7일)</h2>
             <span className="muted">건</span>
           </div>
           <div
             className="daily-chart"
             role="img"
-            aria-label={`최근 7일 진단 건수: ${days.map((d) => `${d.label} ${d.count}`).join(", ")}건`}
+            aria-label={`최근 7일 분석 건수: ${days.map((d) => `${d.label} ${d.count}`).join(", ")}건`}
           >
             {days.map((day, i) => (
               <div className="daily-column" key={day.key}>
@@ -111,11 +125,11 @@ export default function Dashboard({
         </section>
         <section className="panel risk-panel">
           <div className="panel-heading">
-            <h2>위험도 분포 (오늘)</h2>
+            <h2>처리 상태 분포 (전체 {total}건)</h2>
           </div>
           <div className="risk-distribution">
             {distribution.map((item) => (
-              <div key={item.name}>
+              <div key={item.status}>
                 <div>
                   <span>{item.name}</span>
                   <strong>
@@ -130,37 +144,31 @@ export default function Dashboard({
       </div>
       <section className="panel emergency-panel">
         <div className="panel-heading">
-          <h2>🚨 최근 응급 케이스</h2>
-          <button
-            className="text-button"
-            onClick={() => navigate("diagnoses", "응급")}
-          >
+          <h2>최근 분석 기록</h2>
+          <button className="text-button" onClick={() => navigate("diagnoses")}>
             전체보기 <ArrowRight size={13} />
           </button>
         </div>
         <div className="emergency-list">
-          {emergencies.map((d) => (
-            <button
-              key={d.id}
-              className="emergency-row"
-              onClick={() => open({ type: "diagnosis", id: d.id })}
-            >
-              <span className="red-dot" />
+          {recent.map((a) => (
+            <div key={a.id} className="emergency-row">
+              <span className="red-dot" aria-hidden="true" />
               <div>
-                <strong>{d.userId}</strong>
-                <time>{d.time}</time>
-                <p>
-                  {d.condition} · {d.area}
-                </p>
+                <strong className="mono">{a.id}</strong>
+                <time>{formatTime(a.createdAt)}</time>
+                <p>문진 {a.turn}회</p>
               </div>
-              <Badge tone="gray">{d.connection}</Badge>
-              <span className="sr-only">진단 상세 보기</span>
-            </button>
+              <Badge tone={STATUS_TONE[a.status] || "gray"}>
+                {analysisStatusLabel[a.status] || a.status}
+              </Badge>
+            </div>
           ))}
+          {!recent.length && <p className="muted">아직 분석 기록이 없습니다.</p>}
         </div>
       </section>
       <p className="aggregate-note">
-        백엔드에서 조회한 관리자 운영 데이터입니다
+        분석 지표는 건수와 처리 상태만 집계합니다. 분석 결과·사진·문진과 사용자 정보는 표시하지
+        않습니다.
       </p>
     </>
   );

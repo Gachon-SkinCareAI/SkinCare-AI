@@ -133,19 +133,36 @@ public class SecurityConfig {
                                         .permitAll()
                                         // Public login UI contains no account data; every admin API
                                         // remains role-protected.
+                                        // /admin/ is the React console; its page paths only return
+                                        // index.html (the app then calls role-protected APIs), so a
+                                        // refresh or deep link must not be blocked.
                                         .requestMatchers(
+                                                org.springframework.http.HttpMethod.GET,
                                                 "/admin",
                                                 "/admin/",
                                                 "/admin/index.html",
-                                                "/admin/app.js",
-                                                "/admin/style.css")
+                                                "/admin/dashboard",
+                                                "/admin/diagnoses",
+                                                "/admin/monitoring",
+                                                "/admin/facilities",
+                                                "/admin/users",
+                                                "/admin/inquiries",
+                                                "/admin/analyses",
+                                                "/admin/ops",
+                                                "/admin/ops/",
+                                                "/admin/ops/index.html",
+                                                "/admin/ops/app.js",
+                                                "/admin/ops/style.css")
                                         .permitAll()
-                                        // ES modules/styles must load before the administrator can
-                                        // sign in.
+                                        // Scripts, styles and images must load before the
+                                        // administrator can sign in.
                                         .requestMatchers(
                                                 org.springframework.http.HttpMethod.GET,
-                                                "/admin/src/**",
-                                                "/admin/assets/**")
+                                                "/admin/assets/**",
+                                                "/admin/branding/**",
+                                                "/admin/*.png",
+                                                "/admin/*.svg",
+                                                "/admin/ops/src/**")
                                         .permitAll()
                                         // Swagger 문서 관련 경로 접근 허용
                                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")

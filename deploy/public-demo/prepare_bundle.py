@@ -13,8 +13,11 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 RUNTIME_FILES = ('compose.yaml','compose.qa.yaml','Caddyfile','Caddyfile.qa','Dockerfile.backend',
     'Dockerfile.ai','Dockerfile.maintenance','requirements-serving.txt','.dockerignore',
-    'db_runtime.py','maintenance.py','probe.py','serve_ai.py','db_selftest.py','verify_host.py','diagnose_host.py')
+    'db_runtime.py','maintenance.py','probe.py','serve_ai.py','db_selftest.py','verify_host.py','diagnose_host.py',
+    'compose.cloud.yaml','Caddyfile.cloud','cloud.env.example','connect_cloud.py','CLOUD-DEPLOY.md',
+    'compose.llm.yaml','compose.llm-cpu.yaml')
 PROVIDERS = ('GOOGLE_CLIENT_ID','GOOGLE_SECRET','KAKAO_CLIENT_ID','KAKAO_CLIENT_SECRET','NAVER_CLIENT_ID','NAVER_CLIENT_SECRET')
+CLOUD_HOST = 'skincare-ai.skincare-server.workers.dev'
 
 def digest(path):
     value = hashlib.sha256()
@@ -86,7 +89,7 @@ def prepare(args):
         write_secret(private/(name+'.txt'), value)
     config = {'DB_PASSWORD':values['db-app'],'JWT_SECRET':values['jwt'],'AI_SERVICE_TOKEN':values['ai-token'],
               'SKINCARE_BOOTSTRAP_ADMIN_ID':'demo_admin','SKINCARE_BOOTSTRAP_ADMIN_PASSWORD':'Demo9!'+secrets.token_hex(20)}
-    if args.mode == 'public':
+    if args.mode in ('public', 'cloud'):
         original_private = Path(source['runtime'])/'private'
         social = json.loads((original_private/'social-config.json').read_text(encoding='utf-8-sig'))
         service = json.loads((original_private/'service-config.json').read_text(encoding='utf-8-sig'))
@@ -99,13 +102,17 @@ def prepare(args):
         config.update({key:'' for key in PROVIDERS})
         config['PUBLIC_MEDICAL_SERVICE_KEY'] = ''
     (private/'application-secrets.properties').write_text('\n'.join(key+'='+property_value(value) for key,value in config.items())+'\n',encoding='utf-8')
-    host = args.hostname if args.mode == 'public' else 'demo.invalid'
-    email = args.email if args.mode == 'public' else 'qa@example.invalid'
-    (target/'.env').write_text('PUBLIC_HOST='+host+'\nTLS_EMAIL='+email+'\n',encoding='utf-8')
+    if args.mode == 'cloud':
+        host = CLOUD_HOST
+        shutil.copy2(HERE/'cloud.env.example', target/'.env')
+    else:
+        host = args.hostname if args.mode == 'public' else 'demo.invalid'
+        email = args.email if args.mode == 'public' else 'qa@example.invalid'
+        (target/'.env').write_text('PUBLIC_HOST='+host+'\nTLS_EMAIL='+email+'\n',encoding='utf-8')
     project = 'skincare-demo-qa-'+secrets.token_hex(4) if args.mode == 'qa' else 'skincare-public-demo'
     manifest = {'format':'skincare-public-demo-bundle-v1','mode':args.mode,'project':project,
                 'publicHost':host,'baselineModels':model_files,'databaseCopied':False,
-                'providerSecretsIncluded':args.mode == 'public','backendSha256':digest(target/'backend/app.jar'),
+                'providerSecretsIncluded':args.mode in ('public', 'cloud'),'backendSha256':digest(target/'backend/app.jar'),
                 'sources':{name:digest(target/name) for name in RUNTIME_FILES}}
     (target/'bundle-manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
     print(json.dumps({'prepared':True,'mode':args.mode,'project':project,'modelBytes':sum(v['bytes'] for v in model_files.values()),'databaseCopied':False}))
@@ -114,7 +121,7 @@ if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',required=True)
     parser.add_argument('--local-app-config',required=True)
-    parser.add_argument('--mode',choices=('qa','public'),default='qa')
+    parser.add_argument('--mode',choices=('qa','public','cloud'),default='qa')
     parser.add_argument('--hostname',default='')
     parser.add_argument('--email',default='')
     prepare(parser.parse_args())

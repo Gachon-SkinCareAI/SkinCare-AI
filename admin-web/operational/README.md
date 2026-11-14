@@ -1,14 +1,17 @@
 # Public operations UI
 
-The Spring Boot artifact serves this authenticated API-backed UI at `/admin/`.
+The Spring Boot artifact serves this authenticated API-backed UI at `/admin/ops/`
+(the React console in `../src` is served at `/admin/`). Keep links relative:
+the page is opened only at `/admin/ops/` (with the trailing slash).
 The entry point loads native JavaScript modules from `src/`; Spring Boot packages
 these modules alongside `index.html`, `app.js`, and `style.css`.
 Supported screens: inquiries, medical institutions, analysis and AI status,
 content reviews, audit history, and administrator password changes.
 
-The React/Vite application under `../src` is a separate design preview using
-sample data in localStorage. It is preserved but is not deployed as the operations
-console until its administrator authentication and API integration are complete.
+The React/Vite application under `../src` is the main console at `/admin/`. It
+uses the real admin API but does not yet have content reviews, audit history or
+administrator password change, so this console stays available at `/admin/ops/`
+(linked from the React sidebar as "운영 도구") until those screens are ported.
 Do not put user passwords, patient records, or provider keys in either source tree.
 
 ## Module ownership

@@ -60,9 +60,16 @@ def main():
     result=handle_turn({},bank,rules,actual)
     choices={'common.systemic':'none','unsure.context':'abrasion','common.elapsed':'lt_1h','abr.site':'other','abr.dirty':'clean'}
     seen=[]
+    deterministic=0
     for turn in range(1,10):
         if result['action']=='finish':break
-        assert result['llm_called'] and not result['overrode_llm'], 'LLM fallback occurred during smoke test'
+        # Mandatory/single-candidate questions intentionally bypass the model.
+        # prepare_local() above already proves that the local model can process
+        # a synthetic questionnaire request. A deterministic bypass is valid,
+        # but an attempted model call that falls back is not.
+        assert not result['overrode_llm'], 'LLM fallback occurred during smoke test'
+        if not result['llm_called']:
+            deterministic+=1
         qid=result['question_id'];seen.append(qid)
         result=handle_turn({'slots':result['slots'],'last_question_id':qid,'answer':choices.get(qid),'turn':turn},bank,rules,actual)
     assert result['action']=='finish' and seen[-1]=='common.finish_confirm'
@@ -75,6 +82,7 @@ def main():
     print(json.dumps({'passed':True,'model':model_name(),'digest':model['digest'],'modelBytes':model['size'],
         'warmupSeconds':warm_seconds,'gpuBytes':running['size_vram'],'modelOptions':options,
         'turns':measurements,'questionIds':seen,
+        'deterministicBypassTurns':deterministic,
         'emergencyBypassedLlm':True,'clinicalValidation':False,'realPatientDataUsed':False}))
 
 if __name__=='__main__':main()

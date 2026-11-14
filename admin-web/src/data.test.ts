@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   csv,
+  filterAnalyses,
   filterDiagnoses,
   filterInquiries,
+  formatTime,
   parseStore,
   saveReply,
 } from "./data";
@@ -12,9 +14,35 @@ const emptyStore = {
   dashboard: {},
   users: [],
   diagnoses: [],
+  analyses: [],
+  analysisSummary: { counts: {}, daily: [] },
   inquiries: [],
   monitoring: { metrics: {}, pipelines: [], health: {} },
 };
+
+describe("분석 기록 (운영 정보만)", () => {
+  const rows = [
+    { id: "abc-1", status: "COMPLETED", turn: 6, createdAt: "2026-11-14T20:06:19.95", updatedAt: "", aiUnavailable: false },
+    { id: "def-2", status: "RETRY_REQUIRED", turn: 0, createdAt: "", updatedAt: "", aiUnavailable: true },
+  ];
+
+  it("처리 상태 이름과 기록 번호로 필터링한다", () => {
+    expect(filterAnalyses(rows, "", "전체")).toHaveLength(2);
+    expect(filterAnalyses(rows, "", "재연결 필요").map((r) => r.id)).toEqual(["def-2"]);
+    expect(filterAnalyses(rows, "ABC", "전체").map((r) => r.id)).toEqual(["abc-1"]);
+  });
+
+  it("화면 모델에 사용자·분석 결과 항목이 없다", () => {
+    expect(Object.keys(rows[0]).sort()).toEqual(
+      ["aiUnavailable", "createdAt", "id", "status", "turn", "updatedAt"],
+    );
+  });
+
+  it("서버 시각을 분 단위로 표시한다", () => {
+    expect(formatTime("2026-11-14T20:06:19.95")).toBe("2026-11-14 20:06");
+    expect(formatTime("")).toBe("");
+  });
+});
 
 describe("관리자 API 데이터 유틸리티", () => {
   it("빈 API 저장소를 생성한다", () => {

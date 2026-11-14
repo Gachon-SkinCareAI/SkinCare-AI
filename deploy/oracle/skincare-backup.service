@@ -1,0 +1,10 @@
+[Unit]
+Description=SkinCare AI: dump the MySQL database to /srv/skincare/backups/db
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=skincare
+WorkingDirectory=/srv/skincare
+ExecStart=/bin/bash /srv/skincare/backup_db.sh

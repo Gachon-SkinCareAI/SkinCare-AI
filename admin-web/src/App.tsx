@@ -227,12 +227,7 @@ export default function App() {
             <Dashboard store={store} navigate={navigate} open={setDetail} />
           )}
           {route.page === "diagnoses" && (
-            <Diagnoses
-              key={`diagnoses-${route.risk || "all"}`}
-              store={store}
-              open={setDetail}
-              initialRisk={route.risk}
-            />
+            <Diagnoses store={store} />
           )}
           {route.page === "monitoring" && <Monitoring store={store} />}
           {route.page === "facilities" && (

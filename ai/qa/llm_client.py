@@ -100,7 +100,18 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def _post(body: dict, *, timeout: float = 20) -> str:
+def request_timeout() -> float:
+    """Per-request deadline. GPU hosts keep 20 s; CPU-only hosts may raise it."""
+    try:
+        value = float(os.environ.get("LLM_TIMEOUT_SECONDS", "20"))
+    except ValueError:
+        return 20.0
+    return min(max(value, 5.0), 120.0)
+
+
+def _post(body: dict, *, timeout: float | None = None) -> str:
+    if timeout is None:
+        timeout = request_timeout()
     local = provider() == "ollama"
     base = _local_base() if local else os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     headers = {"Content-Type": "application/json"}
@@ -128,7 +139,8 @@ def _post(body: dict, *, timeout: float = 20) -> str:
 def prepare_local() -> dict:
     """Startup only: load AND process a synthetic question before admitting users.
 
-    Normal questionnaire requests still have a 20-second timeout. This function
+    Normal questionnaire requests use request_timeout() (20 s unless
+    LLM_TIMEOUT_SECONDS is set). This function
     is called by the bounded deployment check, never from a patient request.
     """
     if provider() != "ollama" or not configured():

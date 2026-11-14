@@ -33,6 +33,16 @@ public class OperationsService {
         STATES.forEach(state -> counts.put(state, 0L));
         for (var count : sessions.countStates()) counts.put(count.getStatus(), count.getTotal());
         var records = sessions.operations(selected, PageRequest.of(page, size));
+        // Last 7 days including today (server time zone), zero-filled. Counts only.
+        var today = java.time.LocalDate.now();
+        var perDay = new HashMap<java.time.LocalDate, Long>();
+        for (var day : sessions.countDaily(today.minusDays(6).atStartOfDay()))
+            perDay.put(day.getDay(), day.getTotal());
+        var daily = new ArrayList<Map<String, Object>>();
+        for (int i = 6; i >= 0; i--) {
+            var day = today.minusDays(i);
+            daily.add(Map.of("date", day.toString(), "count", perDay.getOrDefault(day, 0L)));
+        }
         var items =
                 records.getContent().stream()
                         .map(
@@ -54,6 +64,8 @@ public class OperationsService {
         return Map.of(
                 "counts",
                 counts,
+                "daily",
+                daily,
                 "items",
                 items,
                 "page",

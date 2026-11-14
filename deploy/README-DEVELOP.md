@@ -52,6 +52,8 @@ Docker 명령을 대체한 환경으로 성공·실패·변조·재시도 흐름
 - `backend/src/main/resources/db/mysql/`: V001~V008 마이그레이션.
 - `public-demo/prepare_bundle.py`: 필요한 소스·JAR·모델만 별도 비공개 런타임으로 복사.
 - `public-demo/compose.yaml`: 외부 공개는 Caddy, DB와 AI는 내부 네트워크.
+- `public-demo/CLOUD-DEPLOY.md`: 고정 공개 주소로 연결하고 Docker 호스트 포트를
+  공개하지 않는 클라우드 데모 설정과 환경 파일 인수인계.
 - `public-demo/apk_distribution.py`, `publish_apk.py`: 설치 페이지·APK·QR 패키징과 게시.
 - `public-demo/publish_existing_install.py`: 이미 설정된 동일 공개 주소에 검증된 새 APK를
   게시합니다. 기존 디렉터리 마운트·서명·버전·전체 다운로드를 검사하며 서버를 재시작하지
@@ -68,7 +70,8 @@ Redis 실험용이며 현재 공개 서비스 실행 파일이 아닙니다.
 - 공개 앱 API는 `/api/wc/analyses`, `/api/wc/auth/guest`, `/api/wc/auth/social` 및
   기록·위치·문의·동의 관련 엔드포인트를 사용합니다. 상세 계약은 컨트롤러와 테스트에 있습니다.
 - 이전 `/api/wc/diagnoses` 등은 `skincare.legacy.controllers-enabled=true`일 때만
-  켜지는 호환 코드입니다. 공개 배포에서는 기본 비활성 상태를 유지합니다.
+  켜지는 호환 코드입니다. 병원·문의 호환 API는 `/api/wc/legacy/hospitals`,
+  `/api/wc/legacy/inquiries`를 사용합니다. 공개 배포에서는 기본 비활성 상태를 유지합니다.
 - 관리자 실제 운영 화면은 `/admin/`이며 ADMIN 인증을 요구하는 API를 호출합니다.
 - 현재 QR은 `SkinCare-AI-develop/mobile`에서 빌드한 v13 APK를 제공합니다.
   개발 프론트의 인트로·홈·촬영·기록 디자인에 실제 인증·분석·문진·기록 API를 연결했습니다.

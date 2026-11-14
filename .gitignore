@@ -33,3 +33,11 @@ mobile/dist*/
 mobile/test-results/
 
 backend/logs/
+
+# Gradle cache used by deploy/oracle/update_server.sh
+backend/.gradle-home/
+# Private Oracle upload folders must never be committed
+skincare-cloud-upload*/
+
+# Personal editor settings
+.vscode/

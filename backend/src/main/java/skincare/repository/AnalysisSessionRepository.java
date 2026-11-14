@@ -33,6 +33,19 @@ public interface AnalysisSessionRepository extends JpaRepository<AnalysisSession
     @Query("select s.status as status, count(s) as total from AnalysisSession s group by s.status")
     List<StateCount> countStates();
 
+    interface DayCount {
+        java.time.LocalDate getDay();
+
+        long getTotal();
+    }
+
+    // Admin dashboard: number of analyses per creation day. Counts only — no user,
+    // photo, questionnaire or result data leaves this query.
+    @Query(
+            "select cast(s.createdAt as LocalDate) as day, count(s) as total from AnalysisSession s"
+                    + " where s.createdAt >= :since group by cast(s.createdAt as LocalDate)")
+    List<DayCount> countDaily(@Param("since") java.time.LocalDateTime since);
+
     @Query(
             "select s.id as id, s.status as status, s.turn as turn, s.errorCode as errorCode,"
                 + " s.createdAt as createdAt, s.updatedAt as updatedAt from AnalysisSession s where"

@@ -24,7 +24,7 @@ import skincare.service.UserInquiryService;
 @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
         name = "skincare.legacy.controllers-enabled",
         havingValue = "true")
-@RequestMapping("/api/wc/inquiries")
+@RequestMapping("/api/wc/legacy/inquiries")
 @RequiredArgsConstructor
 // UserInquiryController API 요청 처리
 public class UserInquiryController {

@@ -20,7 +20,7 @@ import skincare.service.HospitalQueryService;
 @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
         name = "skincare.legacy.controllers-enabled",
         havingValue = "true")
-@RequestMapping("/api/wc/hospitals")
+@RequestMapping("/api/wc/legacy/hospitals")
 @RequiredArgsConstructor
 // HospitalUserController API 요청 처리
 public class HospitalUserController {
