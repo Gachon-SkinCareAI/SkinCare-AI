@@ -186,6 +186,18 @@ sudo systemctl disable --now skincare-autodeploy.timer     # 자동 반영 잠�
 sudo systemctl enable --now skincare-autodeploy.timer      # 다시 켜기
 ```
 
+#### 시연 일정 반영 잠금
+`/srv/skincare/deploy-freeze.txt`에 적힌 기간에는 병합해도 서버에 반영하지 않습니다. 잠금이 끝나면 그동안 병합된 최신 커밋을 반영합니다. 잠금 중에는 상태 주소에 `lockedUntil`이 표시됩니다.
+
+```
+# 시작 끝 (KST), 줄을 지우면 잠금 해제
+2026-11-16T22:00+09:00 2026-11-17T20:00+09:00 테스트 시연
+2026-11-23T22:00+09:00 2026-11-24T20:00+09:00 최종 리허설
+2026-11-30T22:00+09:00 2026-12-01T20:00+09:00 최종 심사
+```
+
+잠금 중에 꼭 반영해야 하면 서버에서 `bash /srv/skincare/auto_deploy.sh --force`를 실행합니다. 이 명령은 잠금을 무시합니다.
+
 #### 배포 브랜치 바꾸기 (예: develop → main)
 지금 배포 브랜치는 **`develop`**입니다. 나중에 `main`으로 바꾸려면:
 
