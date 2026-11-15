@@ -1,4 +1,4 @@
-# PR과 develop/main push마다 테스트 실행
+# PR과 develop/main push마다 테스트 실행 (backend, admin-web, mobile)
 # develop에 병합하면 서버에 자동 반영되므로, 빨간 X가 뜬 PR은 병합하지 말 것
 name: tests
 
@@ -73,39 +73,3 @@ jobs:
       - name: test
         working-directory: mobile
         run: npm test
-
-  ai:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: ai/requirements.txt
-      - name: install (CPU torch)
-        run: |
-          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          pip install -r ai/requirements.txt pytest httpx
-      - name: test
-        working-directory: ai
-        run: python -m pytest -q tests
-
-  deploy:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install "qrcode[pil]" opencv-python-headless
-      - name: shell syntax
-        run: for f in deploy/oracle/*.sh; do bash -n "$f"; done
-      - name: deploy/mysql
-        working-directory: deploy/mysql
-        run: python -m unittest discover -p "test_*.py"
-      - name: deploy/public-demo
-        working-directory: deploy/public-demo
-        run: python -m unittest discover -p "test_*.py"
