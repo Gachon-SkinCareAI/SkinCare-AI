@@ -9,8 +9,10 @@ cd "$(dirname "$0")/../.."
 BUNDLE="${SKINCARE_BUNDLE:-/srv/skincare}"
 JAR_FLAG=""
 
-echo "== git pull"
-git pull --ff-only
+if [ -z "${SKINCARE_SKIP_PULL:-}" ]; then  # auto_deploy.sh checks out the exact commit itself
+  echo "== git pull"
+  git pull --ff-only
+fi
 
 if [ "${1:-}" = "--jar" ]; then
   echo "== build the React admin console (/admin/) in a Node container"
@@ -20,7 +22,7 @@ if [ "${1:-}" = "--jar" ]; then
   echo "== build backend JAR in a JDK 17 container (tests skipped; run them on the PC)"
   docker run --rm -u "$(id -u):$(id -g)" -e GRADLE_USER_HOME=/src/backend/.gradle-home \
     -v "$PWD":/src -w /src/backend eclipse-temurin:17-jdk \
-    ./gradlew --no-daemon bootJar -x test -PprebuiltAdminWeb
+    sh ./gradlew --no-daemon bootJar -x test -PprebuiltAdminWeb
   JAR_FLAG="--jar"
 fi
 

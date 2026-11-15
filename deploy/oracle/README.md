@@ -47,7 +47,7 @@ SkinCare AI의 백엔드, AI 서버, MySQL, 관리자 웹, 문진 LLM(qwen3:4b)�
 | 서버 계정 | `skincare` (SSH 키로만 로그인) |
 | 실행 폴더 | `/srv/skincare` |
 | 인바운드 포트 | **22(SSH)만** 열려 있음. 웹 트래픽은 Cloudflare 터널로 들어오므로 80/443을 열지 않습니다 |
-| 자동 실행 | `skincare-ensure.timer`(5분마다 주소 점검·복구), `skincare-backup.timer`(매일 04:00 DB 백업) |
+| 자동 실행 | `skincare-ensure.timer`(5분마다 주소 점검·복구), `skincare-backup.timer`(매일 04:00 DB 백업), `skincare-autodeploy.timer`(5분마다 GitHub 확인·자동 반영) |
 
 서버 IP는 저장소에 적지 않습니다. 팀 내부 채널에서 받아 아래 환경변수에 넣어 쓰세요.
 
@@ -158,16 +158,56 @@ sudo systemctl start skincare-backup.service && journalctl -u skincare-backup -n
 
 ## 코드 수정 후 서버에 반영
 
-### 서버에 저장소를 한 번 받아 두기
+### 자동 반영 (팀원은 PR만 병합하면 됩니다)
+서버가 **5분마다 GitHub의 배포 브랜치를 확인하고**, 새 커밋이 있으면 알아서 반영합니다. 서버 접속 권한이나 GitHub 비밀값은 필요 없습니다.
+
+1. 기능 브랜치에서 작업하고 PC에서 테스트합니다.
+2. PR을 **배포 브랜치**에 병합합니다. 배포 브랜치는 서버의 `/srv/skincare/auto-deploy.env`(`DEPLOY_BRANCH=`)에 적혀 있습니다.
+3. **5~25분 안에** 반영됩니다. 백엔드처럼 다시 빌드할 것이 많으면 더 오래 걸립니다. 반영하는 동안 마지막 1~2분은 앱이 잠시 연결되지 않습니다.
+4. 결과는 누구나 아래 주소에서 확인할 수 있습니다.
+   **https://skincare-ai.skincare-server.workers.dev/download/deploy-status.json**
+   - `deployedCommit`: 지금 서버에서 돌아가는 커밋
+   - `lastAttempt.result`: `running`(반영 중) / `success` / `skipped`(앱·문서만 바뀜) / `failed`
+
+| 바뀐 곳 | 서버가 하는 일 |
+|---|---|
+| `backend/`, `admin-web/` | 관리자 웹과 JAR를 빌드한 뒤 반영 |
+| `ai/`, `deploy/`, DB 마이그레이션, 그 밖의 파일 | 바뀐 컨테이너만 다시 빌드 |
+| `mobile/`, `docs/`, `*.md`만 | 서버에서 할 일이 없으므로 건너뜀(`skipped`). 앱은 [APK 배포](#앱apk-새-버전-배포)를 따로 해야 합니다 |
+
+**반영이 실패하면** 서버가 자동으로 **바로 전 성공 버전으로 되돌리고**, 같은 커밋은 다시 시도하지 않습니다. 문제를 고친 새 커밋을 병합하면 다시 시도합니다. 실패 원인은 관리자가 서버에서 확인합니다.
 
 ```bash
-git clone https://github.com/Gachon-SkinCareAI/SkinCare-AI.git ~/SkinCare-AI
-cd ~/SkinCare-AI && git checkout develop
+journalctl -u skincare-autodeploy -n 100 --no-pager      # 반영 로그
+cat /srv/skincare/auto-deploy/deployed                     # 마지막 성공 커밋
+bash /srv/skincare/auto_deploy.sh --force                  # 지금 바로 다시 반영(실패 기록도 지움)
+sudo systemctl disable --now skincare-autodeploy.timer     # 자동 반영 잠시 끄기 (시연 직전 등)
+sudo systemctl enable --now skincare-autodeploy.timer      # 다시 켜기
 ```
 
-### 수정할 때마다
-1. **PC**: 수정하고 테스트한 뒤 PR을 거쳐 `develop`에 병합합니다.
-2. **서버**: 바꾼 곳에 맞는 명령을 한 줄 실행합니다.
+#### 배포 브랜치 바꾸기 (예: develop → main)
+지금 배포 브랜치는 **`develop`**입니다. 나중에 `main`으로 바꾸려면:
+
+1. **먼저 `develop` → `main` PR을 병합합니다.** `main`이 `develop`보다 뒤처진 상태에서 바꾸면, 서버가 `main`의 **예전 코드로 되돌아갑니다.** 지금 `main`에는 자동 반영 스크립트도 없습니다.
+2. 서버에서 브랜치를 바꿉니다. 다음 5분 확인 때부터 적용됩니다.
+   ```bash
+   sed -i 's/^DEPLOY_BRANCH=.*/DEPLOY_BRANCH=main/' /srv/skincare/auto-deploy.env
+   ```
+3. 그다음부터 팀원은 `develop`에서 개발하고, 시연에 올릴 때만 `develop` → `main` PR을 병합합니다.
+
+> ⚠️ 배포 브랜치에 병합하는 순간 **시연 서버에 그대로 반영됩니다.** PC에서 테스트한 뒤에 병합하세요. 서버에서는 백엔드 테스트를 실행하지 않습니다.
+
+#### 처음 설치할 때 (관리자, 서버에서 한 번)
+`auto_deploy.sh`, `install_autodeploy.sh`, `skincare-autodeploy.service/.timer`가 있는 폴더에서 실행합니다.
+
+```bash
+bash install_autodeploy.sh <배포-브랜치> --enable    # ~/SkinCare-AI clone, 스크립트·타이머 설치
+```
+
+`auto_deploy.sh`를 고쳤다면 서버에서 `install_autodeploy.sh`를 다시 실행해야 반영됩니다. 실행 중인 스크립트가 반영 도중에 바뀌지 않도록 `/srv/skincare`에 복사본을 두고 그 복사본을 실행하기 때문입니다.
+
+### 수동 반영 (자동 반영을 껐을 때)
+서버에서 바뀐 곳에 맞는 명령을 실행합니다.
 
 | 바꾼 곳 | 서버 명령 | 앱 재설치 |
 |---|---|---|
@@ -176,6 +216,9 @@ cd ~/SkinCare-AI && git checkout develop
 | 모바일 앱(`mobile/`) | [앱(APK) 새 버전 배포](#앱apk-새-버전-배포) | **필요함** |
 
 - `update_server.sh`는 `git pull` → (필요하면 JAR·관리자 웹 빌드) → `/srv/skincare`로 코드 동기화 → 바뀐 컨테이너만 다시 빌드하는 순서로 동작합니다.
+- 자동 반영이 켜져 있으면 이 checkout은 자동 반영 스크립트가 관리하므로 직접 `git pull`하지 마세요.
+
+### 공통
 - `private/`, `models/`, `distribution/`, `.env`, DB·LLM 볼륨은 **건드리지 않습니다.**
 - 백엔드 테스트는 서버에서 건너뜁니다. PC에서 `cd backend && ./gradlew test`로 먼저 확인하세요.
 - DB 구조를 바꿀 때는 `backend/src/main/resources/db/mysql/`에 `V009__설명.sql`처럼 **새 파일을 추가**합니다. 기존 V001~V008 파일은 수정하면 안 됩니다.
@@ -242,7 +285,7 @@ cd /srv/skincare
 COMPOSE="docker compose --env-file .env -f compose.yaml -f compose.cloud.yaml -f compose.llm.yaml -f compose.llm-cpu.yaml --profile cloud-connector"
 sudo $COMPOSE ps                                   # 컨테이너 7개가 Up(healthy)인지
 sudo docker logs --since 1h skincare-public-demo-backend-1 | grep -iE "error|exception"
-systemctl list-timers 'skincare-*'                 # 자동 복구·백업 타이머
+systemctl list-timers 'skincare-*'                 # 자동 복구·백업·자동 반영 타이머
 df -h / && free -h                                 # 디스크, 메모리
 ```
 
@@ -300,7 +343,8 @@ df -h / && free -h                                 # 디스크, 메모리
 | `setup_server.sh` | 서버(최초 1회) | Docker, Compose, 스왑 설치 |
 | `restore_volumes.sh` | 서버(최초 1회) | DB, maintenance, LLM 볼륨 복원 |
 | `install_service.sh`, `skincare-ensure.*` | 서버 | 5분마다 고정 주소를 점검하고 자동 복구 |
-| `update_server.sh`, `sync_code.py` | 서버 | 최신 코드 반영 |
+| `update_server.sh`, `sync_code.py` | 서버 | 최신 코드 반영(수동) |
+| `auto_deploy.sh`, `install_autodeploy.sh`, `skincare-autodeploy.*` | 서버 | GitHub 배포 브랜치를 5분마다 확인해 자동 반영, 실패하면 되돌림 |
 | `backup_db.sh`, `skincare-backup.*` | 서버 | 매일 DB 백업 |
 | `pull_db_backup.ps1` | PC | 서버 백업을 PC로 받기 |
 | `set_social_oauth.ps1`, `set_public_data_key.ps1`, `update_secret.py`, `check_public_data.py` | PC → 서버 | 비밀값 교체 |
