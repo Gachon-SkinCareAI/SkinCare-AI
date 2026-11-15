@@ -11,7 +11,9 @@
 #    until a newer commit arrives.
 # Status (public, no secrets): https://<public-host>/api/wc/deploy-status  (file: distribution/deploy-status.json)
 #   bash /srv/skincare/auto_deploy.sh            # what the timer runs
-#   bash /srv/skincare/auto_deploy.sh --force    # redeploy the branch head (also clears "failed")
+#   bash /srv/skincare/auto_deploy.sh --force    # redeploy the branch head (also clears "failed",
+#                                                #  and ignores a deploy freeze)
+# 4. no deploys inside the freeze windows listed in /srv/skincare/deploy-freeze.txt
 set -uo pipefail
 
 BUNDLE="${SKINCARE_BUNDLE:-/srv/skincare}"
@@ -73,12 +75,61 @@ deploy_commit() {  # commit jar_flag  — same steps as update_server.sh, for an
 
 resume_ensure() { sudo systemctl start skincare-ensure.timer 2>/dev/null || true; }
 
+# Deploy freeze windows (demo days), one per line in $FREEZE_FILE:
+#   2026-11-16T22:00+09:00 2026-11-17T20:00+09:00   # optional comment
+# Prints the end of the window that contains "now"; prints nothing otherwise.
+FREEZE_FILE="$BUNDLE/deploy-freeze.txt"
+active_freeze() {
+  [ -f "$FREEZE_FILE" ] || return 0
+  local now start end s e
+  now="$(date +%s)"
+  while read -r start end _; do
+    case "$start" in ''|\#*) continue ;; esac
+    s="$(date -d "$start" +%s 2>/dev/null)" || continue
+    e="$(date -d "$end" +%s 2>/dev/null)" || continue
+    if [ "$now" -ge "$s" ] && [ "$now" -lt "$e" ]; then echo "$end"; return 0; fi
+  done < "$FREEZE_FILE"
+}
+
+set_lock_status() {  # "" clears; otherwise the window end
+  python3 - "$STATUS_FILE" "$1" <<'EOF'
+import json, os, sys
+path, until = sys.argv[1:]
+try:
+    data = json.load(open(path))
+except Exception:
+    data = {}
+if until:
+    if data.get("lockedUntil") == until:
+        sys.exit(0)
+    data["lockedUntil"] = until
+    data["lockMessage"] = "시연 일정으로 반영 잠금 중, 잠금이 끝나면 develop 최신 커밋을 반영"
+else:
+    if "lockedUntil" not in data:
+        sys.exit(0)
+    data.pop("lockedUntil", None); data.pop("lockMessage", None)
+tmp = path + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+os.chmod(tmp, 0o644)
+os.replace(tmp, path)
+EOF
+}
+
 main() {
   [ -f "$BUNDLE/auto-deploy.env" ] && . "$BUNDLE/auto-deploy.env"
   BRANCH="${DEPLOY_BRANCH:-main}"
   mkdir -p "$STATE"
   exec 9>"$STATE/lock"
   flock -n 9 || { log "another deploy is running"; return 0; }
+
+  local until
+  until="$(active_freeze)"
+  if [ -n "$until" ] && [ "${1:-}" != "--force" ]; then
+    set_lock_status "$until"
+    return 0
+  fi
+  set_lock_status ""
 
   cd "$REPO" || { log "no git checkout at $REPO (run install_autodeploy.sh)"; return 1; }
   git fetch --quiet origin "$BRANCH" || { log "git fetch failed"; return 1; }
