@@ -9,7 +9,7 @@
 #    anything else                 -> update_server.sh
 # 3. a failed deploy is rolled back to the last good commit and is not retried
 #    until a newer commit arrives.
-# Status (public, no secrets): https://<public-host>/download/deploy-status.json
+# Status (public, no secrets): https://<public-host>/api/wc/deploy-status  (file: distribution/deploy-status.json)
 #   bash /srv/skincare/auto_deploy.sh            # what the timer runs
 #   bash /srv/skincare/auto_deploy.sh --force    # redeploy the branch head (also clears "failed")
 set -uo pipefail

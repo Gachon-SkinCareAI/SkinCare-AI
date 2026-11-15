@@ -13,6 +13,20 @@
     }
     route {
         import /run/secrets/gateway_caddy
+        # Auto-deploy status (public, no secrets). Under /api/wc/ because the Cloudflare
+        # Worker only forwards a fixed list of /download/ files. Before forward_auth so it
+        # stays readable while a deploy is restarting the backend.
+        @deployStatus {
+            method GET HEAD
+            path /api/wc/deploy-status
+        }
+        handle @deployStatus {
+            root * /srv/distribution
+            rewrite * /deploy-status.json
+            header Content-Type "application/json; charset=utf-8"
+            header Cache-Control "no-store"
+            file_server
+        }
         forward_auth maintenance:9100 {
             uri /ready?
             header_up -Authorization
@@ -28,7 +42,7 @@
         redir /download /download/ 302
         @download {
             method GET HEAD
-            path /download/ /download/index.html /download/SkinCare-AI.apk /download/install-qr.png /download/release.json /download/deploy-status.json
+            path /download/ /download/index.html /download/SkinCare-AI.apk /download/install-qr.png /download/release.json
         }
         handle @download {
             uri strip_prefix /download
