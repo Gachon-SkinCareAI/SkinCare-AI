@@ -1,0 +1,10 @@
+[Unit]
+Description=SkinCare AI: remove old Docker images and build cache
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=skincare
+ExecStart=/bin/bash /srv/skincare/cleanup_docker.sh
+TimeoutStartSec=4200
