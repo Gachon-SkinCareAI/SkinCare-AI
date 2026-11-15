@@ -165,7 +165,7 @@ sudo systemctl start skincare-backup.service && journalctl -u skincare-backup -n
 2. PR을 **배포 브랜치**에 병합합니다. 배포 브랜치는 서버의 `/srv/skincare/auto-deploy.env`(`DEPLOY_BRANCH=`)에 적혀 있습니다.
 3. **5~25분 안에** 반영됩니다. 백엔드처럼 다시 빌드할 것이 많으면 더 오래 걸립니다. 반영하는 동안 마지막 1~2분은 앱이 잠시 연결되지 않습니다.
 4. 결과는 누구나 아래 주소에서 확인할 수 있습니다.
-   **https://skincare-ai.skincare-server.workers.dev/download/deploy-status.json**
+   **https://skincare-ai.skincare-server.workers.dev/api/wc/deploy-status**
    - `deployedCommit`: 지금 서버에서 돌아가는 커밋
    - `lastAttempt.result`: `running`(반영 중) / `success` / `skipped`(앱·문서만 바뀜) / `failed`
 
