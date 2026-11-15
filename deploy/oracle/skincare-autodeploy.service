@@ -1,0 +1,12 @@
+[Unit]
+Description=SkinCare AI: deploy new commits from GitHub
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=skincare
+WorkingDirectory=/srv/skincare
+ExecStart=/bin/bash /srv/skincare/auto_deploy.sh
+TimeoutStartSec=3600

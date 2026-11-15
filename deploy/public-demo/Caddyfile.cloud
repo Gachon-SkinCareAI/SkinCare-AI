@@ -28,7 +28,7 @@
         redir /download /download/ 302
         @download {
             method GET HEAD
-            path /download/ /download/index.html /download/SkinCare-AI.apk /download/install-qr.png /download/release.json
+            path /download/ /download/index.html /download/SkinCare-AI.apk /download/install-qr.png /download/release.json /download/deploy-status.json
         }
         handle @download {
             uri strip_prefix /download
