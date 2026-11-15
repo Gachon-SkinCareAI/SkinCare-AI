@@ -1,0 +1,11 @@
+[Unit]
+Description=Clean up Docker disk usage every day at 05:00 KST
+
+[Timer]
+# Server clock is UTC: 20:00 UTC = 05:00 KST (after the 04:00 DB backup)
+OnCalendar=*-*-* 20:00:00 UTC
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

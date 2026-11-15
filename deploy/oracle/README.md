@@ -47,7 +47,7 @@ SkinCare AI의 백엔드, AI 서버, MySQL, 관리자 웹, 문진 LLM(qwen3:4b)�
 | 서버 계정 | `skincare` (SSH 키로만 로그인) |
 | 실행 폴더 | `/srv/skincare` |
 | 인바운드 포트 | **22(SSH)만** 열려 있음. 웹 트래픽은 Cloudflare 터널로 들어오므로 80/443을 열지 않습니다 |
-| 자동 실행 | `skincare-ensure.timer`(5분마다 주소 점검·복구), `skincare-backup.timer`(매일 04:00 DB 백업), `skincare-autodeploy.timer`(5분마다 GitHub 확인·자동 반영) |
+| 자동 실행 | `skincare-ensure.timer`(5분마다 주소 점검·복구), `skincare-backup.timer`(매일 04:00 DB 백업), `skincare-autodeploy.timer`(5분마다 GitHub 확인·자동 반영), `skincare-cleanup.timer`(매일 05:00 Docker 정리) |
 
 서버 IP는 저장소에 적지 않습니다. 팀 내부 채널에서 받아 아래 환경변수에 넣어 쓰세요.
 
@@ -132,11 +132,12 @@ sudo python3 connect_cloud.py --cpu   # 이미지 빌드와 실행(첫 실행은
 sudo bash install_service.sh       # 재부팅하거나 터널이 끊겨도 5분 안에 자동 복구
 ```
 
-DB 자동 백업도 설치합니다. 저장소의 `backup_db.sh`, `skincare-backup.service`, `skincare-backup.timer`를 `/srv/skincare`에 복사한 뒤 실행하세요.
+DB 자동 백업과 디스크 정리도 설치합니다. 저장소의 `backup_db.sh`, `cleanup_docker.sh`, `skincare-backup.*`, `skincare-cleanup.*`를 `/srv/skincare`에 복사한 뒤 실행하세요.
 
 ```bash
-sudo cp skincare-backup.service skincare-backup.timer /etc/systemd/system/
-sudo systemctl daemon-reload && sudo systemctl enable --now skincare-backup.timer
+chmod 755 backup_db.sh cleanup_docker.sh
+sudo cp skincare-backup.service skincare-backup.timer skincare-cleanup.service skincare-cleanup.timer /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now skincare-backup.timer skincare-cleanup.timer
 sudo systemctl start skincare-backup.service && journalctl -u skincare-backup -n 3   # "backup-ok" 확인
 ```
 
@@ -285,7 +286,7 @@ cd /srv/skincare
 COMPOSE="docker compose --env-file .env -f compose.yaml -f compose.cloud.yaml -f compose.llm.yaml -f compose.llm-cpu.yaml --profile cloud-connector"
 sudo $COMPOSE ps                                   # 컨테이너 7개가 Up(healthy)인지
 sudo docker logs --since 1h skincare-public-demo-backend-1 | grep -iE "error|exception"
-systemctl list-timers 'skincare-*'                 # 자동 복구·백업·자동 반영 타이머
+systemctl list-timers 'skincare-*'                 # 자동 복구·백업·자동 반영·디스크 정리 타이머
 df -h / && free -h                                 # 디스크, 메모리
 ```
 
@@ -314,6 +315,7 @@ df -h / && free -h                                 # 디스크, 메모리
 | 병원 검색 결과가 없음 | `set_public_data_key.ps1`로 키를 다시 테스트합니다. data.go.kr에서 승인한 뒤 반영되기까지 1~2시간 걸릴 수 있습니다 |
 | DB 로그인 실패 | `private/db-*.txt`에 CR(`\r`)이 들어 있는지 확인합니다 |
 | 메모리 부족 | `free -h`로 확인합니다. 4 GB 스왑은 `setup_server.sh`가 설정합니다 |
+| 디스크 부족 | `df -h /`, `sudo docker system df`로 확인하고, `sudo systemctl start skincare-cleanup`으로 바로 정리합니다. 그래도 부족하면 `docker builder prune -af`로 빌드 캐시를 모두 지웁니다. 다음 반영은 처음부터 빌드하므로 조금 느려집니다 |
 | APK 다운로드가 느림 | 설치 페이지 버튼이 GCS 주소(`storage.googleapis.com`)를 가리키는지 확인합니다 |
 
 ---
@@ -345,6 +347,7 @@ df -h / && free -h                                 # 디스크, 메모리
 | `install_service.sh`, `skincare-ensure.*` | 서버 | 5분마다 고정 주소를 점검하고 자동 복구 |
 | `update_server.sh`, `sync_code.py` | 서버 | 최신 코드 반영(수동) |
 | `auto_deploy.sh`, `install_autodeploy.sh`, `skincare-autodeploy.*` | 서버 | GitHub 배포 브랜치를 5분마다 확인해 자동 반영, 실패하면 되돌림 |
+| `cleanup_docker.sh`, `skincare-cleanup.*` | 서버 | 매일 05:00 반영 후 남은 예전 이미지와 2일 넘은 빌드 캐시 정리 |
 | `backup_db.sh`, `skincare-backup.*` | 서버 | 매일 DB 백업 |
 | `pull_db_backup.ps1` | PC | 서버 백업을 PC로 받기 |
 | `set_social_oauth.ps1`, `set_public_data_key.ps1`, `update_secret.py`, `check_public_data.py` | PC → 서버 | 비밀값 교체 |
