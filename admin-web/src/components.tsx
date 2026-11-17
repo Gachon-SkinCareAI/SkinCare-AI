@@ -17,7 +17,7 @@ export function Metric({
   change,
   color = "navy",
 }: {
-  icon: string;
+  icon: ReactNode;
   value: string;
   label: string;
   hint: string;

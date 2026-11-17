@@ -345,7 +345,33 @@ test("AI 성능 카드와 파이프라인, 서버 상태를 API 응답대로 표
   await expect(page.locator(".pipeline-row .green-dot")).toHaveCount(1);
   await expect(page.locator(".pipeline-row .red-dot")).toHaveCount(1);
   await expect(page.getByText("정상", { exact: true })).toBeVisible();
-  await expect(page.getByText("detect v1", { exact: false })).toBeVisible();
+  await expect(page.getByText("탐지 모델", { exact: true })).toBeVisible();
+  await expect(page.getByText("v1", { exact: true })).toBeVisible();
+  await expect(page.getByText("등록된 값", { exact: true })).toBeVisible();
+});
+
+test("등록된 파이프라인 값이 없으면 AI 서버 상태로 같은 정보를 보여 준다", async ({
+  page,
+}) => {
+  await mockAdminApi(page);
+  // 서버 DB에 파이프라인·지표 행이 없는 상태 (AI 서버는 정상)
+  await page.route("**/api/wc/admin/ai/pipelines", (route) =>
+    route.fulfill({ json: { pipeline_status: [] } }),
+  );
+  await page.route("**/api/wc/admin/ai/metrics", (route) =>
+    route.fulfill({ json: { metrics_summary: {} } }),
+  );
+  await page.goto("/admin/monitoring");
+  await expect(page.locator(".pipeline-row")).toHaveCount(3);
+  await expect(page.locator(".pipeline-row").nth(0)).toContainText(
+    "환부 탐지 모델",
+  );
+  await expect(page.locator(".pipeline-row").nth(2)).toContainText("0 / 2");
+  await expect(page.locator(".pipeline-row .green-dot")).toHaveCount(3);
+  await expect(page.getByText("AI 서버 실시간", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("등록된 파이프라인 상태가 없습니다"),
+  ).toHaveCount(0);
 });
 
 test("AI 서버에 연결할 수 없으면 임의 수치 없이 빈 상태를 안내한다", async ({

@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ClipboardList, Mail, PlugZap, Users } from "lucide-react";
 import { Badge, Metric, Progress } from "../components";
 import {
   analysisStatusLabel,
@@ -70,27 +70,27 @@ export default function Dashboard({
     <>
       <section className="metrics-grid four" aria-label="대시보드 주요 지표">
         <Metric
-          icon="👤"
+          icon={<Users size={20} />}
           value={String(m.totalUsers ?? 0)}
           label="총 사용자"
           hint="누적 가입자"
         />
         <Metric
-          icon="📋"
+          icon={<ClipboardList size={20} />}
           value={String(m.todayDiagnoses ?? 0)}
           label="오늘 분석 수"
           hint="오늘 시작된 분석"
           color="blue"
         />
         <Metric
-          icon="🔌"
+          icon={<PlugZap size={20} />}
           value={String(m.retryRequired ?? 0)}
           label="재연결 필요"
           hint="AI 연결 확인이 필요한 분석"
           color="orange"
         />
         <Metric
-          icon="✉"
+          icon={<Mail size={20} />}
           value={String(m.waitingInquiries ?? 0)}
           label="답변 대기 문의"
           hint="답변이 필요한 문의"
@@ -163,7 +163,9 @@ export default function Dashboard({
               </Badge>
             </div>
           ))}
-          {!recent.length && <p className="muted">아직 분석 기록이 없습니다.</p>}
+          {!recent.length && (
+            <p className="panel-note solo">아직 분석 기록이 없습니다.</p>
+          )}
         </div>
       </section>
       <p className="aggregate-note">
