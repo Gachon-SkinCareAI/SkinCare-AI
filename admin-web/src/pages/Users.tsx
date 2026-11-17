@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CalendarDays, Crown, RefreshCw, Users as UsersIcon } from "lucide-react";
 import {
   Badge,
   Empty,
@@ -31,13 +32,13 @@ export default function Users({
     <>
       <section className="metrics-grid four" aria-label="사용자 지표">
         <Metric
-          icon="👤"
+          icon={<UsersIcon size={20} />}
           value={String(m.totalUsers ?? store.users.length)}
           label="총 사용자"
           hint="누적 가입자"
         />
         <Metric
-          icon="⭐"
+          icon={<Crown size={20} />}
           value={String(
             m.premium ?? store.users.filter((u) => u.plan === "Premium").length,
           )}
@@ -46,14 +47,14 @@ export default function Users({
           color="orange"
         />
         <Metric
-          icon="🗓️"
+          icon={<CalendarDays size={20} />}
           value={String(m.dau ?? 0)}
           label="DAU"
           hint="오늘 접속한 사용자"
           color="blue"
         />
         <Metric
-          icon="🔄"
+          icon={<RefreshCw size={20} />}
           value={String(m.wau ?? 0)}
           label="WAU"
           hint="최근 7일 접속한 사용자"

@@ -2,8 +2,11 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   AlertCircle,
   Check,
+  ClipboardList,
   ExternalLink,
   FileText,
+  Hospital,
+  Pill,
   ShieldCheck,
 } from "lucide-react";
 import { Badge, Modal, Progress, RiskBadge } from "./components";
@@ -110,7 +113,9 @@ export default function Details({
     return (
       <Modal title="진단 상세" close={close}>
         <div className="detail-title">
-          <span className="detail-icon">📋</span>
+          <span className="detail-icon">
+            <ClipboardList size={24} />
+          </span>
           <div>
             <h3>{d.id}</h3>
             <p>{d.time.replaceAll("-", ".")}</p>
@@ -278,7 +283,9 @@ export default function Details({
     return (
       <Modal title="의료기관 상세" close={close}>
         <div className="detail-title">
-          <span className="detail-icon">{f.type === "약국" ? "💊" : "🏥"}</span>
+          <span className="detail-icon">
+            {f.type === "약국" ? <Pill size={24} /> : <Hospital size={24} />}
+          </span>
           <div>
             <h3>{f.name}</h3>
             <p>
@@ -564,7 +571,9 @@ function SyncDetails({
     // 실행 중에는 닫을 수 없다 (서버 작업은 계속되므로 결과를 확인할 수 있어야 한다)
     <Modal title="공공데이터 동기화" close={running ? () => {} : close}>
       <div className="modal-callout">
-        <span>🏥</span>
+        <span>
+          <Hospital size={28} />
+        </span>
         <div>
           <h3>공공데이터 기준으로 의료기관을 갱신합니다</h3>
           <p>

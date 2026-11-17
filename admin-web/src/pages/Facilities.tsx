@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Hospital, Moon, Pill, RefreshCw } from "lucide-react";
 import { Badge, Empty, Metric, Pagination, SearchInput } from "../components";
 import type { Facility, OpenDetail, Store } from "../data";
 import { searchFacilities } from "../services/adminApi";
@@ -91,20 +91,20 @@ export default function Facilities({
     <>
       <section className="metrics-grid three" aria-label="의료기관 지표">
         <Metric
-          icon="🏥"
+          icon={<Hospital size={20} />}
           value={(m.activeHospitals ?? 0).toLocaleString()}
           label="등록 의료기관"
           hint="운영 중인 피부과 · 병원 · 약국"
         />
         <Metric
-          icon="🌙"
+          icon={<Moon size={20} />}
           value={(m.activeNightCare ?? 0).toLocaleString()}
           label="야간진료 가능"
           hint="야간진료로 등록된 기관"
           color="purple"
         />
         <Metric
-          icon="💊"
+          icon={<Pill size={20} />}
           value={(m.activePharmacies ?? 0).toLocaleString()}
           label="약국"
           hint="등록된 약국"

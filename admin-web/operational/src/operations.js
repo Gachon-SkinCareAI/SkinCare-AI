@@ -38,7 +38,7 @@ export async function aiStatus() {
         if (status.reportedModels)
             root.append(element('p', `등록 탐지 모델: ${status.reportedModels.detect}`), element('p', `등록 분류 모델: ${status.reportedModels.classify}`));
         if (status.bankVersion)
-            root.append(element('p', `질문 목록 버전: ${status.bankVersion} · 안내 카드 버전: ${status.cardVersion}`, 'muted'));
+            root.append(element('p', `질문 목록 버전: ${status.bankVersion} · 안내 카드 버전: ${status.cardVersion ?? '—'}`, 'muted'));
         if (typeof status.llmConfigured === 'boolean')
             root.append(element('p', status.llmConfigured ? '선택형 LLM 연결 설정 있음 (응답 상태 별도 확인)' : '선택형 LLM 연결 미설정 · 질문 목록과 규칙 흐름 사용', 'muted'));
         if (typeof status.inflight === 'number')

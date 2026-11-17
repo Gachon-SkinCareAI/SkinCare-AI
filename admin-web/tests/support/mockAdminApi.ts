@@ -218,6 +218,9 @@ async function handle(route: Route, s: MockState) {
   if (method === "POST" && path === "/auth/logout")
     return json({ resultCode: 200 });
   if (method === "GET") {
+    // 운영 도구와 같은 분석 기록 API (화면은 건수와 날짜별 집계만 사용한다)
+    if (path === "/operations")
+      return json({ items: [], hasNext: false, counts: {}, daily: [] });
     if (path === "/dashboard")
       return json({
         waitingInquiries: s.inquiries.filter((q) => q.status === "WAITING")
