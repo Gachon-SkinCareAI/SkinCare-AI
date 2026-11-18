@@ -32,6 +32,8 @@ export const AUDIT_ACTIONS = {
   ADMIN_LOGIN: "관리자 로그인",
   ADMIN_LOGOUT: "관리자 로그아웃",
   ADMIN_PASSWORD_CHANGE: "관리자 비밀번호 변경",
+  AI_METRIC_SAVE: "AI 성능 지표 저장",
+  AI_METRIC_DELETE: "AI 성능 지표 삭제",
   HOSPITAL_CREATE: "기관 등록",
   HOSPITAL_UPDATE: "기관 변경",
   HOSPITAL_SYNC: "공공데이터 동기화",
