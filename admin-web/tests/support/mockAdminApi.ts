@@ -46,6 +46,20 @@ const diagnosisRows: [
     yesterday,
   ],
 ];
+const analysisRows: [string, string, number, string, string][] = [
+  ["AN-001", "COMPLETED", 5, today, "10:12:00"],
+  ["AN-002", "COMPLETED", 4, today, "10:05:00"],
+  ["AN-003", "COMPLETED", 6, today, "09:40:00"],
+  ["AN-004", "COMPLETED", 5, today, "09:10:00"],
+  ["AN-005", "QUESTIONNAIRE", 2, today, "08:55:00"],
+  ["AN-006", "QUESTIONNAIRE", 1, today, "08:30:00"],
+  ["AN-007", "RETRY_REQUIRED", 3, today, "08:20:00"],
+  ["AN-008", "RETRY_REQUIRED", 2, today, "08:10:00"],
+  ["AN-009", "CREATED", 0, today, "08:00:00"],
+  ["AN-010", "COMPLETED", 5, yesterday, "21:30:00"],
+  ["AN-011", "COMPLETED", 4, yesterday, "18:20:00"],
+  ["AN-012", "QUESTIONNAIRE", 2, yesterday, "11:00:00"],
+];
 const facilityRows: [string, string, string, string, boolean, boolean][] = [
   ["FAC-1", "서울피부과의원", "DERMATOLOGY", "서울 강남구", false, false],
   ["FAC-2", "우리동 종합병원", "GENERAL_HOSPITAL", "서울 마포구", true, true],
@@ -183,6 +197,15 @@ function createState(aiUp: boolean, bulkFacilities = 0) {
     ],
     // 화면이 서버로 보낸 변경 요청 (검증용)
     answerRequests: [] as Record<string, unknown>[],
+    // 앱의 실제 분석 기록 (운영 정보만: 번호, 처리 상태, 문진 횟수, 시각). 오늘 9건, 어제 3건
+    analyses: analysisRows.map(([id, status, turn, day, time]) => ({
+      id,
+      status,
+      turn,
+      createdAt: `${day}T${time}`,
+      updatedAt: `${day}T${time}`,
+      errorCode: status === "RETRY_REQUIRED" ? "AI_UNAVAILABLE" : null,
+    })),
     statusRequests: [] as { path: string; body: Record<string, unknown> }[],
     // 공공데이터 동기화 요청과 서버 응답 방식 (테스트가 바꿔서 성공·진행 중·실패를 재현)
     syncRequests: [] as Record<string, unknown>[],
@@ -270,9 +293,32 @@ async function handle(route: Route, s: MockState) {
   if (method === "POST" && path === "/auth/logout")
     return json({ resultCode: 200 });
   if (method === "GET") {
-    // 운영 도구와 같은 분석 기록 API (화면은 건수와 날짜별 집계만 사용한다)
-    if (path === "/operations")
-      return json({ items: [], hasNext: false, counts: {}, daily: [] });
+    // 운영 도구와 같은 분석 기록 API: 최근 순 목록(한 페이지 최대 50건)과 처리 상태별·날짜별 건수
+    if (path === "/operations") {
+      const size = Number(url.searchParams.get("size") || 20);
+      const pageNo = Number(url.searchParams.get("page") || 0);
+      const status = url.searchParams.get("status");
+      const sorted = [...s.analyses].sort((a, b) =>
+        b.createdAt.localeCompare(a.createdAt),
+      );
+      const rows = status ? sorted.filter((a) => a.status === status) : sorted;
+      const counts: Record<string, number> = {};
+      const daily: Record<string, number> = {};
+      for (const a of s.analyses) {
+        counts[a.status] = (counts[a.status] || 0) + 1;
+        const day = a.createdAt.slice(0, 10);
+        daily[day] = (daily[day] || 0) + 1;
+      }
+      return json({
+        items: rows.slice(pageNo * size, (pageNo + 1) * size),
+        page: pageNo,
+        size,
+        total: rows.length,
+        hasNext: (pageNo + 1) * size < rows.length,
+        counts,
+        daily: Object.entries(daily).map(([date, count]) => ({ date, count })),
+      });
+    }
     if (path === "/dashboard")
       return json({
         waitingInquiries: s.inquiries.filter((q) => q.status === "WAITING")

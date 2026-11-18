@@ -37,7 +37,7 @@ test('관리자 로그인, 아이디 기억하기 및 로그아웃이 동작한�
   await page.getByLabel('아이디 기억하기').check()
   await page.getByRole('button', { name: '로그인', exact: true }).click()
 
-  await expect(page.getByRole('heading', { name: '대시보드', exact: true })).toBeVisible()
+  await expect(page.locator('header.topbar h1')).toHaveText('대시보드')
   await expect(page.getByText('테스트 관리자')).toBeVisible()
   expect(await page.evaluate(() => localStorage.getItem('skincare-admin-token'))).toBe('test-admin-token')
   expect(await page.evaluate(() => localStorage.getItem('skincare-admin-remembered-id'))).toBe('operator')

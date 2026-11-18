@@ -14,96 +14,94 @@ const pages = [
 const card = (page: import("@playwright/test").Page, label: string) =>
   page.locator(".metric-card").filter({ hasText: label });
 
+// 화면 제목(h1)의 글자는 읽기 도구에 중복으로 읽히지 않도록 aria-hidden 안에 있어 이름으로 찾을 수 없다
+const title = (page: import("@playwright/test").Page) =>
+  page.locator("header.topbar h1");
+
 test("대시보드와 6개 메뉴가 백엔드 집계로 동작한다", async ({ page }) => {
   await mockAdminApi(page);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/admin/dashboard");
-  await expect(
-    page.getByRole("heading", { name: "대시보드", exact: true }),
-  ).toBeVisible();
+  await expect(title(page)).toHaveText("대시보드");
   await expect(card(page, "총 사용자")).toContainText("7");
-  // 7건 중 1건은 어제 진단이므로 오늘 진단은 6건
-  await expect(card(page, "오늘 진단 수")).toContainText("6");
-  await expect(card(page, "응급 케이스")).toContainText("4");
+  // 분석 기록 12건 중 오늘 시작한 분석은 9건, 재연결 필요는 2건
+  await expect(card(page, "오늘 분석 수")).toContainText("9");
+  await expect(card(page, "재연결 필요")).toContainText("2");
   await expect(card(page, "답변 대기 문의")).toContainText("1");
   await expect(
-    page.getByRole("img", { name: /최근 7일 진단 건수/ }),
+    page.getByRole("img", { name: /최근 7일 분석 건수/ }),
   ).toBeVisible();
   await expect(page.locator(".risk-distribution")).toContainText(
-    "응급 (Emergency)",
+    "결과 저장 완료",
   );
-  await expect(page.locator(".emergency-row")).toHaveCount(3);
-  for (const title of pages) {
+  await expect(page.locator(".risk-distribution")).toContainText("6건 (50%)");
+  await expect(page.getByText("처리 상태 분포 (전체 12건)")).toBeVisible();
+  // 최근 분석 기록은 최신 5건만 보여 준다
+  await expect(page.locator(".emergency-row")).toHaveCount(5);
+  for (const name of pages) {
     await page
       .getByRole("navigation", { name: "주 메뉴" })
-      .getByRole("link", { name: title, exact: true })
+      .getByRole("link", { name, exact: true })
       .click();
+    await expect(title(page)).toHaveText(name);
     await expect(
-      page.getByRole("heading", { name: title, exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: title, exact: true }),
+      page.getByRole("link", { name, exact: true }),
     ).toHaveAttribute("aria-current", "page");
   }
   expect(errors).toEqual([]);
 });
 
-test("대시보드 응급 전체보기에서 응급 필터로 이동한다", async ({ page }) => {
+test("대시보드 최근 분석 기록의 전체보기로 진단 로그 화면에 이동한다", async ({
+  page,
+}) => {
   await mockAdminApi(page);
   await page.goto("/admin/dashboard");
   await page.getByRole("button", { name: "전체보기" }).click();
-  await expect(
-    page.getByRole("heading", { name: "진단 로그", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "응급", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(title(page)).toHaveText("진단 로그");
+  // 헤더 1행 + 첫 페이지 10건, 전체 12건
+  await expect(page.getByRole("table").getByRole("row")).toHaveCount(11);
+  await expect(page.getByText("전체 12건")).toBeVisible();
+});
+
+test("분석 기록은 번호 검색과 처리 상태 필터가 동작한다", async ({ page }) => {
+  await mockAdminApi(page);
+  await page.goto("/admin/diagnoses");
   const rows = page.getByRole("table").getByRole("row");
-  // 헤더 1행 + 응급 4건
-  await expect(rows).toHaveCount(5);
-  for (const row of (await rows.all()).slice(1))
-    await expect(row.getByText("응급", { exact: true })).toBeVisible();
-});
+  await page.getByLabel("분석 기록 검색", { exact: true }).fill("an-007");
+  await expect(rows).toHaveCount(2);
+  await expect(page.getByRole("cell", { name: "AN-007" })).toBeVisible();
+  await page.getByRole("button", { name: "분석 기록 검색 지우기" }).click();
 
-test("진단 검색과 상태 변경을 서버에 저장하고 새로고침해도 유지한다", async ({
-  page,
-}) => {
-  const api = await mockAdminApi(page);
-  await page.goto("/admin/diagnoses");
-  await page.getByLabel("진단 검색", { exact: true }).fill("dx-0001");
-  await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
-  await page
-    .getByRole("button", { name: "DX-0001 진단 상세", exact: true })
-    .click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("3도 화상", { exact: true })).toBeVisible();
-  await dialog.getByLabel("처리 상태", { exact: true }).selectOption("진행중");
-  await expect
-    .poll(() => api.statusRequests.map((r) => r.path))
-    .toEqual(["/diagnoses/DX-0001/status"]);
-  expect(api.statusRequests[0].body).toMatchObject({ status: "IN_PROGRESS" });
-  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "재연결 필요", exact: true }).click();
+  await expect(rows).toHaveCount(3);
+  await expect(page.getByText("AI 연결 확인 필요")).toHaveCount(2);
+  await page.getByRole("button", { name: "생성됨", exact: true }).click();
+  await expect(rows).toHaveCount(2);
+  await expect(page.getByRole("cell", { name: "AN-009" })).toBeVisible();
+
+  // 새로고침하면 서버 기록을 다시 읽어 같은 결과가 나온다
   await page.reload();
-  await page.getByLabel("진단 검색", { exact: true }).fill("0001");
-  await expect(
-    page.getByRole("cell", { name: "진행중", exact: true }),
-  ).toBeVisible();
+  await page.getByLabel("분석 기록 검색", { exact: true }).fill("AN-0");
+  await expect(page.getByText("전체 12건")).toBeVisible();
 });
 
-test("진단 상세는 불러온 사용자 목록에 없는 사용자도 오류 없이 연다", async ({
+test("분석 기록 화면은 사용자·위험도·분석 결과를 보여주지 않는다", async ({
   page,
 }) => {
-  const api = await mockAdminApi(page);
-  api.diagnoses[0].userId = "USR-없음";
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  await mockAdminApi(page);
   await page.goto("/admin/diagnoses");
-  await page
-    .getByRole("button", { name: "DX-0001 진단 상세", exact: true })
-    .click();
-  await expect(page.getByRole("dialog")).toContainText("USR-없음");
-  expect(errors).toEqual([]);
+  // 개인정보 처리방침상 기록 번호, 시각, 처리 상태, 문진 횟수만 표시한다
+  await expect(page.getByRole("columnheader")).toHaveText([
+    "기록 번호",
+    "생성 시각",
+    "처리 상태",
+    "문진 횟수",
+    "마지막 갱신",
+  ]);
+  const text = await page.locator("main").innerText();
+  for (const hidden of ["USR-", "응급", "화상", "열상"])
+    expect(text).not.toContain(hidden);
 });
 
 test("사용자 지표 카드는 서버 통계만 보여주고 임의 수치를 넣지 않는다", async ({
@@ -132,6 +130,12 @@ test("사용자 지표 카드는 서버 통계만 보여주고 임의 수치를 
 
 test("사용자 상세의 계정 상태와 상태 필터가 동작한다", async ({ page }) => {
   const api = await mockAdminApi(page);
+  // 상태를 바꾸기 전에 "정말 바꿀까요?" 확인 창이 뜬다
+  const confirms: string[] = [];
+  page.on("dialog", (dialog) => {
+    confirms.push(dialog.message());
+    void dialog.accept();
+  });
   await page.goto("/admin/users");
   await page.getByLabel("사용자 검색", { exact: true }).fill("김민서");
   await page
@@ -143,9 +147,11 @@ test("사용자 상세의 계정 상태와 상태 필터가 동작한다", async
   await expect(
     page.getByRole("dialog").getByText("비활성", { exact: true }),
   ).toBeVisible();
+  expect(confirms[0]).toContain("김민서 계정을 비활성으로 변경할까요");
   expect(api.statusRequests.at(-1)).toMatchObject({
     path: "/users/USR-01/status",
-    body: { status: "INACTIVE" },
+    // 서버 DB는 ACTIVE/DELETED/SUSPENDED만 허용하므로 비활성은 SUSPENDED(로그인 차단)로 보낸다
+    body: { status: "SUSPENDED" },
   });
   await page.keyboard.press("Escape");
   await page.reload();
@@ -410,22 +416,23 @@ test("전체 검색에서 기관 상세를 열고 알림에서 문의를 확인�
   ).toBeVisible();
 });
 
-test("현재 검색 조건의 진단 CSV를 다운로드한다", async ({ page }) => {
+test("현재 검색 조건의 분석 기록 CSV를 다운로드한다", async ({ page }) => {
   await mockAdminApi(page);
   await page.goto("/admin/diagnoses");
-  await page.getByLabel("진단 검색", { exact: true }).fill("0001");
+  await page.getByLabel("분석 기록 검색", { exact: true }).fill("AN-001");
   const pending = page.waitForEvent("download");
   await page
-    .getByRole("button", { name: "현재 진단 목록 CSV 다운로드" })
+    .getByRole("button", { name: "현재 분석 기록 목록 CSV 다운로드" })
     .click();
   const download = await pending;
-  expect(download.suggestedFilename()).toBe("diagnoses.csv");
+  expect(download.suggestedFilename()).toBe("analyses.csv");
   const stream = await download.createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
   const text = Buffer.concat(chunks).toString("utf8");
-  expect(text).toContain("DX-0001");
-  expect(text).not.toContain("DX-0002");
+  expect(text).toContain("AN-001");
+  expect(text).not.toContain("AN-002");
+  // 헤더 1행 + 검색된 1건
   expect(text.split("\r\n")).toHaveLength(2);
 });
 
@@ -464,9 +471,7 @@ test("모바일 6개 화면에서 메뉴와 가로 스크롤 범위가 정상이
       .getByRole("navigation", { name: "주 메뉴" })
       .getByRole("link", { name: title, exact: true })
       .click();
-    await expect(
-      page.getByRole("heading", { name: title, exact: true }),
-    ).toBeVisible();
+    await expect(page.locator("header.topbar h1")).toHaveText(title);
     await expect
       .poll(() =>
         page
