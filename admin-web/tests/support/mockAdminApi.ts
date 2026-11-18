@@ -67,6 +67,30 @@ export type MockState = ReturnType<typeof createState>;
 function createState(aiUp: boolean, bulkFacilities = 0) {
   return {
     aiUp,
+    // 관리자 화면에서 등록·수정·삭제하는 AI 성능 지표 (키별 한 줄)
+    metrics: {
+      macro_f1: {
+        value: 86.2,
+        unit: "%",
+        change: "+0.8%",
+        description: "분류 모델 Macro F1",
+      },
+      burn_recall: {
+        value: 96.5,
+        unit: "%",
+        change: null,
+        description: "화상 재현율",
+      },
+    } as Record<
+      string,
+      {
+        value: number;
+        unit: string | null;
+        change: string | null;
+        description: string | null;
+      }
+    >,
+    metricRequests: [] as { method: string; key: string; body: unknown }[],
     users: names.map((name, i) => ({
       userId: `USR-0${i + 1}`,
       nickname: name,
@@ -215,6 +239,34 @@ async function handle(route: Route, s: MockState) {
   const json = (value: unknown, status = 200) =>
     route.fulfill({ status, json: value });
 
+  // AI 성능 지표 등록·수정·삭제 (실제 서버처럼 같은 키는 덮어쓰고 이전 값과의 차이를 계산한다)
+  const metricPath = path.match(/^\/ai\/metrics\/([^/]+)$/);
+  if (metricPath && (method === "PUT" || method === "DELETE")) {
+    const key = decodeURIComponent(metricPath[1]);
+    s.metricRequests.push({ method, key, body });
+    if (method === "DELETE") {
+      if (!s.metrics[key])
+        return json({ message: "등록된 지표가 없습니다." }, 404);
+      delete s.metrics[key];
+      return json({ resultCode: 200 });
+    }
+    const input = body as {
+      value: number;
+      unit?: string;
+      description?: string;
+    };
+    if (!/^[a-z][a-z0-9_]{1,49}$/.test(key))
+      return json({ message: "지표 키 형식이 올바르지 않습니다." }, 400);
+    const before = s.metrics[key];
+    const delta = before ? Math.round((input.value - before.value) * 100) / 100 : 0;
+    s.metrics[key] = {
+      value: input.value,
+      unit: input.unit || null,
+      change: delta ? `${delta > 0 ? "+" : ""}${delta}${input.unit || ""}` : null,
+      description: input.description || null,
+    };
+    return json({ resultCode: 200, metric: s.metrics[key] });
+  }
   if (method === "POST" && path === "/auth/logout")
     return json({ resultCode: 200 });
   if (method === "GET") {
@@ -313,22 +365,7 @@ async function handle(route: Route, s: MockState) {
       return json({
         resultCode: 200,
         data: {},
-        metrics_summary: s.aiUp
-          ? {
-              macro_f1: {
-                value: 86.2,
-                unit: "%",
-                change: "+0.8%",
-                description: "분류 모델 Macro F1",
-              },
-              burn_recall: {
-                value: 96.5,
-                unit: "%",
-                change: null,
-                description: "화상 재현율",
-              },
-            }
-          : {},
+        metrics_summary: s.aiUp ? s.metrics : {},
       });
     if (path === "/ai/pipelines")
       return json({

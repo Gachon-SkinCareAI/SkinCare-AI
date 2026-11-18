@@ -452,3 +452,21 @@ export function getAiStatus() {
 export function getReadiness() {
   return request("/api/wc/admin/operations/readiness");
 }
+
+// AI 성능 지표를 등록하거나 수정 (같은 키는 덮어쓰고 서버가 이전 값과의 차이를 계산한다)
+export async function saveAiMetric(
+  key: string,
+  body: { value: number; unit: string; description: string },
+) {
+  await request(`/api/wc/admin/ai/metrics/${encodeURIComponent(key)}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+// AI 성능 지표를 삭제
+export async function deleteAiMetric(key: string) {
+  await request(`/api/wc/admin/ai/metrics/${encodeURIComponent(key)}`, {
+    method: "DELETE",
+  });
+}
