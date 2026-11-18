@@ -12,6 +12,7 @@ import skincare.domain.ai.entity.AiModelMetrics;
 import skincare.domain.ai.entity.AiPipeline;
 import skincare.domain.ai.entity.AiRetrainHistory;
 import skincare.domain.diagnosis.entity.ENUM.WoundType;
+import skincare.dto.AiMetricRequestDto;
 import skincare.dto.AiModelMetricResponseDto;
 import skincare.dto.AiPipelineResponseDto;
 import skincare.dto.AiRetrainHistoryResponseDto;
@@ -26,10 +27,14 @@ import skincare.repository.AiPipelineRepository;
 import skincare.repository.AiRetrainHistoryRepository;
 import skincare.repository.DiagnosisRepository;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 // 관리자 AI 모델 성능, 파이프라인, MLOps 재학습 이력 모니터링 관련 비즈니스 로직 처리
@@ -48,6 +53,10 @@ public class AdminAiMonitoringService {
             aiRetrainHistoryRepository; // AI 재학습 이력 데이터 베이스 접근용 Repository
     private final DiagnosisRepository diagnosisRepository; // 재학습 후보(학습 활용 동의 분석) 조회
     private final AiServiceClient aiServiceClient; // AI/MLOps 서버 연동 (health, retrain, jobs)
+    private final AdminAuditService audit; // 지표 등록·삭제 감사 기록
+
+    // 지표 키 형식 (소문자로 시작, 소문자·숫자·밑줄, 2~50자)
+    private static final Pattern METRIC_KEY = Pattern.compile("^[a-z][a-z0-9_]{1,49}$");
 
     // AI 모델 Performance 지표 조회 (metric_key를 키로 하는 metrics_summary 객체)
     public Map<String, AiModelMetricResponseDto> getAiModelMetrics() {
@@ -57,6 +66,75 @@ public class AdminAiMonitoringService {
                 .map(AiModelMetricResponseDto::fromEntity)
                 .forEach(dto -> summary.put(dto.getMetricKey(), dto));
         return summary;
+    }
+
+    // AI 모델 성능 지표 등록·수정 (같은 키는 한 줄만 유지하고 이전 값과의 차이를 증감치로 기록)
+    @Transactional
+    public AiModelMetricResponseDto saveMetric(String metricKey, AiMetricRequestDto request) {
+        if (metricKey == null || !METRIC_KEY.matcher(metricKey).matches()) {
+            throw new CustomException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "지표 키는 영문 소문자로 시작하고 영문 소문자, 숫자, 밑줄만 쓸 수 있습니다. (2~50자)");
+        }
+        String unit = blankToNull(request.getUnit());
+        if ("%".equals(unit) && request.getValue() > 100) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE, "단위가 %이면 지표 값은 100 이하여야 합니다.");
+        }
+        String description = blankToNull(request.getDescription());
+
+        // 예전 데이터에 같은 키가 여러 줄이면 최신 한 줄만 남긴다
+        List<AiModelMetrics> rows = aiModelMetricsRepository.findAllByMetricKey(metricKey);
+        AiModelMetrics latest =
+                rows.stream().max(Comparator.comparing(AiModelMetrics::getId)).orElse(null);
+        rows.stream()
+                .filter(row -> row != latest)
+                .forEach(aiModelMetricsRepository::delete);
+
+        String change =
+                latest == null ? null : changeText(request.getValue() - latest.getMetricValue(), unit);
+        AiModelMetrics saved;
+        if (latest == null) {
+            saved =
+                    aiModelMetricsRepository.save(
+                            AiModelMetrics.builder()
+                                    .metricKey(metricKey)
+                                    .metricValue(request.getValue())
+                                    .unit(unit)
+                                    .changeValue(change)
+                                    .description(description)
+                                    .build());
+        } else {
+            latest.update(request.getValue(), unit, change, description);
+            saved = latest;
+        }
+        audit.current("AI_METRIC_SAVE", metricKey, request.getValue() + (unit == null ? "" : unit));
+        return AiModelMetricResponseDto.fromEntity(saved);
+    }
+
+    // AI 모델 성능 지표 삭제 (없는 키는 404)
+    @Transactional
+    public void deleteMetric(String metricKey) {
+        List<AiModelMetrics> rows = aiModelMetricsRepository.findAllByMetricKey(metricKey);
+        if (rows.isEmpty()) {
+            throw new CustomException(ErrorCode.ENTITY_NOT_FOUND, "등록된 지표가 없습니다.");
+        }
+        aiModelMetricsRepository.deleteAll(rows);
+        audit.current("AI_METRIC_DELETE", metricKey, rows.size() + "건");
+    }
+
+    // 이전 값과의 차이를 "+0.8%" 같은 문구로 만든다 (차이가 없으면 null)
+    private static String changeText(double delta, String unit) {
+        BigDecimal rounded = BigDecimal.valueOf(delta).setScale(2, RoundingMode.HALF_UP);
+        if (rounded.signum() == 0) {
+            return null;
+        }
+        String number = rounded.stripTrailingZeros().toPlainString();
+        String text = (rounded.signum() > 0 ? "+" : "") + number + (unit == null ? "" : unit);
+        return text.length() > 20 ? text.substring(0, 20) : text;
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     // AI 파이프라인 엔진별 상태 및 응답속도 조회

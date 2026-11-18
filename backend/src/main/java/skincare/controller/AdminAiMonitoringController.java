@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import skincare.dto.AiMetricRequestDto;
 import skincare.dto.AiRetrainRequestDto;
 import skincare.dto.ApiResponseDto;
 import skincare.service.AdminAiMonitoringService;
@@ -36,6 +37,27 @@ public class AdminAiMonitoringController {
         return ApiResponseDto.ok("AI 모델 Performance 지표 조회가 완료되었습니다.")
                 .with("metrics_summary", adminAiMonitoringService.getAiModelMetrics())
                 .toResponseEntity();
+    }
+
+    // AI 모델 성능 지표 등록·수정 API
+    @Operation(
+            summary = "AI 모델 Performance 지표 등록·수정",
+            description =
+                    "평가 결과를 metric_key별로 등록합니다. 같은 키는 새 값으로 덮어쓰고 이전 값과의 차이를 증감치로 기록합니다.")
+    @PutMapping("/metrics/{metricKey}")
+    public ResponseEntity<ApiResponseDto> saveAiModelMetric(
+            @PathVariable String metricKey, @Valid @RequestBody AiMetricRequestDto requestDto) {
+        return ApiResponseDto.ok("AI 모델 Performance 지표가 저장되었습니다.")
+                .with("metric", adminAiMonitoringService.saveMetric(metricKey, requestDto))
+                .toResponseEntity();
+    }
+
+    // AI 모델 성능 지표 삭제 API
+    @Operation(summary = "AI 모델 Performance 지표 삭제", description = "등록된 지표를 metric_key로 삭제합니다.")
+    @DeleteMapping("/metrics/{metricKey}")
+    public ResponseEntity<ApiResponseDto> deleteAiModelMetric(@PathVariable String metricKey) {
+        adminAiMonitoringService.deleteMetric(metricKey);
+        return ApiResponseDto.ok("AI 모델 Performance 지표가 삭제되었습니다.").toResponseEntity();
     }
 
     // AI 파이프라인 엔진별 상태 및 응답속도 조회 API

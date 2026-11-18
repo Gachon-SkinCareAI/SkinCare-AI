@@ -229,7 +229,9 @@ export default function App() {
           {route.page === "diagnoses" && (
             <Diagnoses store={store} />
           )}
-          {route.page === "monitoring" && <Monitoring store={store} />}
+          {route.page === "monitoring" && (
+            <Monitoring store={store} update={setStore} />
+          )}
           {route.page === "facilities" && (
             <Facilities
               store={store}

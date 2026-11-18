@@ -39,4 +39,12 @@ public class AiModelMetrics extends BaseTimeEntity {
     // 지표 항목 설명
     @Column(length = 255)
     private String description;
+
+    // 같은 키의 지표를 새 값으로 덮어쓴다 (관리자 화면에서 다시 입력할 때)
+    public void update(Double metricValue, String unit, String changeValue, String description) {
+        this.metricValue = metricValue;
+        this.unit = unit;
+        this.changeValue = changeValue;
+        this.description = description;
+    }
 }

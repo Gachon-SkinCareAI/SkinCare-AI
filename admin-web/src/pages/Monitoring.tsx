@@ -1,6 +1,9 @@
-import { BarChart3 } from "lucide-react";
+import { useState } from "react";
+import { BarChart3, Pencil, Plus, Trash2 } from "lucide-react";
 import { Badge, Metric, Progress } from "../components";
 import type { AiHealth, AiMetric, AiPipeline, Store } from "../data";
+import { deleteAiMetric, getMonitoring } from "../services/adminApi";
+import MetricForm, { emptyDraft, type MetricDraft } from "./MetricForm";
 
 const COLORS = ["navy", "red", "blue", "green", "purple", "orange"];
 
@@ -15,6 +18,7 @@ const HEALTH: Record<string, [string, string]> = {
 // 지표 키를 화면 문구로 변환 (모르는 키는 밑줄만 공백으로 바꾼다)
 const METRIC_LABELS: Record<string, string> = {
   macro_f1: "분류 Macro F1",
+  macro_auc: "분류 Macro AUC",
   accuracy: "정확도",
   precision: "정밀도",
   recall: "재현율",
@@ -94,8 +98,36 @@ function usageTone(usage: number) {
   return usage >= 85 ? "red" : usage >= 60 ? "orange" : "green";
 }
 
-export default function Monitoring({ store }: { store: Store }) {
+export default function Monitoring({
+  store,
+  update,
+}: {
+  store: Store;
+  update: (store: Store) => void;
+}) {
   const { metrics, pipelines, health } = store.monitoring;
+  const [form, setForm] = useState<MetricDraft | null>(null);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+
+  // 저장·삭제가 끝나면 지표를 서버에서 다시 읽어 화면에 반영한다
+  async function refresh(message: string) {
+    update({ ...store, monitoring: await getMonitoring() });
+    setError("");
+    setNotice(message);
+  }
+  async function remove(key: string) {
+    if (!window.confirm(`'${key}' 지표를 삭제할까요?`)) return;
+    try {
+      await deleteAiMetric(key);
+      await refresh("지표를 삭제했습니다");
+    } catch (cause) {
+      setNotice("");
+      setError(
+        cause instanceof Error ? cause.message : "지표 삭제에 실패했습니다",
+      );
+    }
+  }
   const metricEntries = Object.entries(metrics);
   const [healthLabel, healthTone] = HEALTH[health.status ?? ""] ?? [
     "확인 불가",
@@ -152,17 +184,66 @@ export default function Monitoring({ store }: { store: Store }) {
           </p>
         )}
       </section>
+      <div className="metrics-toolbar">
+        <h2>AI 성능 지표</h2>
+        <button
+          className="button primary"
+          onClick={() => {
+            setNotice("");
+            setForm(emptyDraft());
+          }}
+        >
+          <Plus size={14} />
+          지표 등록
+        </button>
+      </div>
+      {notice && (
+        <p className="form-notice" role="status">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p className="form-error metrics-error" role="alert">
+          {error}
+        </p>
+      )}
       <section className="metrics-grid three" aria-label="AI 성능 지표">
         {metricEntries.map(([key, metric], i) => (
-          <Metric
-            key={key}
-            icon={<BarChart3 size={20} />}
-            value={metricValue(metric)}
-            label={METRIC_LABELS[key] ?? key.replaceAll("_", " ")}
-            hint={metric.description ?? ""}
-            change={metric.change || undefined}
-            color={COLORS[i % COLORS.length]}
-          />
+          <div className="metric-wrap" key={key}>
+            <Metric
+              icon={<BarChart3 size={20} />}
+              value={metricValue(metric)}
+              label={METRIC_LABELS[key] ?? key.replaceAll("_", " ")}
+              hint={metric.description ?? ""}
+              change={metric.change || undefined}
+              color={COLORS[i % COLORS.length]}
+            />
+            <div className="metric-actions">
+              <button
+                aria-label={`${key} 수정`}
+                onClick={() => {
+                  setNotice("");
+                  setForm({
+                    key,
+                    value: String(metric.value ?? ""),
+                    unit: metric.unit ?? "",
+                    description: metric.description ?? "",
+                    editing: true,
+                  });
+                }}
+              >
+                <Pencil size={13} />
+                수정
+              </button>
+              <button
+                aria-label={`${key} 삭제`}
+                onClick={() => void remove(key)}
+              >
+                <Trash2 size={13} />
+                삭제
+              </button>
+            </div>
+          </div>
         ))}
       </section>
       {!metricEntries.length && (
@@ -210,6 +291,16 @@ export default function Monitoring({ store }: { store: Store }) {
           )}
         </div>
       </section>
+      {form && (
+        <MetricForm
+          initial={form}
+          close={() => setForm(null)}
+          done={async () => {
+            await refresh("지표를 저장했습니다");
+            setForm(null);
+          }}
+        />
+      )}
       <p className="aggregate-note">
         {live
           ? "AI 서버가 알려 주는 모델 적재 상태와 진행 중 추론 수입니다. 응답 속도는 측정값이 등록되면 표시됩니다."

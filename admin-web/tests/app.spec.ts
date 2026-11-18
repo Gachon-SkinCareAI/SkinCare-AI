@@ -823,3 +823,63 @@ test("좁은 화면에서도 페이지 이동 버튼이 화면 안에 들어온�
     expect(box!.x + box!.width, name).toBeLessThanOrEqual(390);
   }
 });
+
+test("관리자 화면에서 AI 성능 지표를 등록·수정·삭제한다", async ({ page }) => {
+  const api = await mockAdminApi(page);
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.goto("/admin/monitoring");
+  await expect(page.locator(".metric-card")).toHaveCount(2);
+
+  // 새 지표 등록: 목록에서 고른 키와 입력한 값이 서버로 가고, 저장 후 카드가 늘어난다
+  await page.getByRole("button", { name: "지표 등록" }).click();
+  const dialog = page.getByRole("dialog", { name: "성능 지표 등록" });
+  await dialog.getByLabel("지표 종류").selectOption("map50");
+  await dialog.getByLabel("지표 값").fill("63.3");
+  await dialog.getByLabel("지표 설명").fill("탐지 mAP@0.5");
+  await dialog.getByRole("button", { name: "저장" }).click();
+  await expect(page.getByText("지표를 저장했습니다")).toBeVisible();
+  await expect(page.locator(".metric-card")).toHaveCount(3);
+  await expect(page.getByText("63.3%", { exact: true })).toBeVisible();
+  expect(api.metricRequests.at(-1)).toMatchObject({
+    method: "PUT",
+    key: "map50",
+    body: { value: 63.3, unit: "%", description: "탐지 mAP@0.5" },
+  });
+
+  // 같은 지표를 고치면 값이 바뀌고 이전 값과의 차이가 증감으로 보인다
+  await page.getByRole("button", { name: "map50 수정" }).click();
+  const edit = page.getByRole("dialog", { name: "성능 지표 수정" });
+  await expect(edit.getByLabel("지표 종류")).toBeDisabled();
+  await edit.getByLabel("지표 값").fill("65");
+  await edit.getByRole("button", { name: "저장" }).click();
+  await expect(page.getByText("65%", { exact: true })).toBeVisible();
+  await expect(page.getByText("+1.7%", { exact: true })).toBeVisible();
+  await expect(page.locator(".metric-card")).toHaveCount(3);
+
+  // 삭제
+  await page.getByRole("button", { name: "map50 삭제" }).click();
+  await expect(page.getByText("지표를 삭제했습니다")).toBeVisible();
+  await expect(page.locator(".metric-card")).toHaveCount(2);
+  expect(api.metricRequests.at(-1)).toMatchObject({
+    method: "DELETE",
+    key: "map50",
+  });
+});
+
+test("지표 입력값이 잘못되면 서버로 보내지 않고 안내한다", async ({ page }) => {
+  const api = await mockAdminApi(page);
+  await page.goto("/admin/monitoring");
+  await page.getByRole("button", { name: "지표 등록" }).click();
+  const dialog = page.getByRole("dialog", { name: "성능 지표 등록" });
+  await dialog.getByRole("button", { name: "저장" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("0 이상의 숫자");
+  await dialog.getByLabel("지표 값").fill("101");
+  await dialog.getByRole("button", { name: "저장" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("100 이하");
+  await dialog.getByLabel("지표 종류").selectOption("__custom__");
+  await dialog.getByLabel("지표 값").fill("90");
+  await dialog.getByLabel("지표 키").fill("Bad Key");
+  await dialog.getByRole("button", { name: "저장" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("영문 소문자");
+  expect(api.metricRequests).toHaveLength(0);
+});

@@ -2714,3 +2714,71 @@ textarea::placeholder {
     scroll-behavior: auto !important;
   }
 }
+.metrics-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 4px 12px;
+}
+.metrics-toolbar h2 {
+  font-size: 14px;
+  font-weight: 700;
+}
+.metrics-toolbar .button {
+  border: 0;
+  cursor: pointer;
+}
+.form-notice {
+  margin: 0 4px 12px;
+  font-size: 12px;
+  color: #008375;
+}
+.metrics-error {
+  margin: 0 4px 12px;
+}
+.metric-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.metric-actions {
+  display: flex;
+  gap: 4px;
+  margin: 6px 10px 0;
+}
+.metric-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #6f87ad;
+  font-size: 11px;
+  cursor: pointer;
+}
+.metric-actions button:hover {
+  background: #f0f4fb;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-label input {
+  padding: 11px;
+  border: 1px solid #dce5f3;
+  border-radius: 10px;
+  color: var(--navy);
+  background: white;
+  font-size: 12px;
+  width: 100%;
+}
+.form-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+}
