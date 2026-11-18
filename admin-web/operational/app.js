@@ -8,14 +8,16 @@ import { bindReviews, reviews } from './src/reviews.js';
 import { state } from './src/state.js';
 import { $, message, run, showTab, signedOut } from './src/ui.js';
 
-$('#login-form').onsubmit = e => { e.preventDefault(); const data = Object.fromEntries(new FormData(e.target)); void run(async () => { const result = await request('/api/wc/admin/auth/login', data); state.token = result.token; e.target.reset(); $('#login-panel').hidden = true; $('#workspace').hidden = false; $('#logout').hidden = false; showTab('inquiries'); await dashboard(); await inquiries(); }); };
+$('#login-form').onsubmit = e => { e.preventDefault(); const data = Object.fromEntries(new FormData(e.target)); void run(async () => { const result = await request('/api/wc/admin/auth/login', data); state.token = result.token; $('#sidebar-admin-name').textContent = data.adminId; e.target.reset(); $('#login-panel').hidden = true; $('#workspace').hidden = false; $('#logout').hidden = false; showTab('inquiries'); await dashboard(); await inquiries(); }); };
 
-$('#logout').onclick = () => run(async () => { try {
+const logout = () => run(async () => { try {
     await request('/api/wc/admin/auth/logout', {});
 }
 finally {
     signedOut();
 } });
+$('#logout').onclick = logout;
+$('#sidebar-logout').onclick = logout;
 
 document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => run(async () => { showTab(b.dataset.tab); if (state.tab === 'inquiries')
     await inquiries(); if (state.tab === 'hospitals')
