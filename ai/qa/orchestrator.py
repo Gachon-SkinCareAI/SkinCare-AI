@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from qa.filter import reject_utterance
 from qa.rules_engine import evaluate, missing_slots
-from qa.slots import SLOT_VALUES, empty, merge, read_user_text
+from qa.slots import empty, merge, read_user_text
 
 _RANK = {
     "common.systemic": 0,
@@ -94,12 +94,16 @@ def _finish(slots: dict, delta: dict, decision: dict, *, called: bool) -> dict:
     }
 
 
-def _fill_unknown(slots: dict) -> dict:
+def _fill_unknown(slots: dict, bank: dict, vision: dict, rules: dict) -> dict:
+    """아직 물어봐야 하는 슬롯만 모름으로 채운다. 해당 없는 질문의 슬롯은 비워 둔다."""
     filled = dict(slots)
-    for key in SLOT_VALUES:
-        if empty(filled.get(key)):
+    while True:
+        pending = [qid for qid in candidates(filled, bank, vision, rules) if qid != "common.finish_confirm"]
+        if not pending:
+            return filled
+        for qid in pending:
+            key = _question(bank, qid)["asks_slot"]
             filled[key] = ["unknown"] if key == "systemic" else ("unsure" if key == "scenario" else "unknown")
-    return filled
 
 
 def handle_turn(body: dict, bank: dict, rules: dict, llm=None) -> dict:
@@ -121,7 +125,7 @@ def handle_turn(body: dict, bank: dict, rules: dict, llm=None) -> dict:
         return _finish(heard, delta, decision, called=False)
 
     if int(body.get("turn") or 0) >= 10:
-        closed = _fill_unknown(heard)
+        closed = _fill_unknown(heard, bank, vision, rules)
         final = evaluate(closed, rules, vision)
         if final["level"] is None:
             final = {**final, "level": "UNKNOWN", "rule_ids": ["answers.incomplete"]}

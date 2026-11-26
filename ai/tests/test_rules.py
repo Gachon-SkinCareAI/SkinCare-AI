@@ -94,6 +94,23 @@ class QuestionTurnTest(unittest.TestCase):
         self.assertEqual(result["slots"]["elapsed"], "unknown")
         self.assertEqual(result["slots"]["site"], "unknown")
 
+    def test_turn_limit_keeps_complete_answers(self):
+        # 답을 다 한 화상(사흘 초과) 경로는 마지막 확인이 10번째 턴이다
+        choices = {"common.systemic": "none", "unsure.context": "burn", "common.elapsed": "gt_72h",
+                   "burn.cause": "heat_liquid", "burn.site": "hand", "burn.blister": "no",
+                   "late.spread": "no", "late.pus": "no", "late.pain": "down"}
+        question = handle_turn({}, self.bank, self.rules)
+        turn = 0
+        while question["action"] == "ask":
+            qid = question["question_id"]
+            turn += 1
+            question = handle_turn({"slots": question["slots"], "turn": turn, "last_question_id": qid,
+                                    "answer": choices.get(qid)}, self.bank, self.rules)
+        self.assertEqual(turn, 10)
+        self.assertEqual(question["level"], "OBSERVATION")
+        self.assertNotIn("dirty", question["slots"])
+        self.assertNotIn("tetanus_memory", question["slots"])
+
 
 class GuideSelectTest(unittest.TestCase):
     def test_null_level_returns_no_cards(self):
