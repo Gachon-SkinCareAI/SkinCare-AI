@@ -93,9 +93,13 @@ def test_upload_size_is_bounded():
 
 def test_malformed_llm_json_falls_back():
     from qa.llm_client import parse_content
-    result = handle_turn({"user_text": "확인"}, load_bank(), load_rules(),
+    # 질문 후보가 둘 이상이어야 언어 모델을 부른다 (물집, 옷 붙음)
+    slots = {"scenario": "burn", "cause": "heat_liquid", "site": "other", "elapsed": "lt_1h", "systemic": ["none"]}
+    result = handle_turn({"slots": slots}, load_bank(), load_rules(),
                          llm=lambda _: parse_content("not JSON"))
     assert result["action"] == "ask"
+    assert result["question_id"] == "burn.blister"
+    assert result["llm_called"]
     assert result["overrode_llm"]
 
 
